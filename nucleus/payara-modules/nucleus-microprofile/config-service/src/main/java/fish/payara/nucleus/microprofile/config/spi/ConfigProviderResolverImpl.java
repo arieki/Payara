@@ -469,7 +469,6 @@ public class ConfigProviderResolverImpl extends ConfigProviderResolver implement
         result.put(Character.class, new CharacterConverter());
         result.put(Short.class, new ShortConverter());
         return result;
-
     }
 
     Map<Class<?>, Converter<?>> getDiscoveredConverters(ApplicationInfo appInfo) {
