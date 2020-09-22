@@ -985,6 +985,12 @@ Parent is ${project.parent}</echo>
 
     <profiles>
         <profile>
+            <id>deployinternals</id>
+            <properties>
+                <deploy.skip>false</deploy.skip>
+            </properties>
+        </profile>
+        <profile>
             <id>ci</id>
             <modules>
                 <module>tests</module>
