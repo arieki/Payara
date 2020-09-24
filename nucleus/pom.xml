@@ -119,7 +119,7 @@
 
         <!-- Servlet -->
         <!-- Requires JDK8u161 or above-->
-        <grizzly.npn.version>1.9.payara-p1</grizzly.npn.version>
+        <grizzly.npn.api.version>1.9.payara-p1</grizzly.npn.api.version>
         <grizzly.npn.osgi.version>1.9</grizzly.npn.osgi.version>
 
         <!-- Microprofile -->
@@ -705,7 +705,7 @@ Parent is ${project.parent}</echo>
                 <groupId>fish.payara.monitoring-console</groupId>
                 <artifactId>monitoring-console-api</artifactId>
                 <version>${monitoring-console-api.version}</version>
-            </dependency>            
+            </dependency>
             <dependency>
                 <groupId>org.glassfish.hk2</groupId>
                 <artifactId>osgi-resource-locator</artifactId>
