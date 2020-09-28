@@ -132,7 +132,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <javase.version>1.8</javase.version>
-        <deploy.skip>false</deploy.skip>
+        <deploy.skip>true</deploy.skip>
+
         <!-- BOM-referenced versions -->
         <jakartaee.api.version>8.0.0</jakartaee.api.version>
         <servlet-api.version>4.0.2</servlet-api.version>
@@ -352,8 +353,12 @@
         </profile>
 
         <profile>
-            <!-- only internal modules deployed, so tests can run without Server build built -->
             <id>deploy-internals</id>
+
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+
             <properties>
                 <deploy.skip>false</deploy.skip>
             </properties>
@@ -373,14 +378,6 @@
 
     <build>
         <defaultGoal>install</defaultGoal>
-        <plugins>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-        </plugins>
 
         <pluginManagement>
             <plugins>
