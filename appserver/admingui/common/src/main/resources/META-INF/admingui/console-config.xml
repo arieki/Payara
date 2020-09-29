@@ -39,6 +39,7 @@
     only if the new code is made subject to such option by the copyright
     holder.
 
+    Portions Copyright 2020 Payara Foundation and/or its affiliates.
 -->
 
 <console-config id="common">
@@ -240,5 +241,26 @@
                 priority="800"
                 parentId="form"
                 content="/shared/targetSectionForCreate.inc"/>
+
+
+        <integration-point
+                id="deploymentCommmonTasks"
+                type="org.glassfish.admingui:commonTask"
+                priority="200"
+                parentId="commonTasksSection"
+                content="commonTasks/deploymentCommonTasks.jsf"/>
+        <integration-point
+                id="administrationCommmonTasks"
+                type="org.glassfish.admingui:commonTask"
+                priority="300"
+                parentId="commonTasksSection"
+                content="commonTasks/administrationCommonTasks.jsf"/>
+        <integration-point
+                id="monitoringCommmonTasks"
+                type="org.glassfish.admingui:commonTask"
+                priority="400"
+                parentId="commonTasksSection"
+                content="commonTasks/monitoringCommonTasks.jsf"/>
+
 
 </console-config>
