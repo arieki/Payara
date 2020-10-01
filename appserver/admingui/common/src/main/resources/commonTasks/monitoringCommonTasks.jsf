@@ -40,13 +40,14 @@
 
     Portions Copyright 2020 Payara Foundation and/or its affiliates.
 -->
-
+<!-- Common Tasks group for Monitoring tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
 <sun:commonTasksGroup id="monitoring"  title="$resource{i18n.commonTasks.group.Monitoring}" >
     <sun:commonTask
             text="$resource{i18nc.tree.monitorData}"
             toolTip="$resource{i18nc.tree.monitorData}"
             onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:applicationServerMonitoring','#{request.contextPath}/common/monitor/monitoringInfo.jsf');">
     </sun:commonTask>
+    <!-- Pull in additional tasks for this group (e.g. Payara InSight) -->
     <event>
         <!afterCreate
             getUIComponent(clientId="form:commonTasksSection:monitoring"  component=>$attribute{component})

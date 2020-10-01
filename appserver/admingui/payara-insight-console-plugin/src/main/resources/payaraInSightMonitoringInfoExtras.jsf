@@ -40,6 +40,8 @@ holder.
 
 -->
 
+<!-- Additional buttons, links, and info for the monitoringInfo.jsf page -->
+
 <event>
     <!beforeCreate
         setResourceBundle(key="i18npi" bundle="fish.payara.admingui.payaraInSight.Strings");

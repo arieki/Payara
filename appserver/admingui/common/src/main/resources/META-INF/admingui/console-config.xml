@@ -242,7 +242,7 @@
                 parentId="form"
                 content="/shared/targetSectionForCreate.inc"/>
 
-
+        <!-- Integration points for the Common Tasks page - ordering is done via priority -->
         <integration-point
                 id="deploymentCommmonTasks"
                 type="org.glassfish.admingui:commonTask"

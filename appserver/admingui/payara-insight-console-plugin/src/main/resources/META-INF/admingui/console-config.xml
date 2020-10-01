@@ -40,6 +40,7 @@
 -->
 
 <console-config id="payaraInSight">
+    <!-- Additional tasks for the Common Tasks page -->
     <integration-point
             id="payaraInSightCommmonTasks"
             type="org.glassfish.admingui:commonMonitoringTasks"
@@ -47,6 +48,7 @@
             parentId="monitoring"
             content="payaraInSightCommonTasks.jsf"
     />
+    <!-- Additional extras for the monitoringInfo.jsf page -->
     <integration-point
             id="payaraInSightMonitoringInfoExtras"
             type="fish.payara.admingui:monitoringInfoExtras"

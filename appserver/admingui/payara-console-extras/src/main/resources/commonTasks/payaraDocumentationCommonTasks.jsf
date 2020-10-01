@@ -39,6 +39,7 @@
     holder.
 
 -->
+<!-- Common Tasks group for Documentation tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
 <event>
     <!beforeCreate
         setResourceBundle(key="i18npe" bundle="fish.payara.admingui.extras.Strings");

@@ -54,6 +54,7 @@
     <sun:title id="propertyContentPage" title="$resource{i18n.commonTasks.group.Monitoring}"
                helpText="$resource{common.monitoringInfo.pageHelp}" />
 
+    <!-- Pull in additional fields, buttons, links, and text via console-config (e.g. Payara InSight) -->
     <event>
         <!afterCreate
             getUIComponent(clientId="propertyForm"  component=>$attribute{component})

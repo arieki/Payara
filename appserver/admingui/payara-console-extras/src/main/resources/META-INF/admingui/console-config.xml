@@ -136,6 +136,7 @@
         content="cdiDevMode/cdiDevModeApplication.jsf"
     />
 
+    <!-- Provide additional groups and tasks for the Common Tasks page -->
     <integration-point
             id="payaraSupportCommmonTasks"
             type="org.glassfish.admingui:commonTask"

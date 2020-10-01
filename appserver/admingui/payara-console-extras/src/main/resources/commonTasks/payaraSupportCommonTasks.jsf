@@ -39,7 +39,7 @@
     holder.
 
 -->
-
+<!-- Common Tasks group for Support tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
 <event>
     <!beforeCreate
         setResourceBundle(key="i18npe" bundle="fish.payara.admingui.extras.Strings");
@@ -51,12 +51,6 @@
             toolTip="$resource{i18npe.commonTasks.task.zendeskSupport.toolTip}"
             onClick="var win=window.open('$resource{i18npe.commonTasks.task.zendeskSupport.url}','_blank');if (win) {win.focus();}; return false;">
     </sun:commonTask>
-    <event>
-        <!beforeCreate
-            gf.restRequest(endpoint="#{sessionScope.REST_URL}/configs/config/server-config/zendesk-support-configuration/get-zendesk-support-configuration" method="get" result="#{requestScope.resp}");
-            setAttribute(key="enabled" value="#{requestScope.resp.data.extraProperties.zendeskSupportConfiguration.enabled}");
-        />
-    </event>
     <sun:commonTask
             text="$resource{i18npe.commonTasks.task.sla}"
             toolTip="$resource{i18npe.commonTasks.task.sla.toolTip}"

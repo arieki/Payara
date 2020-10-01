@@ -40,6 +40,7 @@
 
     Portions Copyright 2020 Payara Foundation and/or its affiliates.
 -->
+<!-- Common Tasks group for Deployment tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
 <sun:commonTasksGroup id="deployment" title="$resource{i18n.commonTasks.group.Deployment}" >
     <sun:commonTask
             text="$resource{i18n.commonTasks.task.listApp}"

@@ -47,6 +47,10 @@ import com.sun.jsftemplating.annotation.HandlerOutput;
 import com.sun.jsftemplating.layout.descriptors.handler.HandlerContext;
 import org.glassfish.internal.api.Globals;
 
+/**
+ * Additional handler methods specific to Payara InSight.
+ * @author Jan Bernitt
+ */
 public class PayaraInSightHandlers {
 
     private static final String NAME_RESULT = "result";

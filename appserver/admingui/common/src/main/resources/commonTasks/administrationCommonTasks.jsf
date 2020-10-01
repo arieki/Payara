@@ -40,6 +40,7 @@
 
     Portions Copyright 2020 Payara Foundation and/or its affiliates.
 -->
+<!-- Common Tasks group for Administration tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
 <sun:commonTasksGroup id="administration" title="$resource{i18n.commonTasks.group.Administration}" >
     <sun:commonTask
             text="$resource{i18n.commonTasks.task.adminPassword}"
