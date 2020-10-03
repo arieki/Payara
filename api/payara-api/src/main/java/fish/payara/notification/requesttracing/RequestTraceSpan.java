@@ -46,6 +46,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
@@ -189,7 +190,21 @@ public class RequestTraceSpan implements Serializable, Comparable<RequestTraceSp
     }
     
     public void addSpanReference(RequestTraceSpanContext spanContext, SpanContextRelationshipType relationshipType) {
+        // Overwrite existing if already added
+        ListIterator<SpanReference> iterator = spanReferences.listIterator();
+        while (iterator.hasNext()){
+            SpanReference spanReference = iterator.next();
+            if (spanReference.getReferenceSpanContext().getSpanId().equals(spanContext.getSpanId())
+                    && spanReference.getSpanContextRelationshipType().equals(relationshipType)) {
+                iterator.remove();
+                break;
+            }
+        }
+        
         spanReferences.add(new SpanReference(spanContext, relationshipType));
+        for (Map.Entry<String, String> baggageItem : spanContext.baggageItems()) {
+            this.spanContext.addBaggageItem(baggageItem.getKey(), baggageItem.getValue());
+        }
     }
     
     public List<SpanReference> getSpanReferences() {
