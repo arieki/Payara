@@ -136,4 +136,20 @@
         content="cdiDevMode/cdiDevModeApplication.jsf"
     />
 
+    <!-- Provide additional groups and tasks for the Common Tasks page -->
+    <integration-point
+            id="payaraSupportCommmonTasks"
+            type="org.glassfish.admingui:commonTask"
+            priority="100"
+            parentId="commonTasksSection"
+            content="commonTasks/payaraSupportCommonTasks.jsf"
+    />
+    <integration-point
+            id="payaraDocumentationCommmonTasks"
+            type="org.glassfish.admingui:commonTask"
+            priority="500"
+            parentId="commonTasksSection"
+            content="commonTasks/payaraDocumentationCommonTasks.jsf"
+    />
+
 </console-config>

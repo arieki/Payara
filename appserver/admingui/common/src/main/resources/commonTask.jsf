@@ -39,7 +39,7 @@
     holder.
 
 -->
-<!--   Portions Copyright [2016] [Payara Foundation]  -->
+<!--   Portions Copyright [2016-2020] [Payara Foundation]  -->
 <!-- /common/commonTask.jsf -->
 
 <!initPage
@@ -77,76 +77,8 @@
     
     "<div style="height:100%; background-color:#B6C6D6; #{pageSession.contentCSS}">
       <sun:form id="form">
-        <sun:commonTasksSection id="commonTasksSection" helpText="$resource{i18n.commonTasks.help}"  title="$resource{i18n.commonTasks.title}" columns="$int{2}" style="visibility: #{commonTaskVisibility}">
-          <sun:commonTasksGroup title="$resource{i18n.commonTasks.task.glassfishNews}">
-            <!-- GLASSFISH-21123, GLASSFISH-21124 -->
-            <sun:commonTask
-              text="$resource{i18n.commonTasks.task.support}"
-              toolTip="$resource{i18n.commonTasks.task.support.toolTip}"
-              onClick="javascript:var win=window.open('$resource{i18n.commonTasks.task.supportLink}','_blank');if (win) {win.focus();}; return false;">
-            </sun:commonTask>
-            <sun:commonTask
-                rendered="#{!sessionScope._noNetwork}"
-                text="$resource{i18n.commonTasks.task.aquarium}"
-                toolTip="$resource{i18n.commonTasks.task.aquarium.toolTip}"
-                onClick="javascript:var win=window.open('$resource{i18n.commonTasks.task.aquariumLink}','_blank');if (win) {win.focus();}; return false;">
-            </sun:commonTask>
-            <event>
-                <!beforeCreate
-                    <!-- gf.isRegistrationEnabled(isEnabled="#{pageSession.isRegistrationEnabled}");   -->
-                    gf.isAIX(result="#{pageSession.isAIX}");
-                    setSessionAttribute(key="gf_application_cancel_page" value="/common/commonTask.jsf");
-                />
-            </event>
-          </sun:commonTasksGroup>
-
-          <sun:commonTasksGroup id="deployment" title="$resource{i18n.commonTasks.group.Deployment}" >
-            <sun:commonTask
-                text="$resource{i18n.commonTasks.task.listApp}"
-                toolTip="$resource{i18n.commonTasks.task.listApp.toolTip}"
-                onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:applications','#{request.contextPath}/common/applications/applications.jsf');">
-            </sun:commonTask>
-            <sun:commonTask
-                text="$resource{i18n.commonTasks.task.deployEAR}"
-                toolTip="$resource{i18n.commonTasks.task.deployEAR.toolTip}"
-                onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:applications','#{request.contextPath}/common/applications/upload.jsf?appType=webApp&cancelPage=#{request.contextPath}/common/commonTask.jsf');">
-            </sun:commonTask>
-            <event>
-                <!beforeCreate
-                    setSessionAttribute(key="gf_application_list_page" value="/common/applications/applications.jsf");
-                    setSessionAttribute(key="gf_application_cancel_page" value="/common/commonTask.jsf");
-                />
-            </event>
-        </sun:commonTasksGroup>
-
-        <sun:commonTasksGroup id="administration" title="$resource{i18n.commonTasks.group.Administration}" >
-            <sun:commonTask
-                text="$resource{i18n.commonTasks.task.adminPassword}"
-                toolTip="$resource{i18n.commonTasks.task.adminPassword}"
-                onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:nodes','#{request.contextPath}/common/appServer/serverInstAdminPassword.jsf');">
-            </sun:commonTask>
-            <sun:commonTask
-                text="$resource{i18n.commonTasks.task.pswdAliases}"
-                toolTip="$resource{i18n.commonTasks.task.pswdAliases.toolTip}"
-                onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:nodes','#{request.contextPath}/common/appServer/pswdAliases.jsf');">
-            </sun:commonTask>
-        </sun:commonTasksGroup>
-
-          <sun:commonTasksGroup id="monitoring" title="$resource{i18n.commonTasks.group.Monitoring}" >
-            <sun:commonTask rendered="#{showMonitoringLink}"
-              text="$resource{i18n.commonTasks.task.monitoring}"
-              toolTip="$resource{i18n.commonTasks.task.monitoring.toolTip}"
-              onClick="javascript:var win=window.open('#{pageSession.monitoringConsoleURLs[0].url}','_blank');if (win) {win.focus();}; return false;">
-            </sun:commonTask>
-              <sun:commonTask
-                text="$resource{i18nc.tree.monitorData}"
-                toolTip="$resource{i18nc.tree.monitorData}"
-                onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:applicationServerMonitoring','#{request.contextPath}/common/monitor/monitoringInfo.jsf');">
-            </sun:commonTask>
-          </sun:commonTasksGroup>
-
-#include "/common/commonTaskDoc.inc"
-        </sun:commonTasksSection>
+        <!-- Common tasks moved into individual files to allow ordering via console-config integration-point priority -->
+        <sun:commonTasksSection id="commonTasksSection" helpText="$resource{i18n.commonTasks.help}"  title="$resource{i18n.commonTasks.title}" columns="$int{2}" style="visibility: #{commonTaskVisibility}"/>
         <event>
           <!afterCreate
           getUIComponent(clientId="form:commonTasksSection"  component=>$attribute{component})

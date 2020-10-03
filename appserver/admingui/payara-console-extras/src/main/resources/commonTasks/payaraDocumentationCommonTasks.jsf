@@ -1,9 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) 2010-2013 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 2020 Payara Foundation and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -40,43 +39,31 @@
     holder.
 
 -->
-
-<console-config id="jdbc">
-        <integration-point 
-                id="jdbcNodes" 
-                type="org.glassfish.admingui:navNode" 
-                priority="300"
-                parentId="resources" 
-                content="jdbcTreeNode.jsf" 
-        />
-        <integration-point 
-                id="jdbcCommonTask" 
-                type="org.glassfish.admingui:commonTask" 
-                priority="600"
-                parentId="commonTasksSection"
-                content="jdbcCommonTask.jsf"
-        />
-        <integration-point 
-                id="jdbcResourceLink"
-                parentId="propSheetSection"
-                type="org.glassfish.admingui:resources" 
-                priority="100" 
-                content="jdbcResourceLink.jsf"
-        />
-
-        <!-- add dropdown option for the resource dropdown of cluster/standalone instance resource table. -->
-        <integration-point
-                id="jdbcResourceDropDown"
-                type="org.glassfish.admingui:resourceTypeDropdown"
-                priority="450"
-                content="jdbc/jdbcResourceNew.jsf|org.glassfish.admingui.core.Strings|tree.jdbcResources"
-        />
-        
-        <integration-point
-                id="jdbcResourceFilter"
-                type="org.glassfish.admingui:resFilterDropdown"
-                priority="450"
-                content="jdbc-resource|org.glassfish.admingui.core.Strings|tree.jdbcResources"
-        />
-
-</console-config>
+<!-- Common Tasks group for Documentation tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
+<event>
+    <!beforeCreate
+        setResourceBundle(key="i18npe" bundle="fish.payara.admingui.extras.Strings");
+    />
+</event>
+<sun:commonTasksGroup title="$resource{i18npe.commonTasks.group.payaraDocs}">
+    <sun:commonTask
+            text="$resource{i18npe.commonTasks.task.payaraDocs}"
+            toolTip="$resource{i18npe.commonTasks.task.payaraDocs.toolTip}"
+            onClick="var win=window.open('$resource{i18npe.commonTasks.task.payaraDocs.url}','_blank');if (win) {win.focus();}; return false;">
+    </sun:commonTask>
+    <sun:commonTask
+            text="$resource{i18npe.commonTasks.task.knowledgeBase}"
+            toolTip="$resource{i18npe.commonTasks.task.knowledgeBase.toolTip}"
+            onClick="var win=window.open('$resource{i18npe.commonTasks.task.knowledgeBase.url}','_blank');if (win) {win.focus();}; return false;">
+    </sun:commonTask>
+    <sun:commonTask
+            text="$resource{i18npe.commonTasks.task.guides}"
+            toolTip="$resource{i18npe.commonTasks.task.guides.toolTip}"
+            onClick="var win=window.open('$resource{i18npe.commonTasks.task.guides.url}','_blank');if (win) {win.focus();}; return false;">
+    </sun:commonTask>
+    <sun:commonTask
+            text="$resource{i18npe.commonTasks.task.releaseNotes}"
+            toolTip="$resource{i18npe.commonTasks.task.releaseNotes.toolTip}"
+            onClick="var win=window.open('$resource{i18npe.commonTasks.task.releaseNotes.url}','_blank');if (win) {win.focus();}; return false;">
+    </sun:commonTask>
+</sun:commonTasksGroup>

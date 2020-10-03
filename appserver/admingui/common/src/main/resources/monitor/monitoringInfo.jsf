@@ -48,29 +48,19 @@
 
 <!composition template="/templates/default.layout"  guiTitle="$resource{common.monitoring.Title}" >
 <!define name="content">
-  <event>
-    <!beforeCreate
-    py.getContextRoot(appName="__monitoringconsole" result="#{pageSession.contextRoot}");
-    setAttribute(key="showMonitoringLink" value="true" );
-    if($pageSession{contextRoot}=#{null}) {
-	    setAttribute(key="showMonitoringLink" value="false" );
-    }
-    getTargetURLList(AppID="__monitoringconsole", contextRoot="#{pageSession.contextRoot}",  URLList="#{pageSession.monitoringConsoleURLs}");
-    />
-  </event>
 
 <sun:form id="propertyForm">
 #include "/common/shared/alertMsg_1.inc"
     <sun:title id="propertyContentPage" title="$resource{i18n.commonTasks.group.Monitoring}"
                helpText="$resource{common.monitoringInfo.pageHelp}" />
 
-    <sun:propertySheet>
-        <sun:propertySheetSection rendered="#{showMonitoringLink}">
-            <sun:property label="$resource{common.monitoringInfo.monitoringConsoleLinkLabel}">
-                <sun:hyperlink text="$resource{i18n.commonTasks.task.monitoring}" onClick="javascript:var win=window.open('#{pageSession.monitoringConsoleURLs[0].url}','_blank');if (win) {win.focus();}; return false;" />
-            </sun:property>
-        </sun:propertySheetSection>
-    </sun:propertySheet>
+    <!-- Pull in additional fields, buttons, links, and text via console-config (e.g. Payara InSight) -->
+    <event>
+        <!afterCreate
+            getUIComponent(clientId="propertyForm"  component=>$attribute{component})
+            includeIntegrations(type="fish.payara.admingui:monitoringInfoExtras" root="#{component}");
+        />
+    </event>
     
 #include "/common/shared/monitorHandlers.inc"
     <sun:table id="monitorInstancesTable" title="$resource{i18n.commonTasks.group.Monitoring}">

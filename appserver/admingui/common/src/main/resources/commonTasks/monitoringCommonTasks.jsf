@@ -1,9 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) 2010-2013 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 1997-2014 Oracle and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -39,44 +38,20 @@
     only if the new code is made subject to such option by the copyright
     holder.
 
+    Portions Copyright 2020 Payara Foundation and/or its affiliates.
 -->
-
-<console-config id="jdbc">
-        <integration-point 
-                id="jdbcNodes" 
-                type="org.glassfish.admingui:navNode" 
-                priority="300"
-                parentId="resources" 
-                content="jdbcTreeNode.jsf" 
+<!-- Common Tasks group for Monitoring tasks, brought in to Common Tasks page via console-config and includeIntegrations -->
+<sun:commonTasksGroup id="monitoring"  title="$resource{i18n.commonTasks.group.Monitoring}" >
+    <sun:commonTask
+            text="$resource{i18nc.tree.monitorData}"
+            toolTip="$resource{i18nc.tree.monitorData}"
+            onClick="return admingui.woodstock.commonTaskHandler('treeForm:tree:applicationServerMonitoring','#{request.contextPath}/common/monitor/monitoringInfo.jsf');">
+    </sun:commonTask>
+    <!-- Pull in additional tasks for this group (e.g. Payara InSight) -->
+    <event>
+        <!afterCreate
+            getUIComponent(clientId="form:commonTasksSection:monitoring"  component=>$attribute{component})
+            includeIntegrations(type="org.glassfish.admingui:commonMonitoringTasks" root="#{component}");
         />
-        <integration-point 
-                id="jdbcCommonTask" 
-                type="org.glassfish.admingui:commonTask" 
-                priority="600"
-                parentId="commonTasksSection"
-                content="jdbcCommonTask.jsf"
-        />
-        <integration-point 
-                id="jdbcResourceLink"
-                parentId="propSheetSection"
-                type="org.glassfish.admingui:resources" 
-                priority="100" 
-                content="jdbcResourceLink.jsf"
-        />
-
-        <!-- add dropdown option for the resource dropdown of cluster/standalone instance resource table. -->
-        <integration-point
-                id="jdbcResourceDropDown"
-                type="org.glassfish.admingui:resourceTypeDropdown"
-                priority="450"
-                content="jdbc/jdbcResourceNew.jsf|org.glassfish.admingui.core.Strings|tree.jdbcResources"
-        />
-        
-        <integration-point
-                id="jdbcResourceFilter"
-                type="org.glassfish.admingui:resFilterDropdown"
-                priority="450"
-                content="jdbc-resource|org.glassfish.admingui.core.Strings|tree.jdbcResources"
-        />
-
-</console-config>
+    </event>
+</sun:commonTasksGroup>
