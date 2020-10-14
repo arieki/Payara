@@ -66,11 +66,19 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     
     @Attribute(defaultValue = "90", dataType = Integer.class)
     String getSecretDirOrdinality();
-    void setSecretDirOrdinality(String message);
+    void setSecretDirOrdinality(String ordinality);
 
+    @Attribute(defaultValue = "105", dataType = Integer.class)
+    String getPasswordOrdinality();
+    void setPasswordOrdinality(String ordinality);
+    
     @Attribute(defaultValue = "110", dataType = Integer.class)
     String getDomainOrdinality();
     void setDomainOrdinality(String ordinality);
+    
+    @Attribute(defaultValue = "115", dataType = Integer.class)
+    String getJNDIOrdinality();
+    void setJNDIOrdinality(String ordinality);
 
     @Attribute(defaultValue = "120", dataType = Integer.class)
     String getConfigOrdinality();
@@ -91,18 +99,18 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     @Attribute(defaultValue = "160", dataType = Integer.class)
     String getClusterOrdinality();
     void setClusterOrdinality(String ordinality);
-    
-    @Attribute(defaultValue = "115", dataType = Integer.class)
-    String getJNDIOrdinality();
-    void setJNDIOrdinality(String ordinality);
-
-    @Attribute(defaultValue = "105", dataType = Integer.class)
-    String getPasswordOrdinality();
-    void setPasswordOrdinality(String ordinality);
 
     @Attribute(defaultValue = "170", dataType = Integer.class)
     String getPayaraExpressionPropertiesOrdinality();
     void setPayaraExpressionPropertiesOrdinality(String ordinality);
+
+    @Attribute(defaultValue = "180", dataType = Integer.class)
+    String getCloudOrdinality();
+    void setCloudOrdinality(String ordinality);
+    
+    @Attribute(defaultValue = "190", dataType = Integer.class)
+    String getJdbcOrdinality();
+    void setJdbcOrdinality(String ordinality);
 
     /**
      * @return number of seconds any MP {@link Config} is cached. That means changes to value as provided by a

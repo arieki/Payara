@@ -93,6 +93,7 @@ import fish.payara.nucleus.microprofile.config.converters.InetAddressConverter;
 import fish.payara.nucleus.microprofile.config.converters.IntegerConverter;
 import fish.payara.nucleus.microprofile.config.converters.LongConverter;
 import fish.payara.nucleus.microprofile.config.converters.StringConverter;
+import fish.payara.nucleus.microprofile.config.source.JDBCConfigSource;
 import fish.payara.nucleus.microprofile.config.source.ApplicationConfigSource;
 import fish.payara.nucleus.microprofile.config.source.ClusterConfigSource;
 import fish.payara.nucleus.microprofile.config.source.ConfigConfigSource;
@@ -320,6 +321,7 @@ public class ConfigProviderResolverImpl extends ConfigProviderResolver {
         sources.add(new PayaraServerProperties());
         sources.add(new DirConfigSource());
         sources.add(new PasswordAliasConfigSource());
+        sources.add(new JDBCConfigSource());
         if (appName != null) {
             sources.add(new ApplicationConfigSource(appName));
             sources.add(new ModuleConfigSource(appName, moduleName));
