@@ -260,7 +260,7 @@ public class SecurityAccessValidator implements Validator {
             }
         }
 
-        LOG.warning(localStrings.getLocalString("sec.validate.lookup.fail", "Cannot find the looup caller class"));
+        LOG.warning(localStrings.getLocalString("sec.validate.lookup.fail", "Cannot find the lookup caller class"));
         return null;
         
     }
