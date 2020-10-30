@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2018] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) [2020] Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,47 +37,45 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.microprofile.openapi.impl.model.media;
+package fish.payara.microprofile.openapi.test.app.application;
 
-import java.util.HashMap;
-import java.util.Map;
-import org.eclipse.microprofile.openapi.models.media.Discriminator;
+import com.fasterxml.jackson.databind.JsonNode;
+import fish.payara.microprofile.openapi.test.app.OpenApiApplicationTest;
+import fish.payara.microprofile.openapi.test.util.JsonUtils;
+import javax.json.Json;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Test;
 
-public class DiscriminatorImpl implements Discriminator {
+/**
+ *
+ * @author gaurav.gupta@payara.fish
+ */
+@Path("/weather")
+@Tag(name = "Weather API", description = "A simple Weather API")
+public class TagExampleTest extends OpenApiApplicationTest {
 
-    private String propertyName;
-    private Map<String, String> mapping = new HashMap<>();
-
-    @Override
-    public String getPropertyName() {
-        return propertyName;
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getWeather() {
+        return Json.createObjectBuilder()
+                .add("city", "Budapest")
+                .add("temperature", 11)
+                .build()
+                .toString();
     }
 
-    @Override
-    public void setPropertyName(String propertyName) {
-        this.propertyName = propertyName;
-    }
-
-    @Override
-    public Map<String, String> getMapping() {
-        return mapping;
-    }
-
-    @Override
-    public void setMapping(Map<String, String> mapping) {
-        this.mapping = mapping;
-    }
-
-    @Override
-    public Discriminator addMapping(String name, String value) {
-        if (value != null) {
-            mapping.put(name, value);
-        }
-        return this;
-    }
-
-    @Override
-    public void removeMapping(String name) {
-        mapping.remove(name);
+    @Test
+    public void fieldSchemaExampleIsRendered() {
+        JsonNode tags = JsonUtils.path(getOpenAPIJson(), "tags");
+        assertNotNull(tags);
+        assertEquals(1, tags.size());
+        assertEquals("Weather API", tags.get(0).get("name").textValue());
+        assertEquals("A simple Weather API", tags.get(0).get("description").textValue());
     }
 }

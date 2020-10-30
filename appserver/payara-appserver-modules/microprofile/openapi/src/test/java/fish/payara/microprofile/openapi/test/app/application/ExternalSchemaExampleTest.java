@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2018] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) [2020] Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -39,52 +39,69 @@
  */
 package fish.payara.microprofile.openapi.test.app.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import fish.payara.microprofile.openapi.impl.visitor.OpenApiWalker;
 import fish.payara.microprofile.openapi.test.app.OpenApiApplicationTest;
+import fish.payara.microprofile.openapi.test.util.JsonUtils;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.models.responses.APIResponses;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 /**
- * A resource to test that various response types are mapped properly.
+ * Testcase for Github issue #4334 where @Schema annotation not scanned if class
+ * file exist in external jar.
+ *
+ * In this test case {@link OpenApiWalker#allTypes} include TestApplication,
+ * ExternalSchemaExampleTest, and Student classes. And the
+ * {@link OpenApiWalker#allowedTypes} include TestApplication, and
+ * ExternalSchemaExampleTest classes. The {@link StudentDTO} class is dynamically
+ * picked from {@link OpenApiWalker#allTypes} for the Schema annotation scanning
+ * from metadata processor..
+ *
  */
-@Path("/response")
-@Produces({ APPLICATION_JSON, APPLICATION_XML })
-public class ResponseTest extends OpenApiApplicationTest {
+@Path("/students")
+public class ExternalSchemaExampleTest extends OpenApiApplicationTest {
 
     @GET
-    @APIResponse(responseCode = "200", description = "success", 
-        content = @Content(schema = @Schema(description = "hello!")))
-    @APIResponse(responseCode = "400", description = "error")
-    public String getInheritedMediaType() {
-        return null;
+    @APIResponse(
+            description = "Get the Student information",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = StudentDTO.class)
+            )
+    )
+    public StudentDTO getStudent() {
+        return new StudentDTO();
     }
 
     @Test
-    public void inheritedMediaTypeTest() {
-        APIResponses responses = getDocument().getPaths().getPathItem("/test/response").getGET().getResponses();
-        // Test the default response doesn't exist
-        assertNull("The default response should be removed when not used.", responses.getDefaultValue());
+    public void fieldSchemaExampleIsRendered() {
+        JsonNode nameProperties = JsonUtils.path(getOpenAPIJson(), "components.schemas.Student.properties.name");
+        assertNotNull(nameProperties);
+        assertEquals("string", nameProperties.get("type").textValue());
+        assertEquals("the student name", nameProperties.get("description").textValue());
+        assertEquals("cuba", nameProperties.get("example").textValue());
+    }
+}
 
-        // Test the 200 response
-        assertNotNull("The 200 response should have been created.", responses.getAPIResponse("200"));
-        assertNotNull("The 200 response should return application/json.",
-                responses.getAPIResponse("200").getContent().getMediaType(APPLICATION_JSON));
-        assertEquals("The 200 response application/json should match the specified schema.", "hello!",
-                responses.getAPIResponse("200").getContent().getMediaType(APPLICATION_JSON).getSchema().getDescription());
-        assertNotNull("The 200 response should return application/xml.",
-                responses.getAPIResponse("200").getContent().getMediaType(APPLICATION_XML));
-        assertEquals("The 200 response application/xml should match the specified schema.", "hello!",
-                responses.getAPIResponse("200").getContent().getMediaType(APPLICATION_XML).getSchema().getDescription());
+@Schema(name = "Student", description = "POJO that represents a Student.")
+class StudentDTO {
+
+    @Schema(name = "name", description = "the student name", example = "cuba")
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
 }
+
