@@ -116,9 +116,9 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     String getJdbcOrdinality();
     void setJdbcOrdinality(String ordinality);
 
-    @Attribute(defaultValue = "180", dataType = Integer.class)
-    String getCloudOrdinality();
-    void setCloudOrdinality(String value);
+    @Attribute(defaultValue = "200", dataType = Integer.class)
+    String getLdapOrdinality();
+    void setLdapOrdinality(String message);
 
     /**
      * @return number of seconds any MP {@link Config} is cached. That means changes to value as provided by a
