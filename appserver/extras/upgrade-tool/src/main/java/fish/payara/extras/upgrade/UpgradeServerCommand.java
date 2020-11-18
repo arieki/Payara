@@ -47,9 +47,12 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.FileOutputStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -62,7 +65,7 @@ import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
 /**
- *
+ * Command to upgrade Payara server to a newer version
  * @author jonathan coustick
  */
 @Service(name = "upgrade-server")
@@ -83,14 +86,19 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     @Param
     private String version;
     
-    private static final String NEXUS_URL="https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/payara/5.20.0/payara-5.20.0.zip";
+    private static final String NEXUS_URL="https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/";
     private static final String ZIP = ".zip";
+    
+    private String glassfishDir;
     
     @Override
     public int executeCommand() throws CommandException {
+        glassfishDir = getDomainsDir().getParent();
+        
+        
         String url = NEXUS_URL + distribution + "/" + version + "/" + distribution + "-" + version + ZIP;
         String basicAuthString = username + ":" + nexusPassword;
-        String authBytes = Base64.getEncoder().encodeToString(basicAuthString.getBytes());
+        String authBytes = "Basic " + Base64.getEncoder().encodeToString(basicAuthString.getBytes());
         
         
         try {
@@ -109,10 +117,11 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             }
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
+            ex.printStackTrace();
             try {
                 undoMoveFiles();
             } catch (IOException ex1) {
-                //failed to restore to previous state, can this happen?
+                ex1.printStackTrace();
                 LOGGER.log(Level.WARNING, "Failed to restore previous state", ex1);
             }
             return ERROR;
@@ -129,35 +138,83 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             ZipEntry entry = zipInput.getNextEntry();
             while (entry != null) {
                 Path endPath = tempDirectory.resolve(entry.getName());
-                try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(endPath.toFile()))) {
-                    byte[] buffer = zipInput.readAllBytes();
-                    out.write(buffer);
+                System.out.println(endPath.toString());
+                if (entry.isDirectory()) {
+                    endPath.toFile().mkdirs();
+                } else {
+                    try ( BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(endPath.toFile()))) {
+                        byte[] buffer = new byte[1024];
+                        while (zipInput.read(buffer) != -1) {
+                            out.write(buffer);
+                        }
+                    }
                 }
-                
+                entry = zipInput.getNextEntry();
             }
         }
         return tempDirectory;
     }
     
     private void moveFiles() throws IOException {
-        String glassfishDir = getDomainsDir().getParent();
         Files.move(Paths.get(glassfishDir, "/modules"), Paths.get(glassfishDir, "/modules.old")); 
+        Files.move(Paths.get(glassfishDir, "/config/branding"), Paths.get(glassfishDir, "/config/branding.old")); 
+        Files.move(Paths.get(glassfishDir, "/legal"), Paths.get(glassfishDir, "/legal.old")); 
+        Files.move(Paths.get(glassfishDir, "/h2db"), Paths.get(glassfishDir, "/h2db.old")); 
+        Files.move(Paths.get(glassfishDir, "/osgi"), Paths.get(glassfishDir, "/osgi.old")); 
+        Files.move(Paths.get(glassfishDir, "/common"), Paths.get(glassfishDir, "/common.old")); 
     }
     
     private void moveExtracted(Path newVersion) throws IOException {
-        String glassfishDir = getDomainsDir().getParent();
-        Files.move(newVersion.resolve("payara5/glassfish/modules"), Paths.get(glassfishDir, "/modules"));
-        Files.move(newVersion.resolve("payara5/glassfish/config/branding"), Paths.get(glassfishDir, "/config/branding"));
-        Files.move(newVersion.resolve("payara5/glassfish/legal"), Paths.get(glassfishDir, "/legal"));
-        Files.move(newVersion.resolve("payara5/glassfish/h2db"), Paths.get(glassfishDir, "/h2db"));
-        Files.move(newVersion.resolve("payara5/glassfish/osgi"), Paths.get(glassfishDir, "/osgi"));
-        Files.move(newVersion.resolve("payara5/glassfish/common"), Paths.get(glassfishDir, "/common"));
+        CopyFileVisitor visitor = new CopyFileVisitor(newVersion);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/modules"), visitor);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/config/branding"), visitor);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/legal"), visitor);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/h2db"), visitor);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/osgi"), visitor);
+        Files.walkFileTree(newVersion.resolve("payara5/glassfish/common"), visitor);
     }
     
     private void undoMoveFiles() throws IOException {
-        String glassfishDir = getDomainsDir().getParent();
-        
         Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"));
+        Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"));
+        Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"));
+        Files.move(Paths.get(glassfishDir, "/h2db.old"), Paths.get(glassfishDir, "/h2db"));
+        Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"));
+        Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"));
+    }
+    
+    
+    private class CopyFileVisitor implements FileVisitor<Path> {
+        
+        private Path newVersionGlassfishDir;
+
+        public CopyFileVisitor(Path newVersion) {
+            this.newVersionGlassfishDir = newVersion.resolve("payara5/glassfish");
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
+            System.out.println(arg0.toString());
+            Files.copy(arg0, Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0)));
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
+            throw arg1;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+        
     }
     
 }
