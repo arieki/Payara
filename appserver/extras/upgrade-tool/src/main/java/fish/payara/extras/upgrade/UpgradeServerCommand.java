@@ -42,6 +42,7 @@ package fish.payara.extras.upgrade;
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -156,15 +157,17 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     }
     
     private void moveFiles() throws IOException {
+        System.out.println("Mvoing files to old");
         Files.move(Paths.get(glassfishDir, "/modules"), Paths.get(glassfishDir, "/modules.old")); 
         Files.move(Paths.get(glassfishDir, "/config/branding"), Paths.get(glassfishDir, "/config/branding.old")); 
         Files.move(Paths.get(glassfishDir, "/legal"), Paths.get(glassfishDir, "/legal.old")); 
         Files.move(Paths.get(glassfishDir, "/h2db"), Paths.get(glassfishDir, "/h2db.old")); 
         Files.move(Paths.get(glassfishDir, "/osgi"), Paths.get(glassfishDir, "/osgi.old")); 
-        Files.move(Paths.get(glassfishDir, "/common"), Paths.get(glassfishDir, "/common.old")); 
+        Files.move(Paths.get(glassfishDir, "/common"), Paths.get(glassfishDir, "/common.old"));
     }
     
     private void moveExtracted(Path newVersion) throws IOException {
+        System.out.println("Mvoing extracted files");
         CopyFileVisitor visitor = new CopyFileVisitor(newVersion);
         Files.walkFileTree(newVersion.resolve("payara5/glassfish/modules"), visitor);
         Files.walkFileTree(newVersion.resolve("payara5/glassfish/config/branding"), visitor);
@@ -175,6 +178,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     }
     
     private void undoMoveFiles() throws IOException {
+        System.out.println("Moving old back");
         Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"));
         Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"));
         Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"));
@@ -199,8 +203,14 @@ public class UpgradeServerCommand extends LocalDomainCommand {
 
         @Override
         public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            System.out.println(arg0.toString());
-            Files.copy(arg0, Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0)));
+            Path resolved = Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0));
+            File parentDirFile = resolved.toFile().getParentFile();
+            if (!parentDirFile.exists()) {
+                parentDirFile.mkdirs();
+            }
+            
+            System.out.println("moving " + arg0.toString() + " to " + resolved.toString());
+            Files.copy(arg0, resolved);
             return FileVisitResult.CONTINUE;
         }
 
