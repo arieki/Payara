@@ -185,6 +185,7 @@ public class MonitoringConsoleRuntimeImpl
             Supplier<List<MonitoringDataSource>> dataSources = () -> serviceLocator.getAllServices(MonitoringDataSource.class);
             Supplier<List<MonitoringWatchSource>> watchSources = () -> serviceLocator.getAllServices(MonitoringWatchSource.class);
             console = MonitoringConsoleFactory.getInstance().create(serverEnv.getInstanceName(), isDas, this, dataSources, watchSources);
+            setHistoryEnabled(parseBoolean(config.getHistoryEnabled()));
             setEnabled(parseBoolean(serverConfig.getMonitoringService().getMonitoringEnabled()));
         } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Failed to init monitoring console runtime", ex);
@@ -197,11 +198,15 @@ public class MonitoringConsoleRuntimeImpl
             if (e.getSource() instanceof ConfigBeanProxy) {
                 Class<?> source = unwrap((ConfigBeanProxy)e.getSource()).getImplementationClass();
                 if (source == MonitoringService.class) {
-                    String property = e.getPropertyName();
-                    if ("monitoring-enabled".equals(property)) {
+                    if ("monitoring-enabled".equals(e.getPropertyName())) {
                         setEnabled(parseBoolean(e.getNewValue().toString()));
                     }
+                } else if (source == MonitoringConsoleConfiguration.class) {
+                    if ("history-enabled".equals(e.getPropertyName())) {
+                        setHistoryEnabled(parseBoolean(e.getNewValue().toString()));
+                    }
                 }
+
             }
         }
         return null;
@@ -210,6 +215,12 @@ public class MonitoringConsoleRuntimeImpl
     private void setEnabled(boolean enabled) {
         if (console != null) {
             console.setEnabled(enabled);
+        }
+    }
+
+    private void setHistoryEnabled(boolean enabled) {
+        if (console != null) {
+            console.setHistoryEnabled(enabled);
         }
     }
 
