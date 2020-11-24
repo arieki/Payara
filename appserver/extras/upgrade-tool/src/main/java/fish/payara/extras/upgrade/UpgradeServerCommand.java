@@ -43,6 +43,7 @@ import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -53,6 +54,7 @@ import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Base64;
 import java.util.logging.Level;
@@ -110,7 +112,21 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             int code = connection.getResponseCode();
             if (code == 200) {
                 moveFiles();
-                Path unzippedDirectory = extractZipFile(connection.getInputStream());
+                //Path unzippedDirectory = extractZipFile(connection.getInputStream());
+                
+                Path tempFile = Files.createTempFile("payara", ".zip");
+                Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+                
+//                try (FileOutputStream zip = new FileOutputStream(tempFile.toFile())) {
+//                    byte[] buffer = new byte[1024];
+//                    InputStream stream = connection.getInputStream();
+//                    while (stream.read(buffer) != -1) {
+//                        zip.write(buffer);
+//                    }
+//                    zip.flush();
+//                }
+                FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
+                Path unzippedDirectory = extractZipFile(unzipFileStream);
                 moveExtracted(unzippedDirectory);
             } else {
                 LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
@@ -145,9 +161,11 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 } else {
                     try ( BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(endPath.toFile()))) {
                         byte[] buffer = new byte[1024];
-                        while (zipInput.read(buffer) != -1) {
-                            out.write(buffer);
+                        int length;
+                        while ((length = zipInput.read(buffer)) != -1) {
+                            out.write(buffer, 0, length);
                         }
+                        out.flush();
                     }
                 }
                 entry = zipInput.getNextEntry();
@@ -179,12 +197,12 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     
     private void undoMoveFiles() throws IOException {
         System.out.println("Moving old back");
-        Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"));
-        Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"));
-        Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"));
-        Files.move(Paths.get(glassfishDir, "/h2db.old"), Paths.get(glassfishDir, "/h2db"));
-        Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"));
-        Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"));
+        Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(Paths.get(glassfishDir, "/h2db.old"), Paths.get(glassfishDir, "/h2db"), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"), StandardCopyOption.REPLACE_EXISTING);
     }
     
     
@@ -210,7 +228,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             }
             
             System.out.println("moving " + arg0.toString() + " to " + resolved.toString());
-            Files.copy(arg0, resolved);
+            Files.copy(arg0, resolved, StandardCopyOption.REPLACE_EXISTING);
             return FileVisitResult.CONTINUE;
         }
 
