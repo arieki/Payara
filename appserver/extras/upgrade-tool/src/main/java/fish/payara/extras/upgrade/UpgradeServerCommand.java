@@ -41,6 +41,13 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
+import com.sun.enterprise.config.serverbeans.Domain;
+import com.sun.enterprise.config.serverbeans.Node;
+import com.sun.enterprise.config.serverbeans.SshAuth;
+import com.sun.enterprise.config.serverbeans.SshConnector;
+import com.sun.enterprise.universal.process.ProcessManager;
+import com.sun.enterprise.universal.process.ProcessManagerException;
+import com.sun.enterprise.util.SystemPropertyConstants;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -56,16 +63,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.logging.Level;
+import static java.util.logging.Level.FINE;
+import static java.util.logging.Level.FINER;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import javax.inject.Inject;
 
 import org.glassfish.api.Param;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
+import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigParser;
+import org.jvnet.hk2.config.DomDocument;
 
 /**
  * Command to upgrade Payara server to a newer version
@@ -76,6 +90,7 @@ import org.jvnet.hk2.annotations.Service;
 public class UpgradeServerCommand extends LocalDomainCommand {
     
     private static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+    private static final int DEFAULT_TIMEOUT_MSEC = 300000;
     
     @Param
     private String username;
@@ -93,6 +108,9 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     private static final String ZIP = ".zip";
     
     private String glassfishDir;
+    
+    @Inject
+    private ServiceLocator habitat;
     
     @Override
     public int executeCommand() throws CommandException {
@@ -120,12 +138,23 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
                 Path unzippedDirectory = extractZipFile(unzipFileStream);
                 moveExtracted(unzippedDirectory);
+                
+                File domainXMLFile = getDomainXml();
+                ConfigParser parser = new ConfigParser(habitat);
+                URL domainURL = domainXMLFile.toURI().toURL();
+                DomDocument doc = parser.parse(domainURL);
+                for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                    if (node.getType().equals("SSH")) {
+                        upgradeSSHNode(node, tempFile);
+                    }
+                }
             } else {
                 LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
                 return ERROR;
             }
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
+            ex.printStackTrace();
             try {
                 undoMoveFiles();
             } catch (IOException ex1) {
@@ -202,7 +231,62 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"), StandardCopyOption.REPLACE_EXISTING);
         Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"), StandardCopyOption.REPLACE_EXISTING);
     }
+    
+    private void upgradeSSHNode(Node remote, Path archiveFile) {
+        ArrayList<String> command = new ArrayList<>();
+        command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
+        
+        command.add("install-node-ssh");
+        command.add("--installdir");
+        command.add(remote.getInstallDir());
 
+        command.add("--force"); //override files already there
+        command.add("--interactive=false");
+
+        File archive = archiveFile.toFile();
+        if (archive.exists() && archive.canRead()) {
+            command.add("--archive");
+            command.add(archiveFile.toString());
+        }
+
+        SshConnector sshConnector = remote.getSshConnector();
+        command.add("--sshport");
+        command.add(sshConnector.getSshPort());
+        SshAuth sshAuth = sshConnector.getSshAuth();
+        command.add("--sshuser");
+        command.add(sshAuth.getUserName());
+        if (ok(sshAuth.getPassword())) {
+            command.add("--sshpassword");
+            command.add(sshAuth.getPassword());
+        } else {
+            command.add("--sshpassword");
+            command.add(sshAuth.getKeyPassphrase());
+            command.add("--sshkeyfile");
+            command.add(sshAuth.getKeyfile());
+        }
+        
+        command.add(remote.getNodeHost());
+
+        StringBuilder out = new StringBuilder();
+        
+        ProcessManager processManager = new ProcessManager(command);
+
+        processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
+
+        if (logger.isLoggable(FINER)) {
+            processManager.setEcho(true);
+        } else {
+            processManager.setEcho(false);
+        }
+
+        try {
+            processManager.execute();
+        } catch (ProcessManagerException ex) {
+            if (logger.isLoggable(FINE)) {
+                logger.log(FINE, "Error while executing command: {0}", ex.getMessage());
+            }
+        }
+    }
     
     private class CopyFileVisitor implements FileVisitor<Path> {
         
@@ -247,11 +331,18 @@ public class UpgradeServerCommand extends LocalDomainCommand {
 
         @Override
         public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
+            if (arg0.toFile().exists()) {
+                return FileVisitResult.CONTINUE;
+            } else {
+                return FileVisitResult.TERMINATE;
+            }
         }
 
         @Override
         public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
+            if (!arg0.toFile().exists()) {
+                return FileVisitResult.TERMINATE;
+            }
             arg0.toFile().delete();
             return FileVisitResult.CONTINUE;
         }
