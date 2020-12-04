@@ -79,6 +79,7 @@ import org.glassfish.hk2.api.PerLookup;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
 import org.jvnet.hk2.config.ConfigParser;
+import org.jvnet.hk2.config.Dom;
 import org.jvnet.hk2.config.DomDocument;
 
 /**
@@ -142,12 +143,16 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 File domainXMLFile = getDomainXml();
                 ConfigParser parser = new ConfigParser(habitat);
                 URL domainURL = domainXMLFile.toURI().toURL();
+                Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
+                Level oldConfigParserLogLevel = configParserLogger.getLevel();
+                configParserLogger.setLevel(FINE);
                 DomDocument doc = parser.parse(domainURL);
                 for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
                     if (node.getType().equals("SSH")) {
                         upgradeSSHNode(node, tempFile);
                     }
                 }
+                configParserLogger.setLevel(oldConfigParserLogLevel);
             } else {
                 LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
                 return ERROR;
@@ -196,12 +201,15 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     private void moveFiles() throws IOException {
         LOGGER.log(Level.FINE, "Deleting old backup");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        Files.walkFileTree(Paths.get(glassfishDir, "/modules.old"), visitor);
-        Files.walkFileTree(Paths.get(glassfishDir, "/config/branding.old"), visitor);
-        Files.walkFileTree(Paths.get(glassfishDir, "/legal.old"), visitor);
-        Files.walkFileTree(Paths.get(glassfishDir, "/h2db.old"), visitor);
-        Files.walkFileTree(Paths.get(glassfishDir, "/osgi.old"), visitor);
-        Files.walkFileTree(Paths.get(glassfishDir, "/common.old"), visitor);
+        Path oldModules = Paths.get(glassfishDir, "/modules.old");
+        if (oldModules.toFile().exists()) {
+            Files.walkFileTree(oldModules, visitor);
+            Files.walkFileTree(Paths.get(glassfishDir, "/config/branding.old"), visitor);
+            Files.walkFileTree(Paths.get(glassfishDir, "/legal.old"), visitor);
+            Files.walkFileTree(Paths.get(glassfishDir, "/h2db.old"), visitor);
+            Files.walkFileTree(Paths.get(glassfishDir, "/osgi.old"), visitor);
+            Files.walkFileTree(Paths.get(glassfishDir, "/common.old"), visitor);
+        }
         LOGGER.log(Level.FINE, "Moving files to old");
         Files.move(Paths.get(glassfishDir, "/modules"), Paths.get(glassfishDir, "/modules.old"), StandardCopyOption.REPLACE_EXISTING);
         Files.move(Paths.get(glassfishDir, "/config/branding"), Paths.get(glassfishDir, "/config/branding.old"), StandardCopyOption.REPLACE_EXISTING);
@@ -331,18 +339,11 @@ public class UpgradeServerCommand extends LocalDomainCommand {
 
         @Override
         public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-            if (arg0.toFile().exists()) {
                 return FileVisitResult.CONTINUE;
-            } else {
-                return FileVisitResult.TERMINATE;
-            }
         }
 
         @Override
         public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            if (!arg0.toFile().exists()) {
-                return FileVisitResult.TERMINATE;
-            }
             arg0.toFile().delete();
             return FileVisitResult.CONTINUE;
         }
