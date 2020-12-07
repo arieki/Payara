@@ -31,7 +31,6 @@ This is a bug fix / feature. <!-- delete/modify as applicable-->
 - Payara Samples
 - Java EE7 Samples
 - Java EE8 Samples
-- Payara Private Tests
 - Payara Microprofile TCKs Runner
 - Jakarta TCKs
 - Mojarra
