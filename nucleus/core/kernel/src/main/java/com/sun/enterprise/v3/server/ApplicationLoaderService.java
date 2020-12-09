@@ -243,7 +243,10 @@ public class ApplicationLoaderService implements org.glassfish.hk2.api.PreDestro
         while (iter.hasNext()) {
           Application app = (Application)iter.next();
           ApplicationRef appRef = server.getApplicationRef(app.getName());
-          appDeployments.addAll(processApplication(app, appRef));
+          if (appRef != null) {
+            // Does the application need to be run on this instance?
+            appDeployments.addAll(processApplication(app, appRef));
+          }
         }
 
         // does the user want us to run a particular application
