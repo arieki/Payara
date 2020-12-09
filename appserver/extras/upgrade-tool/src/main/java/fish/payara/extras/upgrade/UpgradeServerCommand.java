@@ -65,6 +65,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.logging.Level;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.FINER;
@@ -147,7 +148,9 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 Level oldConfigParserLogLevel = configParserLogger.getLevel();
                 configParserLogger.setLevel(FINE);
                 DomDocument doc = parser.parse(domainURL);
+                LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
                 for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                    LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
                     if (node.getType().equals("SSH")) {
                         upgradeSSHNode(node, tempFile);
                     }
@@ -241,6 +244,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     }
     
     private void upgradeSSHNode(Node remote, Path archiveFile) {
+        LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0} with {1}", new Object[]{remote.getInstallDir(), archiveFile.toString()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
         
@@ -249,7 +253,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         command.add(remote.getInstallDir());
 
         command.add("--force"); //override files already there
-        command.add("--interactive=false");
+        //command.add("--interactive=false");
 
         File archive = archiveFile.toFile();
         if (archive.exists() && archive.canRead()) {
@@ -263,12 +267,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         SshAuth sshAuth = sshConnector.getSshAuth();
         command.add("--sshuser");
         command.add(sshAuth.getUserName());
-        if (ok(sshAuth.getPassword())) {
-            command.add("--sshpassword");
-            command.add(sshAuth.getPassword());
-        } else {
-            command.add("--sshpassword");
-            command.add(sshAuth.getKeyPassphrase());
+        if (ok(sshAuth.getKeyfile())) {
             command.add("--sshkeyfile");
             command.add(sshAuth.getKeyfile());
         }
@@ -278,10 +277,11 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         StringBuilder out = new StringBuilder();
         
         ProcessManager processManager = new ProcessManager(command);
+        processManager.setStdinLines(getPasswords(sshAuth));
 
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
 
-        if (logger.isLoggable(FINER)) {
+        if (logger.isLoggable(Level.SEVERE)) {
             processManager.setEcho(true);
         } else {
             processManager.setEcho(false);
@@ -290,10 +290,21 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         try {
             processManager.execute();
         } catch (ProcessManagerException ex) {
-            if (logger.isLoggable(FINE)) {
-                logger.log(FINE, "Error while executing command: {0}", ex.getMessage());
-            }
+            logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
         }
+    }
+    
+    protected List<String> getPasswords(SshAuth auth) {
+        List<String> sshPasswords = new ArrayList<>();
+
+        if (ok(auth.getPassword())) {
+            sshPasswords.add("AS_ADMIN_SSHPASSWORD=" + auth.getPassword());
+        }
+        if (ok(auth.getKeyPassphrase())) {
+            sshPasswords.add("AS_ADMIN_SSHKEYPASSPHRASE=" + auth.getKeyPassphrase());
+        }
+
+        return sshPasswords;
     }
     
     private class CopyFileVisitor implements FileVisitor<Path> {
