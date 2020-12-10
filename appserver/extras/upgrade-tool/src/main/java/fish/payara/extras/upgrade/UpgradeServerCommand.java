@@ -182,7 +182,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             ZipEntry entry = zipInput.getNextEntry();
             while (entry != null) {
                 Path endPath = tempDirectory.resolve(entry.getName());
-                System.out.println(endPath.toString());
                 if (entry.isDirectory()) {
                     endPath.toFile().mkdirs();
                 } else {
@@ -234,7 +233,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     }
     
     private void undoMoveFiles() throws IOException {
-        System.out.println("Moving old back");
+        LOGGER.log(Level.FINE, "Moving old back");
         Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"), StandardCopyOption.REPLACE_EXISTING);
         Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"), StandardCopyOption.REPLACE_EXISTING);
         Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"), StandardCopyOption.REPLACE_EXISTING);
@@ -253,7 +252,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         command.add(remote.getInstallDir());
 
         command.add("--force"); //override files already there
-        //command.add("--interactive=false");
+        command.add("--interactive=false");
 
         File archive = archiveFile.toFile();
         if (archive.exists() && archive.canRead()) {
@@ -271,6 +270,9 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             command.add("--sshkeyfile");
             command.add(sshAuth.getKeyfile());
         }
+        
+        command.add("--passwordfile");
+        command.add("-");
         
         command.add(remote.getNodeHost());
 
@@ -328,7 +330,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 parentDirFile.mkdirs();
             }
             
-            System.out.println("moving " + arg0.toString() + " to " + resolved.toString());
             Files.copy(arg0, resolved, StandardCopyOption.REPLACE_EXISTING);
             return FileVisitResult.CONTINUE;
         }
