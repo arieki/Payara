@@ -52,19 +52,22 @@ import org.jvnet.hk2.annotations.Service;
 
 /**
  * Rolls back an upgrade
- * @author jonathan coustick
+ * @author Jonathan Coustick
  */
 @Service(name = "rollback-server")
 @PerLookup
 public class RollbackUpgradeCommand extends LocalDomainCommand {
-
+    
+    private static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+    
+    
     @Override
     protected int executeCommand() throws CommandException {
         try {
             String glassfishDir = getDomainsDir().getParent();
             
             if (!Paths.get(glassfishDir, "/modules.old").toFile().exists()) {
-                Logger.getLogger(CLICommand.class.getPackage().getName()).log(Level.SEVERE, "No old version found to rollback");
+                LOGGER.log(Level.SEVERE, "No old version found to rollback");
                 return ERROR;
             }
             
@@ -77,7 +80,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
             
             return SUCCESS;
         } catch (IOException ex) {
-            Logger.getLogger(CLICommand.class.getPackage().getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, null, ex);
             return ERROR;
         }
     }

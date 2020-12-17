@@ -67,8 +67,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
-import static java.util.logging.Level.FINE;
-import static java.util.logging.Level.FINER;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -79,13 +77,12 @@ import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
-import org.jvnet.hk2.config.ConfigParser;
-import org.jvnet.hk2.config.Dom;
+import org.jvnet.hk2.config.ConfigParser;;
 import org.jvnet.hk2.config.DomDocument;
 
 /**
  * Command to upgrade Payara server to a newer version
- * @author jonathan coustick
+ * @author Jonathan Coustick
  */
 @Service(name = "upgrade-server")
 @PerLookup
@@ -131,7 +128,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             
             int code = connection.getResponseCode();
             if (code == 200) {
-                moveFiles();
+                
                 //Path unzippedDirectory = extractZipFile(connection.getInputStream());
                 
                 Path tempFile = Files.createTempFile("payara", ".zip");
@@ -139,6 +136,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 
                 FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
                 Path unzippedDirectory = extractZipFile(unzipFileStream);
+                moveFiles();
                 moveExtracted(unzippedDirectory);
                 
                 File domainXMLFile = getDomainXml();
@@ -146,7 +144,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 URL domainURL = domainXMLFile.toURI().toURL();
                 Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
                 Level oldConfigParserLogLevel = configParserLogger.getLevel();
-                configParserLogger.setLevel(FINE);
+                configParserLogger.setLevel(Level.FINE);
                 DomDocument doc = parser.parse(domainURL);
                 LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
                 for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
