@@ -111,6 +111,11 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     @Inject
     private ServiceLocator habitat;
     
+    /** Folders that are moved in the upgrade process */
+    private static final String[] moveFolders = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
+        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "lib/client","/lib/deployment", "/lib/dtds", "/lib/embedded"
+        ,"/lib/install", "/lib/monitor", "/lib/schemas" , "/../README.txt"};
+    
     @Override
     public int executeCommand() throws CommandException {
         glassfishDir = getDomainsDir().getParent();
@@ -136,6 +141,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 
                 FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
                 Path unzippedDirectory = extractZipFile(unzipFileStream);
+                backupDomains();
                 moveFiles();
                 moveExtracted(unzippedDirectory);
                 
@@ -198,46 +204,41 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         return tempDirectory;
     }
     
+    private void backupDomains() throws IOException {
+        LOGGER.log(Level.FINE, "Backing up old domains");
+        Files.copy(Paths.get(glassfishDir, "domains"), Paths.get(glassfishDir, "domains.old"), StandardCopyOption.REPLACE_EXISTING);
+    }
+    
     private void moveFiles() throws IOException {
         LOGGER.log(Level.FINE, "Deleting old backup");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
         Path oldModules = Paths.get(glassfishDir, "/modules.old");
         if (oldModules.toFile().exists()) {
-            Files.walkFileTree(oldModules, visitor);
-            Files.walkFileTree(Paths.get(glassfishDir, "/config/branding.old"), visitor);
-            Files.walkFileTree(Paths.get(glassfishDir, "/legal.old"), visitor);
-            Files.walkFileTree(Paths.get(glassfishDir, "/h2db.old"), visitor);
-            Files.walkFileTree(Paths.get(glassfishDir, "/osgi.old"), visitor);
-            Files.walkFileTree(Paths.get(glassfishDir, "/common.old"), visitor);
+            for (String folder : moveFolders) {
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
+                Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
+            }
         }
         LOGGER.log(Level.FINE, "Moving files to old");
-        Files.move(Paths.get(glassfishDir, "/modules"), Paths.get(glassfishDir, "/modules.old"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/config/branding"), Paths.get(glassfishDir, "/config/branding.old"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/legal"), Paths.get(glassfishDir, "/legal.old"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/h2db"), Paths.get(glassfishDir, "/h2db.old"), StandardCopyOption.REPLACE_EXISTING); 
-        Files.move(Paths.get(glassfishDir, "/osgi"), Paths.get(glassfishDir, "/osgi.old"), StandardCopyOption.REPLACE_EXISTING); 
-        Files.move(Paths.get(glassfishDir, "/common"), Paths.get(glassfishDir, "/common.old"), StandardCopyOption.REPLACE_EXISTING);
+        for (String folder : moveFolders) {
+            Files.move(Paths.get(glassfishDir, "folder"), Paths.get(glassfishDir, folder + ".old"), StandardCopyOption.REPLACE_EXISTING);
+        }
     }
     
     private void moveExtracted(Path newVersion) throws IOException {
         LOGGER.log(Level.FINE, "Moving extracted files");
         CopyFileVisitor visitor = new CopyFileVisitor(newVersion);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/modules"), visitor);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/config/branding"), visitor);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/legal"), visitor);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/h2db"), visitor);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/osgi"), visitor);
-        Files.walkFileTree(newVersion.resolve("payara5/glassfish/common"), visitor);
+        for (String folder : moveFolders) {
+            Files.walkFileTree(newVersion.resolve("payara5/glassfish" + folder), visitor);
+        }
     }
     
     private void undoMoveFiles() throws IOException {
         LOGGER.log(Level.FINE, "Moving old back");
-        Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/h2db.old"), Paths.get(glassfishDir, "/h2db"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"), StandardCopyOption.REPLACE_EXISTING);
-        Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"), StandardCopyOption.REPLACE_EXISTING);
+        for (String folder : moveFolders) {
+            Files.move(Paths.get(glassfishDir, folder + ".old"), Paths.get(glassfishDir, folder), StandardCopyOption.REPLACE_EXISTING);
+        }
+        
     }
     
     private void upgradeSSHNode(Node remote, Path archiveFile) {
