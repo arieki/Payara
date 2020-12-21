@@ -115,6 +115,11 @@ public class SchemaImpl extends ExtensibleImpl<Schema> implements Schema {
 
     public static Schema createInstance(AnnotationModel annotation, ApiContext context) {
         SchemaImpl from = new SchemaImpl();
+        
+        if (annotation == null) {
+            return from;
+        }
+        
         from.setDefaultValue(annotation.getValue("defaultValue", Object.class));
         from.setTitle(annotation.getValue("title", String.class));
         Double multipleOf = annotation.getValue("multipleOf", Double.class);
