@@ -113,7 +113,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     
     /** Folders that are moved in the upgrade process */
     private static final String[] moveFolders = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
-        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "lib/client","/lib/deployment", "/lib/dtds", "/lib/embedded"
+        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client","/lib/deployment", "/lib/dtds", "/lib/embedded"
         ,"/lib/install", "/lib/monitor", "/lib/schemas" , "/../README.txt"};
     
     @Override
