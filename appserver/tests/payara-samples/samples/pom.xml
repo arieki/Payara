@@ -43,7 +43,7 @@
         <dependencies>
             <dependency>
                 <groupId>fish.payara.samples</groupId>
-                <artifactId>test-utils</artifactId>
+                <artifactId>samples-test-utils</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -89,6 +89,26 @@
             <build>
                 <plugins>
                     <plugin>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>delete-server</id>
+                                <inherited>false</inherited>
+                                <goals>
+                                    <goal>clean</goal>
+                                </goals>
+                                <phase>clean</phase>
+                                <configuration>
+                                    <filesets>
+                                        <fileset>
+                                            <directory>${session.executionRootDirectory}/target</directory>
+                                        </fileset>
+                                    </filesets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <artifactId>maven-dependency-plugin</artifactId>
                         <executions>
                             <execution>
@@ -123,7 +143,7 @@
                             <!-- This needs tuning -->
                             <systemPropertyVariables>
                                 <glassfishRemote_gfHome>${session.executionRootDirectory}/target/${payara.directory.name}</glassfishRemote_gfHome>
-                                <javaEEServer>payara-remote</javaEEServer>
+                                <javaEEServer>payara-managed</javaEEServer>
                                 <payara.domain.name>${payara.domain.name}</payara.domain.name>
                                 <arquillian.launch>payara</arquillian.launch>
                             </systemPropertyVariables>
@@ -138,7 +158,7 @@
                             <!-- This needs tuning -->
                             <systemPropertyVariables>
                                 <glassfishRemote_gfHome>${session.executionRootDirectory}/target/${payara.directory.name}</glassfishRemote_gfHome>
-                                <javaEEServer>payara-remote</javaEEServer>
+                                <javaEEServer>payara-managed</javaEEServer>
                                 <payara.domain.name>${payara.domain.name}</payara.domain.name>
                                 <arquillian.launch>payara</arquillian.launch>
                             </systemPropertyVariables>

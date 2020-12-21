@@ -9,7 +9,7 @@
         <version>5.24.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>test-utils</artifactId>
+    <artifactId>samples-test-utils</artifactId>
     <name>Payara Samples - test-utils</name>
 
     <dependencies>
