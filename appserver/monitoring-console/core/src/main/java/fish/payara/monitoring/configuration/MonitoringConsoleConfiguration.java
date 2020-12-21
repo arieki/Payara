@@ -68,6 +68,10 @@ public interface MonitoringConsoleConfiguration extends DomainExtension {
     String getEnabled();
     void setEnabled(String value) throws PropertyVetoException;
 
+    @Attribute(defaultValue = "false", dataType = Boolean.class)
+    String getHistoryEnabled();
+    void setHistoryEnabled(String value) throws PropertyVetoException;
+
     /**
      * @return Names of the watches that are disabled (this includes collected and custom watches)
      */

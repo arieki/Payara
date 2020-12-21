@@ -127,6 +127,10 @@ public class SetMonitoringConsoleConfigurationCommand implements AdminCommand {
     @Param(optional = true, alias = "remove-page")
     private String _removePage;
 
+    @SuppressWarnings("squid:S116")
+    @Param(optional = true, alias = "history-enabled")
+    private Boolean historyEnabled;
+
     @Inject
     protected CommandRunner commandRunner;
 
@@ -156,6 +160,9 @@ public class SetMonitoringConsoleConfigurationCommand implements AdminCommand {
                 public Object run(MonitoringConsoleConfiguration configProxy) throws PropertyVetoException, TransactionFailure {
                     if (enabled != null) {
                         configProxy.setEnabled(enabled.toString());
+                    }
+                    if (historyEnabled != null) {
+                        configProxy.setHistoryEnabled(historyEnabled.toString());
                     }
                     if (isDefined(_disableWatch) ) {
                         List<String> disabledWatchNames = configProxy.getDisabledWatchNames();
