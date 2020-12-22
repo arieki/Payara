@@ -127,6 +127,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         
         
         try {
+            LOGGER.log(Level.INFO, "Downloading new Payara version...");
             URL nexusUrl = new URL(url);
             HttpURLConnection connection = (HttpURLConnection) nexusUrl.openConnection();
             connection.setRequestProperty("Authorization", authBytes);
@@ -252,12 +253,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
 
         command.add("--force"); //override files already there
         command.add("--interactive=false");
-
-        File archive = archiveFile.toFile();
-        if (archive.exists() && archive.canRead()) {
-            command.add("--archive");
-            command.add(archiveFile.toString());
-        }
 
         SshConnector sshConnector = remote.getSshConnector();
         command.add("--sshport");
