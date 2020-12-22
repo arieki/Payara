@@ -1,0 +1,54 @@
+upgrade-server(1)    asadmin Utility Subcommands   upgrade-server(1)
+
+NAME
+       upgrade-server - Upgrades Payara Server to a new version
+
+SYNOPSIS
+           upgrade-server [--help] [--target target]
+           --username username
+           --version newversion
+           [--distribution={payara|payara-web|payara-ml|payara-web-ml}]
+
+DESCRIPTION
+       The upgrade-server subcommand upgrades Payara Server to the specified
+       version and distribution along with all ssh nodes in the domain.xml.
+
+       This subcommand is supported in POSIX-based systems only.
+
+OPTIONS
+       --help, -?
+           Displays the help text for the subcommand.
+
+       --username
+           The username for the Payara Nexus server
+
+       --version
+           Specifies the version number of the new version of Payara to use
+
+       --distribution
+           Specifies the distribution of Payara Server to download. This can
+           payara, payara-web, payara-ml, or payara-web-ml. By default this
+           is payara.
+
+EXAMPLES
+       Example 1, Upgrading Payara Server
+           In this example, a Payara Server Web domain is upgraded to version
+           5.23.1
+
+               asadmin> upgrade-server --username example-user
+               --distribution web --verson 5.23.1
+               Command create-admin-object executed successfully
+
+EXIT STATUS
+       0
+           subcommand executed successfully
+
+       1
+           error in executing the subcommand
+
+SEE ALSO
+       rollback-server(1)
+
+       asadmin(1M)
+
+Jakarta EE 8                         22 Dec 2020           upgrade-server(1)

@@ -39,8 +39,6 @@
  */
 package fish.payara.extras.upgrade;
 
-import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
 import com.sun.enterprise.config.serverbeans.Domain;
 import com.sun.enterprise.config.serverbeans.Node;
 import com.sun.enterprise.config.serverbeans.SshAuth;
@@ -70,12 +68,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import javax.inject.Inject;
 
 import org.glassfish.api.Param;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
-import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
 import org.jvnet.hk2.config.ConfigParser;;
 import org.jvnet.hk2.config.DomDocument;
