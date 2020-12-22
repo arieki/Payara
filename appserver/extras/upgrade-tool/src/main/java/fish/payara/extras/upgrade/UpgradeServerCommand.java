@@ -221,7 +221,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         }
         LOGGER.log(Level.FINE, "Moving files to old");
         for (String folder : moveFolders) {
-            Files.move(Paths.get(glassfishDir, "folder"), Paths.get(glassfishDir, folder + ".old"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(glassfishDir, folder), Paths.get(glassfishDir, folder + ".old"), StandardCopyOption.REPLACE_EXISTING);
         }
     }
     
