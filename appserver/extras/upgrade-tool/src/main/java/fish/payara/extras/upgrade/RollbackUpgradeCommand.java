@@ -41,14 +41,34 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
+import com.sun.enterprise.config.serverbeans.Domain;
+import com.sun.enterprise.config.serverbeans.Node;
+import com.sun.enterprise.config.serverbeans.SshAuth;
+import com.sun.enterprise.config.serverbeans.SshConnector;
+import com.sun.enterprise.universal.process.ProcessManager;
+import com.sun.enterprise.universal.process.ProcessManagerException;
+import com.sun.enterprise.util.SystemPropertyConstants;
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.inject.Inject;
 import org.glassfish.api.admin.CommandException;
+import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
+import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigParser;
+import org.jvnet.hk2.config.DomDocument;
 
 /**
  * Rolls back an upgrade
@@ -58,31 +78,162 @@ import org.jvnet.hk2.annotations.Service;
 @PerLookup
 public class RollbackUpgradeCommand extends LocalDomainCommand {
     
-    private static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+    static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+    private static final int DEFAULT_TIMEOUT_MSEC = 300000;
     
+    String glassfishDir;
+    
+    @Inject
+    private ServiceLocator habitat;    
     
     @Override
     protected int executeCommand() throws CommandException {
         try {
-            String glassfishDir = getDomainsDir().getParent();
-            
+            glassfishDir = getDomainsDir().getParent();
             if (!Paths.get(glassfishDir, "/modules.old").toFile().exists()) {
                 LOGGER.log(Level.SEVERE, "No old version found to rollback");
                 return ERROR;
             }
             
-            Files.move(Paths.get(glassfishDir, "/modules.old"), Paths.get(glassfishDir, "/modules"));
-            Files.move(Paths.get(glassfishDir, "/config/branding.old"), Paths.get(glassfishDir, "/config/branding"));
-            Files.move(Paths.get(glassfishDir, "/legal.old"), Paths.get(glassfishDir, "/legal"));
-            Files.move(Paths.get(glassfishDir, "/h2db.old"), Paths.get(glassfishDir, "/h2db"));
-            Files.move(Paths.get(glassfishDir, "/osgi.old"), Paths.get(glassfishDir, "/osgi"));
-            Files.move(Paths.get(glassfishDir, "/common.old"), Paths.get(glassfishDir, "/common"));
+            DeleteFileVisitor visitor = new DeleteFileVisitor();
+            LOGGER.log(Level.INFO, "Rolling back server...");
+            for (String file : UpgradeServerCommand.MOVEFOLDERS) {
+                Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
+                Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file), StandardCopyOption.REPLACE_EXISTING);
+            }
+            
+            File domainXMLFile = getDomainXml();
+                ConfigParser parser = new ConfigParser(habitat);
+                URL domainURL = domainXMLFile.toURI().toURL();
+                Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
+                Level oldConfigParserLogLevel = configParserLogger.getLevel();
+                configParserLogger.setLevel(Level.FINE);
+                DomDocument doc = parser.parse(domainURL);
+                LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
+                for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                    LOGGER.log(Level.SEVERE, "Rolling back remote node: {0}", node.getName());
+                    if (node.getType().equals("SSH")) {
+                        updateRemoteNodes(node);
+                    }
+                }
+                configParserLogger.setLevel(oldConfigParserLogLevel);
             
             return SUCCESS;
         } catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
             return ERROR;
         }
     }
     
+    void updateRemoteNodes(Node remote) {
+         LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0}", new Object[]{remote.getInstallDir()});
+        ArrayList<String> command = new ArrayList<>();
+        command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
+        command.add("--interactive=false");
+        command.add("--passwordfile");
+        command.add("-");
+        
+        command.add("install-node-ssh");
+        command.add("--installdir");
+        command.add(remote.getInstallDir());
+
+        command.add("--force"); //override files already there
+
+        SshConnector sshConnector = remote.getSshConnector();
+        command.add("--sshport");
+        command.add(sshConnector.getSshPort());
+        SshAuth sshAuth = sshConnector.getSshAuth();
+        command.add("--sshuser");
+        command.add(sshAuth.getUserName());
+        if (ok(sshAuth.getKeyfile())) {
+            command.add("--sshkeyfile");
+            command.add(sshAuth.getKeyfile());
+        }
+        
+        command.add(remote.getNodeHost());
+
+        StringBuilder out = new StringBuilder();
+        
+        ProcessManager processManager = new ProcessManager(command);
+        processManager.setStdinLines(UpgradeServerCommand.getPasswords(sshAuth));
+
+        processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
+
+        if (logger.isLoggable(Level.SEVERE)) {
+            processManager.setEcho(true);
+        } else {
+            processManager.setEcho(false);
+        }
+
+        try {
+            processManager.execute();
+        } catch (ProcessManagerException ex) {
+            logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
+        }
+    }
+    
+    class CopyFileVisitor implements FileVisitor<Path> {
+        
+        private final Path newVersionGlassfishDir;
+
+        public CopyFileVisitor(Path newVersion) {
+            this.newVersionGlassfishDir = newVersion.resolve("payara5/glassfish");
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
+            Path resolved = Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0));
+            File parentDirFile = resolved.toFile().getParentFile();
+            if (!parentDirFile.exists()) {
+                parentDirFile.mkdirs();
+            }
+            
+            Files.copy(arg0, resolved, StandardCopyOption.REPLACE_EXISTING);
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
+            throw arg1;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+        
+    }
+    
+    class DeleteFileVisitor implements FileVisitor<Path> {
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
+                return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
+            arg0.toFile().delete();
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            LOGGER.log(Level.SEVERE, "File could not deleted: {0}", arg0.toString());
+            throw arg1;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
+            arg0.toFile().delete();
+            return FileVisitResult.CONTINUE;
+        }
+        
+    }
 }

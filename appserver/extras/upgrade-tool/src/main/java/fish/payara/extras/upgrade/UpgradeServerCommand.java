@@ -112,7 +112,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     private ServiceLocator habitat;
     
     /** Folders that are moved in the upgrade process */
-    private static final String[] moveFolders = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
+    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
         "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client","/lib/deployment", "/lib/dtds", "/lib/embedded"
         ,"/lib/install", "/lib/monitor", "/lib/schemas" , "/../README.txt"};
     
@@ -157,7 +157,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
                 for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
                     LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
                     if (node.getType().equals("SSH")) {
-                        upgradeSSHNode(node, tempFile);
+                        upgradeSSHNode(node);
                     }
                 }
                 configParserLogger.setLevel(oldConfigParserLogLevel);
@@ -215,13 +215,13 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         DeleteFileVisitor visitor = new DeleteFileVisitor();
         Path oldModules = Paths.get(glassfishDir, "/modules.old");
         if (oldModules.toFile().exists()) {
-            for (String folder : moveFolders) {
+            for (String folder : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
             }
             Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
         }
         LOGGER.log(Level.FINE, "Moving files to old");
-        for (String folder : moveFolders) {
+        for (String folder : MOVEFOLDERS) {
             Files.move(Paths.get(glassfishDir, folder), Paths.get(glassfishDir, folder + ".old"), StandardCopyOption.REPLACE_EXISTING);
         }
     }
@@ -229,30 +229,32 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     private void moveExtracted(Path newVersion) throws IOException {
         LOGGER.log(Level.FINE, "Moving extracted files");
         CopyFileVisitor visitor = new CopyFileVisitor(newVersion);
-        for (String folder : moveFolders) {
+        for (String folder : MOVEFOLDERS) {
             Files.walkFileTree(newVersion.resolve("payara5/glassfish" + folder), visitor);
         }
     }
     
     private void undoMoveFiles() throws IOException {
         LOGGER.log(Level.FINE, "Moving old back");
-        for (String folder : moveFolders) {
+        for (String folder : MOVEFOLDERS) {
             Files.move(Paths.get(glassfishDir, folder + ".old"), Paths.get(glassfishDir, folder), StandardCopyOption.REPLACE_EXISTING);
         }
         
     }
     
-    private void upgradeSSHNode(Node remote, Path archiveFile) {
-        LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0} with {1}", new Object[]{remote.getInstallDir(), archiveFile.toString()});
+    private void upgradeSSHNode(Node remote) {
+        LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0}", new Object[]{remote.getInstallDir()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
+        command.add("--interactive=false");
+        command.add("--passwordfile");
+        command.add("-");
         
         command.add("install-node-ssh");
         command.add("--installdir");
         command.add(remote.getInstallDir());
 
         command.add("--force"); //override files already there
-        command.add("--interactive=false");
 
         SshConnector sshConnector = remote.getSshConnector();
         command.add("--sshport");
@@ -264,9 +266,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             command.add("--sshkeyfile");
             command.add(sshAuth.getKeyfile());
         }
-        
-        command.add("--passwordfile");
-        command.add("-");
         
         command.add(remote.getNodeHost());
 
@@ -290,7 +289,7 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         }
     }
     
-    protected List<String> getPasswords(SshAuth auth) {
+    protected static List<String> getPasswords(SshAuth auth) {
         List<String> sshPasswords = new ArrayList<>();
 
         if (ok(auth.getPassword())) {
