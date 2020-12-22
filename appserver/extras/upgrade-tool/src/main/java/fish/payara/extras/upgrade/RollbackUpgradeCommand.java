@@ -79,13 +79,20 @@ import org.jvnet.hk2.config.DomDocument;
 public class RollbackUpgradeCommand extends LocalDomainCommand {
     
     static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
-    private static final int DEFAULT_TIMEOUT_MSEC = 300000;
+    static final int DEFAULT_TIMEOUT_MSEC = 300000;
     
     String glassfishDir;
     
     @Inject
-    private ServiceLocator habitat;    
-    
+    ServiceLocator habitat;
+
+    /**
+     * Folders that are moved in the upgrade process
+     */
+    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
+        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client", "/lib/deployment", "/lib/dtds", "/lib/embedded",
+         "/lib/install", "/lib/monitor", "/lib/schemas", "/../README.txt"};
+
     @Override
     protected int executeCommand() throws CommandException {
         try {
@@ -94,30 +101,30 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
                 LOGGER.log(Level.SEVERE, "No old version found to rollback");
                 return ERROR;
             }
-            
+
             DeleteFileVisitor visitor = new DeleteFileVisitor();
             LOGGER.log(Level.INFO, "Rolling back server...");
-            for (String file : UpgradeServerCommand.MOVEFOLDERS) {
+            for (String file : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
                 Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file), StandardCopyOption.REPLACE_EXISTING);
             }
-            
+
             File domainXMLFile = getDomainXml();
-                ConfigParser parser = new ConfigParser(habitat);
-                URL domainURL = domainXMLFile.toURI().toURL();
-                Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-                Level oldConfigParserLogLevel = configParserLogger.getLevel();
-                configParserLogger.setLevel(Level.FINE);
-                DomDocument doc = parser.parse(domainURL);
-                LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
-                for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                    LOGGER.log(Level.SEVERE, "Rolling back remote node: {0}", node.getName());
-                    if (node.getType().equals("SSH")) {
-                        updateRemoteNodes(node);
-                    }
+            ConfigParser parser = new ConfigParser(habitat);
+            URL domainURL = domainXMLFile.toURI().toURL();
+            Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
+            Level oldConfigParserLogLevel = configParserLogger.getLevel();
+            configParserLogger.setLevel(Level.FINE);
+            DomDocument doc = parser.parse(domainURL);
+            LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
+            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                LOGGER.log(Level.SEVERE, "Rolling back remote node: {0}", node.getName());
+                if (node.getType().equals("SSH")) {
+                    updateRemoteNodes(node);
                 }
-                configParserLogger.setLevel(oldConfigParserLogLevel);
-            
+            }
+            configParserLogger.setLevel(oldConfigParserLogLevel);
+
             return SUCCESS;
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -170,44 +177,6 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
         } catch (ProcessManagerException ex) {
             logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
         }
-    }
-    
-    class CopyFileVisitor implements FileVisitor<Path> {
-        
-        private final Path newVersionGlassfishDir;
-
-        public CopyFileVisitor(Path newVersion) {
-            this.newVersionGlassfishDir = newVersion.resolve("payara5/glassfish");
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            Path resolved = Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0));
-            File parentDirFile = resolved.toFile().getParentFile();
-            if (!parentDirFile.exists()) {
-                parentDirFile.mkdirs();
-            }
-            
-            Files.copy(arg0, resolved, StandardCopyOption.REPLACE_EXISTING);
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
-            LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
-            throw arg1;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-        
     }
     
     class DeleteFileVisitor implements FileVisitor<Path> {

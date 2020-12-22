@@ -86,10 +86,7 @@ import org.jvnet.hk2.config.DomDocument;
  */
 @Service(name = "upgrade-server")
 @PerLookup
-public class UpgradeServerCommand extends LocalDomainCommand {
-    
-    private static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
-    private static final int DEFAULT_TIMEOUT_MSEC = 300000;
+public class UpgradeServerCommand extends RollbackUpgradeCommand {
     
     @Param
     private String username;
@@ -107,14 +104,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
     private static final String ZIP = ".zip";
     
     private String glassfishDir;
-    
-    @Inject
-    private ServiceLocator habitat;
-    
-    /** Folders that are moved in the upgrade process */
-    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
-        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client","/lib/deployment", "/lib/dtds", "/lib/embedded"
-        ,"/lib/install", "/lib/monitor", "/lib/schemas" , "/../README.txt"};
     
     @Override
     public int executeCommand() throws CommandException {
@@ -134,8 +123,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
             
             int code = connection.getResponseCode();
             if (code == 200) {
-                
-                //Path unzippedDirectory = extractZipFile(connection.getInputStream());
                 
                 Path tempFile = Files.createTempFile("payara", ".zip");
                 Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
@@ -335,33 +322,6 @@ public class UpgradeServerCommand extends LocalDomainCommand {
 
         @Override
         public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-        
-    }
-    
-    private class DeleteFileVisitor implements FileVisitor<Path> {
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-                return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            arg0.toFile().delete();
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
-            LOGGER.log(Level.SEVERE, "File could not deleted: {0}", arg0.toString());
-            throw arg1;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
-            arg0.toFile().delete();
             return FileVisitResult.CONTINUE;
         }
         
