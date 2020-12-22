@@ -216,8 +216,8 @@ public class UpgradeServerCommand extends LocalDomainCommand {
         if (oldModules.toFile().exists()) {
             for (String folder : moveFolders) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
-                Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
             }
+            Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
         }
         LOGGER.log(Level.FINE, "Moving files to old");
         for (String folder : moveFolders) {
