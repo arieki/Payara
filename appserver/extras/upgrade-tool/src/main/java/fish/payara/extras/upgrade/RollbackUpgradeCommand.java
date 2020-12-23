@@ -111,9 +111,6 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
             URL domainURL = domainXMLFile.toURI().toURL();
-            Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-            Level oldConfigParserLogLevel = configParserLogger.getLevel();
-            configParserLogger.setLevel(Level.FINE);
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
@@ -122,7 +119,6 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
                     updateRemoteNodes(node);
                 }
             }
-            configParserLogger.setLevel(oldConfigParserLogLevel);
 
             return SUCCESS;
         } catch (IOException ex) {

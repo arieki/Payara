@@ -136,9 +136,6 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
             URL domainURL = domainXMLFile.toURI().toURL();
-            Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-            Level oldConfigParserLogLevel = configParserLogger.getLevel();
-            configParserLogger.setLevel(Level.FINE);
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
@@ -147,7 +144,6 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
                     upgradeSSHNode(node);
                 }
             }
-            configParserLogger.setLevel(oldConfigParserLogLevel);
 
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
