@@ -95,8 +95,9 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     
     @Param
     private String version;
-    
-    private static final String NEXUS_URL="https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/";
+
+    private static final String NEXUS_URL = System.getProperty("fish.payara.upgrade.repo.url",
+            "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
     
     private String glassfishDir;
