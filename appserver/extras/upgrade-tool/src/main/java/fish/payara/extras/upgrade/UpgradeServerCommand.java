@@ -39,6 +39,7 @@
  */
 package fish.payara.extras.upgrade;
 
+import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.config.serverbeans.Domain;
 import com.sun.enterprise.config.serverbeans.Node;
 import com.sun.enterprise.config.serverbeans.SshAuth;
@@ -65,7 +66,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -129,7 +129,15 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             Path unzippedDirectory = extractZipFile(unzipFileStream);
-            backupDomains();
+
+            try {
+                backupDomains();
+            } catch (CommandException ce) {
+                LOGGER.log(Level.SEVERE, "Could not find backup-domain command, exiting...");
+                ce.printStackTrace();
+                return ERROR;
+            }
+
             moveFiles();
             moveExtracted(unzippedDirectory);
             
@@ -185,20 +193,23 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         return tempDirectory;
     }
     
-    private void backupDomains() throws IOException {
+    private void backupDomains() throws IOException, CommandException {
         LOGGER.log(Level.FINE, "Backing up old domains");
-        Files.copy(Paths.get(glassfishDir, "domains"), Paths.get(glassfishDir, "domains.old"), StandardCopyOption.REPLACE_EXISTING);
+        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            CLICommand backupDomainCommand = CLICommand.getCommand(habitat, "backup-domain");
+            backupDomainCommand.execute("backup-domain", domaindir.getName());
+        }
     }
     
     private void moveFiles() throws IOException {
-        LOGGER.log(Level.FINE, "Deleting old backup");
+        LOGGER.log(Level.FINE, "Deleting old server backup if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
         Path oldModules = Paths.get(glassfishDir, "/modules.old");
         if (oldModules.toFile().exists()) {
             for (String folder : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
             }
-            Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
         }
         LOGGER.log(Level.FINE, "Moving files to old");
         for (String folder : MOVEFOLDERS) {
