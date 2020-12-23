@@ -1,0 +1,36 @@
+rollback-server(1)    asadmin Utility Subcommands   rollback-server(1)
+
+NAME
+       rollback-server - Rolls back an upgrade of Payara Server
+
+SYNOPSIS
+           rollback-server [--help] [--target target]
+
+DESCRIPTION
+       The rollback-server subcommand rolls back an upgrade of Payara Server.
+
+       This subcommand is supported in POSIX-based systems only.
+
+OPTIONS
+       --help, -?
+           Displays the help text for the subcommand.
+
+EXAMPLES
+       Example 1, Rolling back Payara Server
+           In this example, a Payara Server domain is rolled back.
+
+               asadmin> rollback-server
+
+EXIT STATUS
+       0
+           subcommand executed successfully
+
+       1
+           error in executing the subcommand
+
+SEE ALSO
+       upgrade-server(1)
+
+       asadmin(1M)
+
+Jakarta EE 8                         22 Dec 2020           rollback-server(1)
