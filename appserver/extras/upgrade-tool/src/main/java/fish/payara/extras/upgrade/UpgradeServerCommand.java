@@ -118,36 +118,36 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             connection.setRequestProperty("Authorization", authBytes);
             
             int code = connection.getResponseCode();
-            if (code == 200) {
-                
-                Path tempFile = Files.createTempFile("payara", ".zip");
-                Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
-                
-                FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
-                Path unzippedDirectory = extractZipFile(unzipFileStream);
-                backupDomains();
-                moveFiles();
-                moveExtracted(unzippedDirectory);
-                
-                File domainXMLFile = getDomainXml();
-                ConfigParser parser = new ConfigParser(habitat);
-                URL domainURL = domainXMLFile.toURI().toURL();
-                Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-                Level oldConfigParserLogLevel = configParserLogger.getLevel();
-                configParserLogger.setLevel(Level.FINE);
-                DomDocument doc = parser.parse(domainURL);
-                LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
-                for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                    LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
-                    if (node.getType().equals("SSH")) {
-                        upgradeSSHNode(node);
-                    }
-                }
-                configParserLogger.setLevel(oldConfigParserLogLevel);
-            } else {
+            if (code != 200) {
                 LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
                 return ERROR;
             }
+                
+            Path tempFile = Files.createTempFile("payara", ".zip");
+            Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            
+            FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
+            Path unzippedDirectory = extractZipFile(unzipFileStream);
+            backupDomains();
+            moveFiles();
+            moveExtracted(unzippedDirectory);
+            
+            File domainXMLFile = getDomainXml();
+            ConfigParser parser = new ConfigParser(habitat);
+            URL domainURL = domainXMLFile.toURI().toURL();
+            Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
+            Level oldConfigParserLogLevel = configParserLogger.getLevel();
+            configParserLogger.setLevel(Level.FINE);
+            DomDocument doc = parser.parse(domainURL);
+            LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
+            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
+                if (node.getType().equals("SSH")) {
+                    upgradeSSHNode(node);
+                }
+            }
+            configParserLogger.setLevel(oldConfigParserLogLevel);
+
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();
@@ -259,11 +259,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
 
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
 
-        if (logger.isLoggable(Level.SEVERE)) {
-            processManager.setEcho(true);
-        } else {
-            processManager.setEcho(false);
-        }
+            processManager.setEcho(logger.isLoggable(Level.SEVERE));
 
         try {
             processManager.execute();

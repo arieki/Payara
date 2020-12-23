@@ -165,11 +165,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
 
-        if (logger.isLoggable(Level.SEVERE)) {
-            processManager.setEcho(true);
-        } else {
-            processManager.setEcho(false);
-        }
+            processManager.setEcho(logger.isLoggable(Level.SEVERE));      
 
         try {
             processManager.execute();
