@@ -88,9 +88,10 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
     /**
      * Folders that are moved in the upgrade process
      */
-    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
-        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client", "/lib/deployment", "/lib/dtds", "/lib/embedded",
-         "/lib/install", "/lib/monitor", "/lib/schemas", "/../README.txt"};
+    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db/license.html", "/h2db/service",
+            "/../h2db/license.html", "/../h2db/service", "/legal", "/modules", "/osgi",
+            "/lib", "/../README.txt", "/../LICENSE.txt", "/../mq/etc", "/../mq/examples", "/../mq/javadoc",
+            "/../mq/legal", "/../mq/lib"};
 
     @Override
     protected int executeCommand() throws CommandException {
