@@ -40,54 +40,76 @@
 package fish.payara.microprofile.openapi.test.app.application;
 
 import static fish.payara.microprofile.openapi.test.util.JsonUtils.path;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBodySchema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.junit.Test;
 
 import fish.payara.microprofile.openapi.test.app.OpenApiApplicationTest;
+import fish.payara.microprofile.openapi.test.app.application.schema.TeacherDTO;
 
-@Path("enum")
-public class EnumTest extends OpenApiApplicationTest {
+@Path("/form-params")
+public class FormParamTest extends OpenApiApplicationTest {
 
-    @Path("/add")
     @POST
-    String add(Data body) {
+    @Path("/{teacherId}")
+    @Consumes({ "text/csv" })
+    @Produces({ "text/csv" })
+    @APIResponseSchema(value = TeacherDTO.class, responseCode = "204")
+    @Operation(summary = "Updates a teacher with CSV data")
+    public Response updateTeacherWithCsv(
+            @Parameter(
+                    name = "teacherId",
+                    description = "ID of teacher",
+                    required = true
+            ) @PathParam("teacherId") Long teacherId,
+            @RequestBodySchema(TeacherDTO.class) String commaSeparatedValues) {
+        return Response.ok().build();
+    }
+
+    @Test
+    public void formParamIsAddedToApiMethods() {
+        assertHasParameter("teacherId", true);
+    }
+
+    private void assertHasParameter(String name, boolean required) {
+        assertParameter(name, required, "paths./test/form-params/{teacherId}.post.parameters");
+    }
+
+    private void assertParameter(String name, boolean required, String objectPath) {
+        JsonNode parameter = parameterWithName(name, path(getOpenAPIJson(), objectPath));
+        assertNotNull(parameter);
+        assertRequired(required, parameter);
+    }
+
+    private static void assertRequired(boolean required, JsonNode parameter) {
+        JsonNode requiredField = parameter.get("required");
+        if (required) {
+            assertTrue(requiredField.booleanValue());
+        } else {
+            assertTrue(requiredField == null || requiredField.isNull());
+        }
+    }
+
+    private static JsonNode parameterWithName(String name, JsonNode parameters) {
+        for (JsonNode parameter : parameters) {
+            if (parameter.get("name").textValue().equals(name)) {
+                return parameter;
+            }
+        }
         return null;
     }
-
-    class Data {
-        MyEnum prop1;
-    }
-
-    enum MyEnum {
-        A, B, C
-    }
-
-    @Test
-    public void testSchemaReferenceCreated() {
-        assertEquals("#/components/schemas/Data",
-                path(getOpenAPIJson(), "paths./test/enum/add.post.requestBody.content.*/*.schema.$ref").asText());
-    }
-
-    @Test
-    public void testEnumPropertyReferenceCreated() {
-        JsonNode data = path(getOpenAPIJson(), "components.schemas.Data.properties.prop1.$ref");
-        assertEquals("#/components/schemas/MyEnum", data.asText());
-    }
-
-    @Test
-    public void testEnumSchemaCreated() {
-        ArrayNode enumProps = (ArrayNode) path(getOpenAPIJson(), "components.schemas.MyEnum.enum");
-        assertEquals("A", enumProps.get(0).textValue());
-        assertEquals("B", enumProps.get(1).textValue());
-        assertEquals("C", enumProps.get(2).textValue());
-        assertEquals("Enum contained an incorrect number of props: " + enumProps, 3, enumProps.size());
-    }
-
 }
