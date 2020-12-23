@@ -111,6 +111,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
+            parser.logUnrecognisedElements(false);
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Rolling back remote nodes");

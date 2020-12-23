@@ -143,6 +143,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
+            parser.logUnrecognisedElements(false);
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
