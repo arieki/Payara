@@ -114,7 +114,15 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
-            parser.logUnrecognisedElements(false);
+
+            try {
+                parser.logUnrecognisedElements(false);
+            } catch (NoSuchMethodError noSuchMethodError) {
+                LOGGER.log(Level.FINE,
+                        "Using a version of ConfigParser that does not support disabling log messages via method",
+                        noSuchMethodError);
+            }
+
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
