@@ -39,6 +39,7 @@
  */
 package fish.payara.extras.upgrade;
 
+import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.config.serverbeans.Domain;
 import com.sun.enterprise.config.serverbeans.Node;
 import com.sun.enterprise.config.serverbeans.SshAuth;
@@ -65,7 +66,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -95,8 +95,9 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     
     @Param
     private String version;
-    
-    private static final String NEXUS_URL="https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/";
+
+    private static final String NEXUS_URL = System.getProperty("fish.payara.upgrade.repo.url",
+            "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
     
     private String glassfishDir;
@@ -118,36 +119,48 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             connection.setRequestProperty("Authorization", authBytes);
             
             int code = connection.getResponseCode();
-            if (code == 200) {
-                
-                Path tempFile = Files.createTempFile("payara", ".zip");
-                Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
-                
-                FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
-                Path unzippedDirectory = extractZipFile(unzipFileStream);
-                backupDomains();
-                moveFiles();
-                moveExtracted(unzippedDirectory);
-                
-                File domainXMLFile = getDomainXml();
-                ConfigParser parser = new ConfigParser(habitat);
-                URL domainURL = domainXMLFile.toURI().toURL();
-                Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-                Level oldConfigParserLogLevel = configParserLogger.getLevel();
-                configParserLogger.setLevel(Level.FINE);
-                DomDocument doc = parser.parse(domainURL);
-                LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
-                for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                    LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
-                    if (node.getType().equals("SSH")) {
-                        upgradeSSHNode(node);
-                    }
-                }
-                configParserLogger.setLevel(oldConfigParserLogLevel);
-            } else {
+            if (code != 200) {
                 LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
                 return ERROR;
             }
+                
+            Path tempFile = Files.createTempFile("payara", ".zip");
+            Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            
+            FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
+            Path unzippedDirectory = extractZipFile(unzipFileStream);
+
+            try {
+                backupDomains();
+            } catch (CommandException ce) {
+                LOGGER.log(Level.SEVERE, "Could not find backup-domain command, exiting...");
+                ce.printStackTrace();
+                return ERROR;
+            }
+
+            moveFiles();
+            moveExtracted(unzippedDirectory);
+            
+            File domainXMLFile = getDomainXml();
+            ConfigParser parser = new ConfigParser(habitat);
+            try {
+                parser.logUnrecognisedElements(false);
+            } catch (NoSuchMethodError noSuchMethodError) {
+                LOGGER.log(Level.FINE,
+                        "Using a version of ConfigParser that does not support disabling log messages via method",
+                        noSuchMethodError);
+            }
+
+            URL domainURL = domainXMLFile.toURI().toURL();
+            DomDocument doc = parser.parse(domainURL);
+            LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
+            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
+                if (node.getType().equals("SSH")) {
+                    upgradeSSHNode(node);
+                }
+            }
+
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();
@@ -188,20 +201,23 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         return tempDirectory;
     }
     
-    private void backupDomains() throws IOException {
+    private void backupDomains() throws IOException, CommandException {
         LOGGER.log(Level.FINE, "Backing up old domains");
-        Files.copy(Paths.get(glassfishDir, "domains"), Paths.get(glassfishDir, "domains.old"), StandardCopyOption.REPLACE_EXISTING);
+        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            CLICommand backupDomainCommand = CLICommand.getCommand(habitat, "backup-domain");
+            backupDomainCommand.execute("backup-domain", domaindir.getName());
+        }
     }
     
     private void moveFiles() throws IOException {
-        LOGGER.log(Level.FINE, "Deleting old backup");
+        LOGGER.log(Level.FINE, "Deleting old server backup if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
         Path oldModules = Paths.get(glassfishDir, "/modules.old");
         if (oldModules.toFile().exists()) {
             for (String folder : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
             }
-            Files.walkFileTree(Paths.get(glassfishDir, "domains.old"), visitor);
         }
         LOGGER.log(Level.FINE, "Moving files to old");
         for (String folder : MOVEFOLDERS) {
@@ -259,11 +275,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
 
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
 
-        if (logger.isLoggable(Level.SEVERE)) {
-            processManager.setEcho(true);
-        } else {
-            processManager.setEcho(false);
-        }
+            processManager.setEcho(logger.isLoggable(Level.SEVERE));
 
         try {
             processManager.execute();

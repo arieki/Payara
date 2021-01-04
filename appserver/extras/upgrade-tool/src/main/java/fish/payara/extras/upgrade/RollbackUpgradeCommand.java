@@ -88,9 +88,13 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
     /**
      * Folders that are moved in the upgrade process
      */
-    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db", "/legal", "/modules", "/osgi",
-        "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar", "/lib/appclient", "/lib/client", "/lib/deployment", "/lib/dtds", "/lib/embedded",
-         "/lib/install", "/lib/monitor", "/lib/schemas", "/../README.txt"};
+    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db/license.html", "/h2db/service",
+            "/../h2db/license.html", "/../h2db/service", "/legal", "/modules", "/osgi",
+            "/lib/appclient", "/lib/appserv-rt.jar", "/lib/asadmin", "/lib/client", "/lib/deployment", "/lib/dtds",
+            "/lib/embedded", "/lib/gf-client.jar", "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar",
+            "/lib/install", "/lib/javaee.jar", "/lib/jndi-properties.jar", "/lib/monitor",
+            "/lib/package-appclient.xml", "/lib/schemas", "/../README.txt", "/../LICENSE.txt", "/../mq/etc",
+            "/../mq/examples", "/../mq/javadoc", "/../mq/legal", "/../mq/lib"};
 
     @Override
     protected int executeCommand() throws CommandException {
@@ -110,10 +114,16 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
             File domainXMLFile = getDomainXml();
             ConfigParser parser = new ConfigParser(habitat);
+
+            try {
+                parser.logUnrecognisedElements(false);
+            } catch (NoSuchMethodError noSuchMethodError) {
+                LOGGER.log(Level.FINE,
+                        "Using a version of ConfigParser that does not support disabling log messages via method",
+                        noSuchMethodError);
+            }
+
             URL domainURL = domainXMLFile.toURI().toURL();
-            Logger configParserLogger = Logger.getLogger(ConfigParser.class.getName());
-            Level oldConfigParserLogLevel = configParserLogger.getLevel();
-            configParserLogger.setLevel(Level.FINE);
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
@@ -122,7 +132,6 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
                     updateRemoteNodes(node);
                 }
             }
-            configParserLogger.setLevel(oldConfigParserLogLevel);
 
             return SUCCESS;
         } catch (IOException ex) {
@@ -165,11 +174,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
 
-        if (logger.isLoggable(Level.SEVERE)) {
-            processManager.setEcho(true);
-        } else {
-            processManager.setEcho(false);
-        }
+            processManager.setEcho(logger.isLoggable(Level.SEVERE));      
 
         try {
             processManager.execute();

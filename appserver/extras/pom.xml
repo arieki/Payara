@@ -63,6 +63,7 @@
         <module>payara-micro</module>
         <module>certificate-management</module>
         <module>integration-testing</module>
+        <module>upgrade-tool</module>
     </modules>
 
     <profiles>
