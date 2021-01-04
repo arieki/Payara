@@ -39,10 +39,27 @@
  */
 package fish.payara.microprofile.jwtauth.eesecurity;
 
-import fish.payara.microprofile.jwtauth.jwt.JsonWebTokenImpl;
-import fish.payara.microprofile.jwtauth.jwt.JwtTokenParser;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigProvider;
+import static java.lang.Thread.currentThread;
+import static java.util.logging.Level.INFO;
+import static javax.security.enterprise.identitystore.CredentialValidationResult.INVALID_RESULT;
+import static org.eclipse.microprofile.jwt.config.Names.ISSUER;
+import static org.eclipse.microprofile.jwt.config.Names.VERIFIER_PUBLIC_KEY;
+import static org.eclipse.microprofile.jwt.config.Names.VERIFIER_PUBLIC_KEY_LOCATION;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.*;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.enterprise.inject.spi.DeploymentException;
 import javax.json.Json;
@@ -52,24 +69,13 @@ import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.security.enterprise.identitystore.CredentialValidationResult;
 import javax.security.enterprise.identitystore.IdentityStore;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.math.BigInteger;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.spec.RSAPublicKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
-import java.util.logging.Logger;
 
-import static java.lang.Thread.currentThread;
-import static java.util.logging.Level.FINEST;
-import static javax.security.enterprise.identitystore.CredentialValidationResult.INVALID_RESULT;
-import static org.eclipse.microprofile.jwt.config.Names.*;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+
+import fish.payara.microprofile.jwtauth.jwt.JsonWebTokenImpl;
+import fish.payara.microprofile.jwtauth.jwt.JwtTokenParser;
+import org.glassfish.grizzly.http.util.ContentType;
 
 /**
  * Identity store capable of asserting that a signed JWT token is valid
@@ -131,7 +137,7 @@ public class SignedJWTIdentityStore implements IdentityStore {
                     new HashSet<>(groups));
 
         } catch (Exception e) {
-            LOGGER.log(FINEST, "Exception trying to parse JWT token.", e);
+            LOGGER.log(INFO, "Exception trying to parse JWT token.", e);
         }
 
         return INVALID_RESULT;
@@ -206,10 +212,27 @@ public class SignedJWTIdentityStore implements IdentityStore {
             return Optional.empty();
         }
 
-        byte[] byteBuffer = new byte[16384];
-        try (InputStream inputStream = publicKeyURL.openStream()) {
-            String key = new String(byteBuffer, 0, inputStream.read(byteBuffer));
-            return createPublicKey(key, keyID);
+        URLConnection urlConnection = publicKeyURL.openConnection();
+        Charset charset = Charset.defaultCharset();
+        ContentType contentType = ContentType.newContentType(urlConnection.getContentType());
+        if(contentType != null) {
+            String charEncoding = contentType.getCharacterEncoding();
+            if(charEncoding != null) {
+                try {
+                    if (!Charset.isSupported(charEncoding)) {
+                        LOGGER.warning("Charset " + charEncoding + " for remote public key not supported, using default charset instead");
+                    } else {
+                        charset = Charset.forName(contentType.getCharacterEncoding());
+                    }
+                }catch (IllegalCharsetNameException ex){
+                    LOGGER.severe("Charset " + ex.getCharsetName() + " for remote public key not support, Cause: " + ex.getMessage());
+                }
+            }
+        }
+        try (InputStream inputStream = urlConnection.getInputStream();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, charset))){
+            String keyContents = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+            return createPublicKey(keyContents, keyID);
         }
     }
 
