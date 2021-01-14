@@ -1926,7 +1926,7 @@ public class WebContainer implements org.glassfish.api.container.Container, Post
         webModule.setIasWebAppConfigBean(iasBean);
 
         // Configure SingleThreadedServletPools, work/tmp directory etc
-        webModule.configureMiscSettings(iasBean, virtualServer, displayContextPath);
+        webModule.configureMiscSettings(virtualServer, displayContextPath);
 
         // Configure alternate docroots if dummy web module
         if (webModule.getID().startsWith(DEFAULT_WEB_MODULE_NAME)) {
