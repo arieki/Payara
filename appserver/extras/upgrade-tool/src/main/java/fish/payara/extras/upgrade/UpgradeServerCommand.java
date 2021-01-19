@@ -247,7 +247,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     }
     
     private void upgradeSSHNode(Node remote) {
-        LOGGER.log(Level.INFO, "Upgrading remote ssh node {0}", new Object[]{remote.getInstallDir()});
+        LOGGER.log(Level.INFO, "Upgrading remote ssh node {0}", new Object[]{remote.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
         command.add("--interactive=false");
