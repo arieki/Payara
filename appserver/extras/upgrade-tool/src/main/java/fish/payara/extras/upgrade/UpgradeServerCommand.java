@@ -170,7 +170,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     }
     
     private void backupDomains() throws IOException, CommandException {
-        LOGGER.log(Level.FINE, "Backing up old domains");
+        LOGGER.log(Level.INFO, "Backing up domain configs");
         File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             CLICommand backupDomainCommand = CLICommand.getCommand(habitat, "backup-domain");

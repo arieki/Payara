@@ -212,7 +212,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
     }
 
     private void restoreDomains() throws CommandException {
-        LOGGER.log(Level.FINE, "Backing up old domains");
+        LOGGER.log(Level.INFO, "Restoring domain configs");
         File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             CLICommand restoreDomainCommand = CLICommand.getCommand(habitat, "restore-domain");
