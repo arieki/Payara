@@ -79,13 +79,13 @@ import org.jvnet.hk2.config.DomDocument;
 @PerLookup
 public class RollbackUpgradeCommand extends LocalDomainCommand {
     
-    static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
-    static final int DEFAULT_TIMEOUT_MSEC = 300000;
+    protected static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+    protected static final int DEFAULT_TIMEOUT_MSEC = 300000;
     
-    String glassfishDir;
+    protected String glassfishDir;
     
     @Inject
-    ServiceLocator habitat;
+    protected ServiceLocator habitat;
 
     /**
      * Folders that are moved in the upgrade process

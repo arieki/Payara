@@ -90,8 +90,6 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
     
-    private String glassfishDir;
-    
     @Override
     public int executeCommand() {
         glassfishDir = getDomainsDir().getParent();
