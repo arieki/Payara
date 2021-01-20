@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -50,6 +50,7 @@ import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.SystemPropertyConstants;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -59,6 +60,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.inject.Inject;
@@ -97,7 +99,7 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
             "/../mq/examples", "/../mq/javadoc", "/../mq/legal", "/../mq/lib"};
 
     @Override
-    protected int executeCommand() throws CommandException {
+    protected int executeCommand() {
         try {
             glassfishDir = getDomainsDir().getParent();
             if (!Paths.get(glassfishDir, "/modules.old").toFile().exists()) {
@@ -112,9 +114,32 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
                 Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file), StandardCopyOption.REPLACE_EXISTING);
             }
 
-            File domainXMLFile = getDomainXml();
-            ConfigParser parser = new ConfigParser(habitat);
+            // Roll back the nodes for all domains
+            updateNodes();
 
+            // Restore the original domain configs
+            try {
+                restoreDomains();
+            } catch (CommandException ce) {
+                LOGGER.log(Level.SEVERE, "Could not find restore-domain command! " +
+                        "Please restore your domain config manually.");
+                ce.printStackTrace();
+                return WARNING;
+            }
+
+            return SUCCESS;
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, "Error restoring Payara Server", ex);
+            ex.printStackTrace();
+            return ERROR;
+        }
+    }
+
+    protected void updateNodes() throws MalformedURLException {
+        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
+            ConfigParser parser = new ConfigParser(habitat);
             try {
                 parser.logUnrecognisedElements(false);
             } catch (NoSuchMethodError noSuchMethodError) {
@@ -125,23 +150,17 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
 
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
-            LOGGER.log(Level.SEVERE, "Rolling back remote nodes");
+            LOGGER.log(Level.INFO, "Updating nodes for domain " + domaindir.getName());
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                LOGGER.log(Level.SEVERE, "Rolling back remote node: {0}", node.getName());
                 if (node.getType().equals("SSH")) {
-                    updateRemoteNodes(node);
+                    updateSSHNode(node);
                 }
             }
-
-            return SUCCESS;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            return ERROR;
         }
     }
     
-    void updateRemoteNodes(Node remote) {
-         LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0}", new Object[]{remote.getInstallDir()});
+    protected void updateSSHNode(Node node) {
+        LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
         command.add("--interactive=false");
@@ -150,11 +169,11 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
         
         command.add("install-node-ssh");
         command.add("--installdir");
-        command.add(remote.getInstallDir());
+        command.add(node.getInstallDir());
 
         command.add("--force"); //override files already there
 
-        SshConnector sshConnector = remote.getSshConnector();
+        SshConnector sshConnector = node.getSshConnector();
         command.add("--sshport");
         command.add(sshConnector.getSshPort());
         SshAuth sshAuth = sshConnector.getSshAuth();
@@ -165,21 +184,39 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
             command.add(sshAuth.getKeyfile());
         }
         
-        command.add(remote.getNodeHost());
-
-        StringBuilder out = new StringBuilder();
+        command.add(node.getNodeHost());
         
         ProcessManager processManager = new ProcessManager(command);
-        processManager.setStdinLines(UpgradeServerCommand.getPasswords(sshAuth));
-
+        processManager.setStdinLines(getPasswords(sshAuth));
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
-
-            processManager.setEcho(logger.isLoggable(Level.SEVERE));      
+        processManager.setEcho(logger.isLoggable(Level.SEVERE));
 
         try {
             processManager.execute();
         } catch (ProcessManagerException ex) {
             logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
+        }
+    }
+
+    protected List<String> getPasswords(SshAuth auth) {
+        List<String> sshPasswords = new ArrayList<>();
+
+        if (ok(auth.getPassword())) {
+            sshPasswords.add("AS_ADMIN_SSHPASSWORD=" + auth.getPassword());
+        }
+        if (ok(auth.getKeyPassphrase())) {
+            sshPasswords.add("AS_ADMIN_SSHKEYPASSPHRASE=" + auth.getKeyPassphrase());
+        }
+
+        return sshPasswords;
+    }
+
+    private void restoreDomains() throws CommandException {
+        LOGGER.log(Level.FINE, "Backing up old domains");
+        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            CLICommand restoreDomainCommand = CLICommand.getCommand(habitat, "restore-domain");
+            restoreDomainCommand.execute("restore-domain", domaindir.getName());
         }
     }
     
