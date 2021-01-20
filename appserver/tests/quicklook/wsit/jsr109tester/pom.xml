@@ -53,7 +53,7 @@
     <groupId>org.glassfish.quicklook.ejb</groupId>
     <artifactId>wsit_quicklook</artifactId>
     <name>Glassfish Web Services Quicklook</name>
-    <version>4.1</version>
+    <version>4.1-SNAPSHOT</version>
     <description>This pom describes how to run QuickLook tests on the Glassfish Bundle</description>
 
     <build>
