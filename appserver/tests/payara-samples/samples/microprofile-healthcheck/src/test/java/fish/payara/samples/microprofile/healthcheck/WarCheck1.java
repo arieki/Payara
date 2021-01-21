@@ -57,6 +57,6 @@ public class WarCheck1 implements HealthCheck {
     return HealthCheckResponse.named(WarCheck1.class.getSimpleName() + " Liveness Check")
                               .withData("memory used", memUsed)
                               .withData("memory max", memMax)
-                              .status(memUsed < memMax * 0.9).build();
+                              .state(memUsed < memMax * 0.9).build();
   }
 }

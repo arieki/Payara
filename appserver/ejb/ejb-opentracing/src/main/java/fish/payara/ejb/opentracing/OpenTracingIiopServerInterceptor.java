@@ -57,8 +57,6 @@ import java.io.ObjectInput;
 
 import static fish.payara.ejb.opentracing.OpenTracingIiopInterceptorFactory.OPENTRACING_IIOP_ID;
 import static fish.payara.opentracing.OpenTracingService.PAYARA_CORBA_RMI_TRACER_NAME;
-import fish.payara.opentracing.ScopeManager;
-import io.opentracing.Span;
 
 /**
  * IIOP Server Interceptor for propagating OpenTracing SpanContext to Payara Server.
@@ -115,7 +113,7 @@ public class OpenTracingIiopServerInterceptor extends LocalObject implements Ser
         }
 
         // Start the span and mark it as active
-        tracer.activateSpan(spanBuilder.start());
+        spanBuilder.startActive(true).span();
     }
 
     @Override
@@ -141,14 +139,7 @@ public class OpenTracingIiopServerInterceptor extends LocalObject implements Ser
 
         // Make sure active scope is closed - this is an entry point to the server so the currently active span
         // **should** be the one started in receive_request
-        Span activeSpan = tracer.scopeManager().activeSpan();
-        if (activeSpan != null) {
-            activeSpan.finish();
-        }
-        if (tracer.scopeManager() instanceof ScopeManager) {
-            ScopeManager manager = (ScopeManager) tracer.scopeManager();
-            try (Scope activeScope = manager.activeScope()) {
-            }
+        try (Scope activeScope = tracer.scopeManager().active()) {
         }
     }
 

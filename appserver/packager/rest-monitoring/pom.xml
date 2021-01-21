@@ -150,7 +150,7 @@
         <dependency>
             <groupId>fish.payara.server.internal.payara-appserver-modules</groupId>
             <artifactId>rest-monitoring-war</artifactId>
-            <version>5.25.0-SNAPSHOT</version>
+            <version>${rest.monitoring.version}</version>
             <type>war</type>
             <optional>true</optional>
         </dependency>
