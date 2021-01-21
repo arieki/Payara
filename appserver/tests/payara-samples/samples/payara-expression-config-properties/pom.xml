@@ -56,6 +56,11 @@
     <name>Payara Samples - Payara Expression MicroProfile Config Properties</name>
     <description>Sample that demonstrates translation of expressions and variables</description>
 
+    <properties>
+        <!-- Enterprise does not support (yet) -->
+        <maven.test.skip>true</maven.test.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.eclipse.microprofile.config</groupId>

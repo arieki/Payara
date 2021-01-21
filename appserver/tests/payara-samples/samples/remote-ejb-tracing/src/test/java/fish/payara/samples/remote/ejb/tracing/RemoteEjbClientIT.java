@@ -85,8 +85,7 @@ public class RemoteEjbClientIT {
         Tracer tracer = GlobalTracer.get();
         Span span = null;
         try {
-            span = tracer.buildSpan("ExecuteEjb").start();
-            tracer.activateSpan(span);
+            span = tracer.buildSpan("ExecuteEjb").startActive(true).span();
             span.setBaggageItem("Wibbles", "Wobbles");
             String baggageItems = ejb.annotatedMethod();
             Assert.assertTrue("Baggage items didn't match, received: " + baggageItems,
@@ -131,8 +130,7 @@ public class RemoteEjbClientIT {
 
         Span span = null;
         try {
-            span = tracer.buildSpan("ExecuteEjb").start();
-            tracer.activateSpan(span);
+            span = tracer.buildSpan("ExecuteEjb").startActive(true).span();
             String baggageItems = ejb.annotatedMethod();
             Assert.assertTrue("Baggage items didn't contain transaction ID, received: " + baggageItems,
                     baggageItems.contains("TX-ID"));
