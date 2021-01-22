@@ -52,7 +52,7 @@
     <groupId>org.glassfish.quicklook.jms</groupId>
     <artifactId>injection_quicklook</artifactId>
     <name>Glassfish JMS Injection Quicklook</name>
-    <version>4.1</version>
+    <version>4.1-SNAPSHOT</version>
     <description>This pom describes how to run QuickLook tests on the Glassfish Bundle</description>
 
     <build>

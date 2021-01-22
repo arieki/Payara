@@ -45,6 +45,7 @@ import static fish.payara.microprofile.healthcheck.HealthCheckType.HEALTH;
 import static fish.payara.microprofile.healthcheck.HealthCheckType.LIVENESS;
 import static fish.payara.microprofile.healthcheck.HealthCheckType.READINESS;
 import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfiguration;
+import static fish.payara.microprofile.Constants.CREATE_INSECURE_ENDPOINT_TEST;
 import static java.util.Arrays.asList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -112,6 +113,11 @@ public class HealthCheckServletContainerInitializer implements ServletContainerI
                 String[] roles = configuration.getRoles().split(",");
                 reg.setServletSecurity(new ServletSecurityElement(new HttpConstraintElement(CONFIDENTIAL, roles)));
                 ctx.declareRoles(roles);
+                if (Boolean.getBoolean(CREATE_INSECURE_ENDPOINT_TEST)) {
+                    ServletRegistration.Dynamic insecureReg = ctx
+                            .addServlet("microprofile-healthcheck-servlet-insecure", HealthCheckServlet.class);
+                    insecureReg.addMapping("/" + configuration.getEndpoint() + "-insecure/*");
+                }
             }
         }
 
