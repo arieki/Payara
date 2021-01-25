@@ -52,12 +52,8 @@
     <name>Payara Micro Distribution</name>
 
     <properties>
-<<<<<<< HEAD
         <product.name>Payara Micro Enterprise</product.name>
-=======
-        <product.name>Payara Micro</product.name>
         <deploy.skip>false</deploy.skip>
->>>>>>> 76bf98519b... FISH-326 Refactor Deployment Profiles
     </properties>
 
     <build>
