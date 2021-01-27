@@ -151,6 +151,14 @@
         <module>requesttracing</module>
         <module>notification</module>
         <module>notification-jms</module>
+        <module>notification-datadog</module>
+        <module>notification-discord</module>
+        <module>notification-email</module>
+        <module>notification-newrelic</module>
+        <module>notification-slack</module>
+        <module>notification-snmp</module>
+        <module>notification-teams</module>
+        <module>notification-xmpp</module>
         <module>asadmin-recorder</module>
         <module>JMX-Monitoring</module>
         <module>payara-micro</module>
