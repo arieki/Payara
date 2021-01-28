@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -40,20 +40,13 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.config.serverbeans.Domain;
-import com.sun.enterprise.config.serverbeans.Node;
-import com.sun.enterprise.config.serverbeans.SshAuth;
-import com.sun.enterprise.config.serverbeans.SshConnector;
-import com.sun.enterprise.universal.process.ProcessManager;
-import com.sun.enterprise.universal.process.ProcessManagerException;
-import com.sun.enterprise.util.SystemPropertyConstants;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.io.FileOutputStream;
 import java.nio.file.FileVisitResult;
@@ -63,9 +56,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -74,8 +65,6 @@ import org.glassfish.api.Param;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
-import org.jvnet.hk2.config.ConfigParser;;
-import org.jvnet.hk2.config.DomDocument;
 
 /**
  * Command to upgrade Payara server to a newer version
@@ -101,10 +90,8 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
     
-    private String glassfishDir;
-    
     @Override
-    public int executeCommand() throws CommandException {
+    public int executeCommand() {
         glassfishDir = getDomainsDir().getParent();
 
         String url = NEXUS_URL + distribution + "/" + version + "/" + distribution + "-" + version + ZIP;
@@ -140,8 +127,8 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
 
             moveFiles();
             moveExtracted(unzippedDirectory);
-            
-            upgradeNodes();
+
+            updateNodes();
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();
@@ -183,7 +170,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     }
     
     private void backupDomains() throws IOException, CommandException {
-        LOGGER.log(Level.FINE, "Backing up old domains");
+        LOGGER.log(Level.INFO, "Backing up domain configs");
         File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             CLICommand backupDomainCommand = CLICommand.getCommand(habitat, "backup-domain");
@@ -222,86 +209,6 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         
     }
 
-    private void upgradeNodes() throws MalformedURLException {
-        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
-        for (File domaindir : domaindirs) {
-            File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
-            ConfigParser parser = new ConfigParser(habitat);
-            try {
-                parser.logUnrecognisedElements(false);
-            } catch (NoSuchMethodError noSuchMethodError) {
-                LOGGER.log(Level.FINE,
-                        "Using a version of ConfigParser that does not support disabling log messages via method",
-                        noSuchMethodError);
-            }
-
-            URL domainURL = domainXMLFile.toURI().toURL();
-            DomDocument doc = parser.parse(domainURL);
-            LOGGER.log(Level.INFO, "Upgrading nodes for domain " + domaindir.getName());
-            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                if (node.getType().equals("SSH")) {
-                    upgradeSSHNode(node);
-                }
-            }
-        }
-    }
-    
-    private void upgradeSSHNode(Node remote) {
-        LOGGER.log(Level.INFO, "Upgrading remote ssh node {0}", new Object[]{remote.getName()});
-        ArrayList<String> command = new ArrayList<>();
-        command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
-        command.add("--interactive=false");
-        command.add("--passwordfile");
-        command.add("-");
-        
-        command.add("install-node-ssh");
-        command.add("--installdir");
-        command.add(remote.getInstallDir());
-
-        command.add("--force"); //override files already there
-
-        SshConnector sshConnector = remote.getSshConnector();
-        command.add("--sshport");
-        command.add(sshConnector.getSshPort());
-        SshAuth sshAuth = sshConnector.getSshAuth();
-        command.add("--sshuser");
-        command.add(sshAuth.getUserName());
-        if (ok(sshAuth.getKeyfile())) {
-            command.add("--sshkeyfile");
-            command.add(sshAuth.getKeyfile());
-        }
-        
-        command.add(remote.getNodeHost());
-
-        StringBuilder out = new StringBuilder();
-        
-        ProcessManager processManager = new ProcessManager(command);
-        processManager.setStdinLines(getPasswords(sshAuth));
-
-        processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
-
-            processManager.setEcho(logger.isLoggable(Level.SEVERE));
-
-        try {
-            processManager.execute();
-        } catch (ProcessManagerException ex) {
-            logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
-        }
-    }
-    
-    protected static List<String> getPasswords(SshAuth auth) {
-        List<String> sshPasswords = new ArrayList<>();
-
-        if (ok(auth.getPassword())) {
-            sshPasswords.add("AS_ADMIN_SSHPASSWORD=" + auth.getPassword());
-        }
-        if (ok(auth.getKeyPassphrase())) {
-            sshPasswords.add("AS_ADMIN_SSHKEYPASSPHRASE=" + auth.getKeyPassphrase());
-        }
-
-        return sshPasswords;
-    }
-    
     private class CopyFileVisitor implements FileVisitor<Path> {
         
         private final Path newVersionGlassfishDir;
