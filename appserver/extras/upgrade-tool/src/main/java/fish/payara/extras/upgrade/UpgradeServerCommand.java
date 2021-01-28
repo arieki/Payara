@@ -53,6 +53,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.io.FileOutputStream;
 import java.nio.file.FileVisitResult;
@@ -105,8 +106,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     @Override
     public int executeCommand() throws CommandException {
         glassfishDir = getDomainsDir().getParent();
-        
-        
+
         String url = NEXUS_URL + distribution + "/" + version + "/" + distribution + "-" + version + ZIP;
         String basicAuthString = username + ":" + nexusPassword;
         String authBytes = "Basic " + Base64.getEncoder().encodeToString(basicAuthString.getBytes());
@@ -141,26 +141,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
             moveFiles();
             moveExtracted(unzippedDirectory);
             
-            File domainXMLFile = getDomainXml();
-            ConfigParser parser = new ConfigParser(habitat);
-            try {
-                parser.logUnrecognisedElements(false);
-            } catch (NoSuchMethodError noSuchMethodError) {
-                LOGGER.log(Level.FINE,
-                        "Using a version of ConfigParser that does not support disabling log messages via method",
-                        noSuchMethodError);
-            }
-
-            URL domainURL = domainXMLFile.toURI().toURL();
-            DomDocument doc = parser.parse(domainURL);
-            LOGGER.log(Level.SEVERE, "Upgrading remote nodes");
-            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                LOGGER.log(Level.SEVERE, "Upgrading remote node: {0}", node.getName());
-                if (node.getType().equals("SSH")) {
-                    upgradeSSHNode(node);
-                }
-            }
-
+            upgradeNodes();
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();
@@ -240,9 +221,33 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         }
         
     }
+
+    private void upgradeNodes() throws MalformedURLException {
+        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
+            ConfigParser parser = new ConfigParser(habitat);
+            try {
+                parser.logUnrecognisedElements(false);
+            } catch (NoSuchMethodError noSuchMethodError) {
+                LOGGER.log(Level.FINE,
+                        "Using a version of ConfigParser that does not support disabling log messages via method",
+                        noSuchMethodError);
+            }
+
+            URL domainURL = domainXMLFile.toURI().toURL();
+            DomDocument doc = parser.parse(domainURL);
+            LOGGER.log(Level.INFO, "Upgrading nodes for domain " + domaindir.getName());
+            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
+                if (node.getType().equals("SSH")) {
+                    upgradeSSHNode(node);
+                }
+            }
+        }
+    }
     
     private void upgradeSSHNode(Node remote) {
-        LOGGER.log(Level.SEVERE, "Upgrading remote ssh node {0}", new Object[]{remote.getInstallDir()});
+        LOGGER.log(Level.INFO, "Upgrading remote ssh node {0}", new Object[]{remote.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
         command.add("--interactive=false");
