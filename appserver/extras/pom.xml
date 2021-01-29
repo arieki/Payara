@@ -122,9 +122,6 @@
             <modules>
                 <module>notifiers</module>
             </modules>
-            <properties>
-                <build.payara.enterprise.notifiers>true</build.payara.enterprise.notifiers>
-            </properties>
         </profile>
     </profiles>
 </project>
