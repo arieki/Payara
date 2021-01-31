@@ -37,7 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2016-2020] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2021] [Payara Foundation and/or its affiliates]
 
 package org.glassfish.deployment.admin;
 
@@ -178,13 +178,13 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
     private static final String EJB_JAR_XML = "META-INF/ejb-jar.xml";
     private static final String SUN_EJB_JAR_XML = "META-INF/sun-ejb-jar.xml";
     private static final String GF_EJB_JAR_XML = "META-INF/glassfish-ejb-jar.xml";
-   
+
     private static final String APPLICATION_XML = "META-INF/application.xml";
     private static final String SUN_APPLICATION_XML = "META-INF/sun-application.xml";
     private static final String GF_APPLICATION_XML  = "META-INF/glassfish-application.xml";
-    
+
     private static final String RA_XML  = "META-INF/ra.xml";
-    
+
     private static final String APPLICATION_CLIENT_XML = "META-INF/application-client.xml";
     private static final String SUN_APPLICATION_CLIENT_XML = "META-INF/sun-application-client.xml";
     private static final String GF_APPLICATION_CLIENT_XML = "META-INF/glassfish-application-client.xml";
@@ -196,6 +196,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
 
     @Override
     public boolean preAuthorization(AdminCommandContext context) {
+        logger = context.getLogger();
         events.register(this);
 
         suppInfo
@@ -209,8 +210,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
 
         timing = new DeploymentTracing(structuredTracing);
 
-        report = context.getActionReport();
-        logger = context.getLogger();
+        final ActionReport report = context.getActionReport();
 
         originalPathValue = path;
         if (!path.exists()) {
@@ -342,10 +342,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
                 String versionIdentifier = archiveHandler.getVersionIdentifier(initialContext.getSource());
 
                 if (versionIdentifier != null && !versionIdentifier.isEmpty()) {
-                    StringBuilder sb = new StringBuilder(name).
-                            append(VersioningUtils.EXPRESSION_SEPARATOR).
-                            append(versionIdentifier);
-                    name = sb.toString();
+                    name = name + VersioningUtils.EXPRESSION_SEPARATOR + versionIdentifier;
                 }
             }
 
@@ -377,7 +374,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
 
         /*
          * If this app is already deployed then this operation also represents
-         * an undeployment - a delete - of that app.  
+         * an undeployment - a delete - of that app.
          */
         if (isredeploy) {
             final String appResource = DeploymentCommandUtils.getResourceNameForNewApp(domain, name);
@@ -399,7 +396,8 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
         long timeTakenToDeploy = 0;
         long deploymentTimeMillis = 0;
         Optional<ApplicationState> appState = Optional.empty();
-        try (SpanSequence span = structuredTracing.startSequence(DeploymentTracing.AppStage.VALIDATE_TARGET, "registry")){
+        final ActionReport report = context.getActionReport();
+        try (SpanSequence span = structuredTracing.startSequence(DeploymentTracing.AppStage.VALIDATE_TARGET, "registry")) {
 
             if (!hotDeploy) {
                 hotDeployService.removeApplicationState(initialContext.getSourceDir());
@@ -623,12 +621,9 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
             }
         } catch (Throwable e) {
             report.setActionExitCode(ActionReport.ExitCode.FAILURE);
+            report.setFailureCause(e);
             if(e.getMessage() != null) {
                 report.setMessage(e.getMessage());
-                report.setFailureCause(e);
-            }
-            else {
-                report.setFailureCause(null);
             }
         } finally {
             events.unregister(this);
@@ -667,7 +662,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
                     logger.log(Level.SEVERE, errorMessage, cause.getCause());
                 }
                 report.setMessage(localStrings.getLocalString("deploy.errDuringDepl", "Error occur during deployment: {0}.", errorMessage));
-                // reset the failure cause so command framework will not try 
+                // reset the failure cause so command framework will not try
                 // to print the same message again
                 report.setFailureCause(null);
                 if (expansionDir != null) {
@@ -1020,7 +1015,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
                 if (properties == null) {
                     properties = new Properties();
                 }
-                // if user does not specify the compatibility flag 
+                // if user does not specify the compatibility flag
                 // explictly in this deployment, set it to the old value
                 if (properties.getProperty(DeploymentProperties.COMPATIBILITY) == null) {
                     properties.setProperty(DeploymentProperties.COMPATIBILITY, compatProp);
@@ -1033,7 +1028,7 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
     @Override
     public void event(Event event) {
         if (event.is(Deployment.DEPLOYMENT_BEFORE_CLASSLOADER_CREATION)) {
-            // this is where we have processed metadata and 
+            // this is where we have processed metadata and
             // haven't created the application classloader yet
             DeploymentContext context = (DeploymentContext) event.hook();
             if (verify) {
