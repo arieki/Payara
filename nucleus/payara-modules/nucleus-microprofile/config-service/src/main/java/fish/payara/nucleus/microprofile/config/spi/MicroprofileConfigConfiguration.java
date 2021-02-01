@@ -95,14 +95,6 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     @Attribute(defaultValue = "115", dataType = Integer.class)
     String getJNDIOrdinality();
     void setJNDIOrdinality(String ordinality);
-    
-    @Attribute(defaultValue = "secrets", dataType = String.class)
-    String getSecretDir();
-    void setSecretDir(String directory);
-    
-    @Attribute(defaultValue = "90", dataType = Integer.class)
-    String getSecretDirOrdinality();
-    void setSecretDirOrdinality(String ordinality);
 
     @Attribute(defaultValue = "105", dataType = Integer.class)
     String getPasswordOrdinality();
