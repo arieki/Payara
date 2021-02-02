@@ -168,7 +168,7 @@
         <servlet-api.version>4.0.2</servlet-api.version>
         <grizzly.version>2.4.4.payara-p5</grizzly.version>
         <jax-rs-api.impl.version>2.1.6</jax-rs-api.impl.version>
-        <jersey.version>2.30.payara-p3</jersey.version>
+        <jersey.version>2.30.payara-p4</jersey.version>
         <jakarta.validation.version>2.0.2</jakarta.validation.version>
         <hibernate.validator.version>6.1.5.Final</hibernate.validator.version>
         <hibernate.validator-cdi.version>6.1.5.Final</hibernate.validator-cdi.version>
@@ -234,7 +234,7 @@
         <jakarta-platform.version>8.0.0</jakarta-platform.version>
         <microprofile-release.version>3.3</microprofile-release.version>
         <microprofile-opentracing.version>2.0</microprofile-opentracing.version>
-        <microprofile-config.version>1.4</microprofile-config.version>
+        <microprofile-config.version>2.0</microprofile-config.version>
         <microprofile-fault-tolerance.version>3.0</microprofile-fault-tolerance.version>
         <microprofile-jwt-auth.version>1.2.1</microprofile-jwt-auth.version>
         <microprofile-healthcheck.version>3.0</microprofile-healthcheck.version>
