@@ -45,7 +45,7 @@
     <parent>
         <groupId>fish.payara.server.internal.osgi-platforms</groupId>
         <artifactId>osgi-platforms</artifactId>
-        <version>5.25.0-SNAPSHOT</version>
+        <version>5.25.0</version>
     </parent>
 
     <artifactId>osgi-container</artifactId>
