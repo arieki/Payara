@@ -41,6 +41,7 @@ package fish.payara.nucleus.microprofile.config.spi;
 
 import javax.validation.constraints.Min;
 
+import fish.payara.nucleus.microprofile.config.source.DirConfigSource;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.glassfish.api.admin.config.ConfigExtension;
@@ -58,6 +59,14 @@ import org.jvnet.hk2.config.Configured;
  */
 @Configured(name="microprofile-config")
 public interface MicroprofileConfigConfiguration extends ConfigExtension {
+    
+    @Attribute(defaultValue = DirConfigSource.DEFAULT_DIR, dataType = String.class)
+    String getSecretDir();
+    void setSecretDir(String directory);
+    
+    @Attribute(defaultValue = "90", dataType = Integer.class)
+    String getSecretDirOrdinality();
+    void setSecretDirOrdinality(String message);
 
     @Attribute(defaultValue = "110", dataType = Integer.class)
     String getDomainOrdinality();
@@ -86,14 +95,6 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     @Attribute(defaultValue = "115", dataType = Integer.class)
     String getJNDIOrdinality();
     void setJNDIOrdinality(String ordinality);
-    
-    @Attribute(defaultValue = "secrets", dataType = String.class)
-    String getSecretDir();
-    void setSecretDir(String directory);
-    
-    @Attribute(defaultValue = "90", dataType = Integer.class)
-    String getSecretDirOrdinality();
-    void setSecretDirOrdinality(String ordinality);
 
     @Attribute(defaultValue = "105", dataType = Integer.class)
     String getPasswordOrdinality();
