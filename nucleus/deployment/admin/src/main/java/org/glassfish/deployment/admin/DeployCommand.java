@@ -172,7 +172,6 @@ public class DeployCommand extends DeployCommandParameters implements AdminComma
     private ArchiveHandler archiveHandler;
     private File expansionDir;
     private ReadableArchive archive;
-    private ActionReport report;
     private DeploymentTracing timing;
     private transient DeployCommandSupplementalInfo suppInfo;
     private static final String EJB_JAR_XML = "META-INF/ejb-jar.xml";
