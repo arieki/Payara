@@ -147,5 +147,11 @@
             <version>${opentracing.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>fish.payara.extensions.notifiers</groupId>
+            <artifactId>notifier-backwards-compatibility-config</artifactId>
+            <version>${payara.notifiers.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>

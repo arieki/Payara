@@ -44,7 +44,7 @@
     <parent>
         <groupId>fish.payara.server.internal.packager</groupId>
         <artifactId>packages</artifactId>
-        <version>5.25.0-SNAPSHOT</version>
+        <version>5.26.0-SNAPSHOT</version>
     </parent>
     <artifactId>notification-teams</artifactId>
     <name>Teams Notification Package</name>
@@ -126,15 +126,13 @@
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>teams-notifier-console-plugin</artifactId>
-            <version>${notifiers.teams.version}</version>
-            <classifier>enterprise</classifier>
+            <version>${payara.notifiers.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>teams-notifier-core</artifactId>
-            <version>${notifiers.teams.version}</version>
-            <classifier>enterprise</classifier>
+            <version>${payara.notifiers.version}</version>
         </dependency>
     </dependencies>
 </project>

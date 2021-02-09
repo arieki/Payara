@@ -64,5 +64,11 @@
             <artifactId>internal-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>fish.payara.extensions.notifiers</groupId>
+            <artifactId>notifier-backwards-compatibility-config</artifactId>
+            <version>${payara.notifiers.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>

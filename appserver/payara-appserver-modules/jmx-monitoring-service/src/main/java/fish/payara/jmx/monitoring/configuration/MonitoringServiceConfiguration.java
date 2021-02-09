@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) [2016-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016-2021 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -41,9 +41,11 @@ package fish.payara.jmx.monitoring.configuration;
 import java.beans.PropertyVetoException;
 import java.util.List;
 
+import fish.payara.extensions.notifiers.compat.config.Notifier;
 import org.glassfish.api.admin.config.ConfigExtension;
 import org.jvnet.hk2.config.Attribute;
 import org.jvnet.hk2.config.Configured;
+import org.jvnet.hk2.config.DuckTyped;
 import org.jvnet.hk2.config.Element;
 
 /**
@@ -99,5 +101,26 @@ public interface MonitoringServiceConfiguration extends ConfigExtension {
      */
     @Element("notifier")
     List<String> getNotifierList();
-    
+
+    @Element("*")
+    @Deprecated
+    List<Notifier> getLegacyNotifierList();
+
+    @DuckTyped
+    @Deprecated
+    <T extends Notifier> T getLegacyNotifierByType(Class<T> type);
+
+    class Duck {
+
+        public static <T extends Notifier> T getLegacyNotifierByType(MonitoringServiceConfiguration config, Class<T> type) {
+            for (Notifier notifier : config.getLegacyNotifierList()) {
+                try {
+                    return type.cast(notifier);
+                } catch (Exception e) {
+                    // Do nothing
+                }
+            }
+            return null;
+        }
+    }
 }

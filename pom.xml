@@ -224,14 +224,7 @@
         <monitoring-console-process.version>1.7</monitoring-console-process.version>
         <monitoring-console-webapp.version>1.7</monitoring-console-webapp.version>
         <validation.xml.root>${project.build.outputDirectory}</validation.xml.root>
-        <notifiers.datadog.version>1.0.1</notifiers.datadog.version>
-        <notifiers.discord.version>1.0.1</notifiers.discord.version>
-        <notifiers.email.version>1.0.1</notifiers.email.version>
-        <notifiers.newrelic.version>1.0.1</notifiers.newrelic.version>
-        <notifiers.slack.version>1.0.1</notifiers.slack.version>
-        <notifiers.snmp.version>1.0.1</notifiers.snmp.version>
-        <notifiers.teams.version>1.0.1</notifiers.teams.version>
-        <notifiers.xmpp.version>1.0.1</notifiers.xmpp.version>
+        <payara.notifiers.version>1.0-enterprise-SNAPSHOT</payara.notifiers.version>
         <smack.version>4.1.9</smack.version>
         <jxmpp.version>0.4.2</jxmpp.version>
         <xpp3.version>1.1.4c_7</xpp3.version>

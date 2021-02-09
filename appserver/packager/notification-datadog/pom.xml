@@ -44,7 +44,7 @@
     <parent>
         <groupId>fish.payara.server.internal.packager</groupId>
         <artifactId>packages</artifactId>
-        <version>5.25.0-SNAPSHOT</version>
+        <version>5.26.0-SNAPSHOT</version>
     </parent>
     <artifactId>notification-datadog</artifactId>
     <name>Datadog Notification Package</name>
@@ -126,15 +126,18 @@
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>datadog-notifier-console-plugin</artifactId>
-            <version>${notifiers.datadog.version}</version>
-            <classifier>enterprise</classifier>
+            <version>${payara.notifiers.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>datadog-notifier-core</artifactId>
-            <version>${notifiers.datadog.version}</version>
-            <classifier>enterprise</classifier>
+            <version>${payara.notifiers.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.extensions.notifiers</groupId>
+            <artifactId>datadog-notifier-backwards-compatibility</artifactId>
+            <version>${payara.notifiers.version}</version>
         </dependency>
     </dependencies>
 </project>
