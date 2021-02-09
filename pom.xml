@@ -224,7 +224,7 @@
         <monitoring-console-process.version>1.7</monitoring-console-process.version>
         <monitoring-console-webapp.version>1.7</monitoring-console-webapp.version>
         <validation.xml.root>${project.build.outputDirectory}</validation.xml.root>
-        <payara.notifiers.version>1.0-enterprise-SNAPSHOT</payara.notifiers.version>
+        <payara.notifiers.version>1.0-enterprise</payara.notifiers.version>
         <smack.version>4.1.9</smack.version>
         <jxmpp.version>0.4.2</jxmpp.version>
         <xpp3.version>1.1.4c_7</xpp3.version>
