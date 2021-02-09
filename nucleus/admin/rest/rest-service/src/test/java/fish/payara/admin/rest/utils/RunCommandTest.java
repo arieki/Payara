@@ -1,7 +1,7 @@
 /*
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- *  Copyright (c) [2019-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2019-2021 Payara Foundation and/or its affiliates. All rights reserved.
  * 
  *  The contents of this file are subject to the terms of either the GNU
  *  General Public License Version 2 only ("GPL") or the Common Development
@@ -57,6 +57,7 @@ import com.sun.enterprise.module.bootstrap.StartupContext;
 import fish.payara.audit.AdminAuditConfiguration;
 import fish.payara.audit.AdminAuditService;
 import fish.payara.audit.admin.GetAdminAuditServiceConfiguration;
+import fish.payara.extensions.notifiers.compat.config.Notifier;
 import fish.payara.internal.notification.PayaraNotification;
 import fish.payara.internal.notification.PayaraNotificationFactory;
 import fish.payara.internal.notification.PayaraNotifier;
@@ -188,6 +189,16 @@ public class RunCommandTest {
         @Override
         public List<String> getNotifierList() {
             return new ArrayList<>();
+        }
+
+        @Override
+        public List<Notifier> getLegacyNotifierList() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public <T extends Notifier> T getLegacyNotifierByType(Class<T> type) {
+            throw new UnsupportedOperationException("Not supported yet.");
         }
 
         @Override
