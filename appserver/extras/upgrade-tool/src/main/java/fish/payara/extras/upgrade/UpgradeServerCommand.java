@@ -76,7 +76,7 @@ import org.jvnet.hk2.annotations.Service;
  */
 @Service(name = "upgrade-server")
 @PerLookup
-public class UpgradeServerCommand extends RollbackUpgradeCommand {
+public class UpgradeServerCommand extends BaseUpgradeCommand {
     
     @Param
     private String username;
@@ -111,12 +111,9 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
 
     @Override
     public int executeCommand() {
-        glassfishDir = getDomainsDir().getParent();
-
         String url = NEXUS_URL + distribution + "/" + version + "/" + distribution + "-" + version + ZIP;
         String basicAuthString = username + ":" + nexusPassword;
         String authBytes = "Basic " + Base64.getEncoder().encodeToString(basicAuthString.getBytes());
-        
         
         try {
             LOGGER.log(Level.INFO, "Downloading new Payara version...");
@@ -165,7 +162,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         
         if (stage) {
             LOGGER.log(Level.INFO,
-                    "Upgrade successfully staged, please run the commit script to apply the upgrade.");
+                    "Upgrade successfully staged, please run the applyStagedUpgrade script to apply the upgrade.");
         }
 
         return SUCCESS;
@@ -243,7 +240,7 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     private void moveExtracted(Path newVersion) throws IOException {
         LOGGER.log(Level.FINE, "Copying extracted files");
         for (String folder : MOVEFOLDERS) {
-            Path sourcePath = newVersion.resolve("payara5" + File.separator + "glassfish" + folder);
+            Path sourcePath = newVersion.resolve("payara5" + File.separator + "glassfish" + File.separator + folder);
             Path targetPath = Paths.get(glassfishDir, folder);
             if (stage) {
                 targetPath = Paths.get(targetPath + ".new");

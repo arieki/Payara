@@ -40,36 +40,18 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.admin.servermgmt.cli.LocalDomainCommand;
-import com.sun.enterprise.config.serverbeans.Domain;
-import com.sun.enterprise.config.serverbeans.Node;
-import com.sun.enterprise.config.serverbeans.SshAuth;
-import com.sun.enterprise.config.serverbeans.SshConnector;
-import com.sun.enterprise.universal.process.ProcessManager;
-import com.sun.enterprise.universal.process.ProcessManagerException;
-import com.sun.enterprise.util.SystemPropertyConstants;
+import com.sun.enterprise.util.OS;
+import org.glassfish.api.admin.CommandException;
+import org.glassfish.api.admin.CommandValidationException;
+import org.glassfish.hk2.api.PerLookup;
+import org.jvnet.hk2.annotations.Service;
+
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.inject.Inject;
-import org.glassfish.api.admin.CommandException;
-import org.glassfish.hk2.api.PerLookup;
-import org.glassfish.hk2.api.ServiceLocator;
-import org.jvnet.hk2.annotations.Service;
-import org.jvnet.hk2.config.ConfigParser;
-import org.jvnet.hk2.config.DomDocument;
 
 /**
  * Rolls back an upgrade
@@ -77,57 +59,22 @@ import org.jvnet.hk2.config.DomDocument;
  */
 @Service(name = "rollback-server")
 @PerLookup
-public class RollbackUpgradeCommand extends LocalDomainCommand {
-    
-    protected static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
-    protected static final int DEFAULT_TIMEOUT_MSEC = 300000;
-    
-    protected String glassfishDir;
-    
-    @Inject
-    protected ServiceLocator habitat;
+public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
-    /**
-     * Folders that are moved in the upgrade process
-     */
-    static final String[] MOVEFOLDERS = {
-            File.separator + "common",
-            File.separator + "config" + File.separator + "branding",
-            File.separator + "h2db" + File.separator + "license.html",
-            File.separator + "h2db" + File.separator + "service",
-            File.separator + ".." + File.separator + "h2db" + File.separator + "license.html",
-            File.separator + ".." + File.separator + "h2db" + File.separator + "service",
-            File.separator + "legal",
-            File.separator + "modules",
-            File.separator + "osgi",
-            File.separator + "lib" + File.separator + "appclient",
-            File.separator + "lib" + File.separator + "appserv-rt.jar",
-            File.separator + "lib" + File.separator + "asadmin",
-            File.separator + "lib" + File.separator + "client",
-            File.separator + "lib" + File.separator + "deployment",
-            File.separator + "lib" + File.separator + "dtds",
-            File.separator + "lib" + File.separator + "embedded",
-            File.separator + "lib" + File.separator + "gf-client.jar",
-            File.separator + "lib" + File.separator + "grizzly-npn-api.jar",
-            File.separator + "lib" + File.separator + "grizzly-npn-bootstrap.jar",
-            File.separator + "lib" + File.separator + "install",
-            File.separator + "lib" + File.separator + "javaee.jar",
-            File.separator + "lib" + File.separator + "jndi-properties.jar",
-            File.separator + "lib" + File.separator + "monitor",
-            File.separator + "lib" + File.separator + "package-appclient.xml",
-            File.separator + "lib" + File.separator + "schemas",
-            File.separator + ".." + File.separator + "README.txt",
-            File.separator + ".." + File.separator + "LICENSE.txt",
-            File.separator + ".." + File.separator + "mq" + File.separator + "etc",
-            File.separator + ".." + File.separator + "mq" + File.separator + "examples",
-            File.separator + ".." + File.separator + "mq" + File.separator + "javadoc",
-            File.separator + ".." + File.separator + "mq" + File.separator + "legal",
-            File.separator + ".." + File.separator + "mq" + File.separator + "lib"};
+    @Override
+    protected void validate() throws CommandException {
+        // Perform usual validation; we don't want to skip it or alter it in anyway, we just want to add to it.
+        super.validate();
+
+        if (OS.isWindows()) {
+            throw new CommandValidationException(
+                    "Command not supported on Windows. Please use the rollbackUpgrade script.");
+        }
+    }
 
     @Override
     protected int executeCommand() {
         try {
-            glassfishDir = getDomainsDir().getParent();
             if (!Paths.get(glassfishDir, "/modules.old").toFile().exists()) {
                 LOGGER.log(Level.SEVERE, "No old version found to rollback");
                 return ERROR;
@@ -161,82 +108,6 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
         }
     }
 
-    protected void updateNodes() throws MalformedURLException {
-        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
-        for (File domaindir : domaindirs) {
-            File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
-            ConfigParser parser = new ConfigParser(habitat);
-            try {
-                parser.logUnrecognisedElements(false);
-            } catch (NoSuchMethodError noSuchMethodError) {
-                LOGGER.log(Level.FINE,
-                        "Using a version of ConfigParser that does not support disabling log messages via method",
-                        noSuchMethodError);
-            }
-
-            URL domainURL = domainXMLFile.toURI().toURL();
-            DomDocument doc = parser.parse(domainURL);
-            LOGGER.log(Level.INFO, "Updating nodes for domain " + domaindir.getName());
-            for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
-                if (node.getType().equals("SSH")) {
-                    updateSSHNode(node);
-                }
-            }
-        }
-    }
-    
-    protected void updateSSHNode(Node node) {
-        LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
-        ArrayList<String> command = new ArrayList<>();
-        command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
-        command.add("--interactive=false");
-        command.add("--passwordfile");
-        command.add("-");
-        
-        command.add("install-node-ssh");
-        command.add("--installdir");
-        command.add(node.getInstallDir());
-
-        command.add("--force"); //override files already there
-
-        SshConnector sshConnector = node.getSshConnector();
-        command.add("--sshport");
-        command.add(sshConnector.getSshPort());
-        SshAuth sshAuth = sshConnector.getSshAuth();
-        command.add("--sshuser");
-        command.add(sshAuth.getUserName());
-        if (ok(sshAuth.getKeyfile())) {
-            command.add("--sshkeyfile");
-            command.add(sshAuth.getKeyfile());
-        }
-        
-        command.add(node.getNodeHost());
-        
-        ProcessManager processManager = new ProcessManager(command);
-        processManager.setStdinLines(getPasswords(sshAuth));
-        processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
-        processManager.setEcho(logger.isLoggable(Level.SEVERE));
-
-        try {
-            processManager.execute();
-        } catch (ProcessManagerException ex) {
-            logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
-        }
-    }
-
-    protected List<String> getPasswords(SshAuth auth) {
-        List<String> sshPasswords = new ArrayList<>();
-
-        if (ok(auth.getPassword())) {
-            sshPasswords.add("AS_ADMIN_SSHPASSWORD=" + auth.getPassword());
-        }
-        if (ok(auth.getKeyPassphrase())) {
-            sshPasswords.add("AS_ADMIN_SSHKEYPASSPHRASE=" + auth.getKeyPassphrase());
-        }
-
-        return sshPasswords;
-    }
-
     private void restoreDomains() throws CommandException {
         LOGGER.log(Level.INFO, "Restoring domain configs");
         File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
@@ -245,31 +116,5 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
             restoreDomainCommand.execute("restore-domain", domaindir.getName());
         }
     }
-    
-    class DeleteFileVisitor implements FileVisitor<Path> {
 
-        @Override
-        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-                return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            arg0.toFile().delete();
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
-            LOGGER.log(Level.SEVERE, "File could not deleted: {0}", arg0.toString());
-            throw arg1;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
-            arg0.toFile().delete();
-            return FileVisitResult.CONTINUE;
-        }
-        
-    }
 }
