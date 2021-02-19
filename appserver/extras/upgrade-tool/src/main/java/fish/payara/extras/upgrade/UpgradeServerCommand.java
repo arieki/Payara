@@ -61,8 +61,12 @@ import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import com.sun.enterprise.util.OS;
+import org.glassfish.api.ExecutionContext;
 import org.glassfish.api.Param;
+import org.glassfish.api.ParamDefaultCalculator;
 import org.glassfish.api.admin.CommandException;
+import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
@@ -86,10 +90,25 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
     @Param
     private String version;
 
+    @Param(name = "stage", optional = true, defaultCalculator = DefaultStageParamCalculator.class)
+    private boolean stage;
+
     private static final String NEXUS_URL = System.getProperty("fish.payara.upgrade.repo.url",
             "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
-    
+
+    @Override
+    protected void validate() throws CommandException {
+        // Perform usual validation; we don't want to skip it or alter it in anyway, we just want to add to it
+        super.validate();
+
+        // Check that someone hasn't manually specified --stage=false, on Windows it should default to true since
+        // in-place upgrades aren't supported
+        if (OS.isWindows() && !stage) {
+            throw new CommandValidationException("Non-staged upgrades are not supported on Windows.");
+        }
+    }
+
     @Override
     public int executeCommand() {
         glassfishDir = getDomainsDir().getParent();
@@ -125,22 +144,30 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
                 return ERROR;
             }
 
-            moveFiles();
-            moveExtracted(unzippedDirectory);
+            cleanupExisting();
+            moveFiles(unzippedDirectory);
 
             updateNodes();
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();
             try {
-                undoMoveFiles();
+                if (stage) {
+                    deleteStagedInstall();
+                } else {
+                    undoMoveFiles();
+                }
             } catch (IOException ex1) {
                 LOGGER.log(Level.WARNING, "Failed to restore previous state", ex1);
             }
             return ERROR;
         }
         
-        
+        if (stage) {
+            LOGGER.log(Level.INFO,
+                    "Upgrade successfully staged, please run the commit script to apply the upgrade.");
+        }
+
         return SUCCESS;
     }
     
@@ -178,26 +205,60 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         }
     }
     
-    private void moveFiles() throws IOException {
+    private void cleanupExisting() throws IOException {
         LOGGER.log(Level.FINE, "Deleting old server backup if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        Path oldModules = Paths.get(glassfishDir, "/modules.old");
+        Path oldModules = Paths.get(glassfishDir, "modules.old");
         if (oldModules.toFile().exists()) {
             for (String folder : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
             }
         }
-        LOGGER.log(Level.FINE, "Moving files to old");
-        for (String folder : MOVEFOLDERS) {
-            Files.move(Paths.get(glassfishDir, folder), Paths.get(glassfishDir, folder + ".old"), StandardCopyOption.REPLACE_EXISTING);
+        deleteStagedInstall();
+    }
+
+    private void deleteStagedInstall() throws IOException {
+        LOGGER.log(Level.FINE, "Deleting staged install if present");
+        DeleteFileVisitor visitor = new DeleteFileVisitor();
+        Path newModules = Paths.get(glassfishDir, "modules.new");
+        if (newModules.toFile().exists()) {
+            for (String folder : MOVEFOLDERS) {
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
+            }
         }
+    }
+
+    private void moveFiles(Path newVersion) throws IOException {
+        if (!stage) {
+            LOGGER.log(Level.FINE, "Moving files to old");
+            for (String folder : MOVEFOLDERS) {
+                Files.move(Paths.get(glassfishDir, folder), Paths.get(glassfishDir, folder + ".old"),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+
+        moveExtracted(newVersion);
     }
     
     private void moveExtracted(Path newVersion) throws IOException {
-        LOGGER.log(Level.FINE, "Moving extracted files");
-        CopyFileVisitor visitor = new CopyFileVisitor(newVersion);
+        LOGGER.log(Level.FINE, "Copying extracted files");
         for (String folder : MOVEFOLDERS) {
-            Files.walkFileTree(newVersion.resolve("payara5/glassfish" + folder), visitor);
+            Path sourcePath = newVersion.resolve("payara5" + File.separator + "glassfish" + folder);
+            Path targetPath = Paths.get(glassfishDir, folder);
+            if (stage) {
+                targetPath = Paths.get(targetPath + ".new");
+            }
+
+            if (Paths.get(glassfishDir, folder).toFile().isDirectory()) {
+                if (!targetPath.toFile().exists()) {
+                    Files.createDirectory(targetPath);
+                }
+
+                CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
+                Files.walkFileTree(sourcePath, visitor);
+            } else {
+                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
     }
     
@@ -206,15 +267,16 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         for (String folder : MOVEFOLDERS) {
             Files.move(Paths.get(glassfishDir, folder + ".old"), Paths.get(glassfishDir, folder), StandardCopyOption.REPLACE_EXISTING);
         }
-        
     }
 
     private class CopyFileVisitor implements FileVisitor<Path> {
         
-        private final Path newVersionGlassfishDir;
+        private final Path sourcePath;
+        private final Path targetPath;
 
-        public CopyFileVisitor(Path newVersion) {
-            this.newVersionGlassfishDir = newVersion.resolve("payara5/glassfish");
+        public CopyFileVisitor(Path sourcePath, Path targetPath) {
+            this.sourcePath = sourcePath;
+            this.targetPath = targetPath;
         }
 
         @Override
@@ -224,13 +286,15 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
 
         @Override
         public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            Path resolved = Paths.get(glassfishDir).resolve(newVersionGlassfishDir.relativize(arg0));
-            File parentDirFile = resolved.toFile().getParentFile();
-            if (!parentDirFile.exists()) {
-                parentDirFile.mkdirs();
+            Path resolvedPath = targetPath.resolve(sourcePath.relativize(arg0));
+
+            File parentFile = resolvedPath.toFile().getParentFile();
+            if (!parentFile.exists()) {
+                parentFile.mkdirs();
             }
-            
-            Files.copy(arg0, resolved, StandardCopyOption.REPLACE_EXISTING);
+
+            Files.copy(arg0, resolvedPath, StandardCopyOption.REPLACE_EXISTING);
+
             return FileVisitResult.CONTINUE;
         }
 
@@ -246,5 +310,18 @@ public class UpgradeServerCommand extends RollbackUpgradeCommand {
         }
         
     }
-    
+
+    /**
+     * Class that calculates the default parameter value for --stage. To preserve the original functionality, the stage
+     * param would have a default value of false. Since in-place upgrades aren't supported on Windows due to
+     * file-locking, and so that a user doesn't have to always specify --stage=true if on Windows, this calculator makes
+     * the default value true if on Windows.
+     */
+    public static class DefaultStageParamCalculator extends ParamDefaultCalculator {
+
+        @Override
+        public String defaultValue(ExecutionContext context) {
+            return Boolean.toString(OS.isWindows());
+        }
+    }
 }

@@ -90,13 +90,39 @@ public class RollbackUpgradeCommand extends LocalDomainCommand {
     /**
      * Folders that are moved in the upgrade process
      */
-    static final String[] MOVEFOLDERS = {"/common", "/config/branding", "/h2db/license.html", "/h2db/service",
-            "/../h2db/license.html", "/../h2db/service", "/legal", "/modules", "/osgi",
-            "/lib/appclient", "/lib/appserv-rt.jar", "/lib/asadmin", "/lib/client", "/lib/deployment", "/lib/dtds",
-            "/lib/embedded", "/lib/gf-client.jar", "/lib/grizzly-npn-api.jar", "/lib/grizzly-npn-bootstrap.jar",
-            "/lib/install", "/lib/javaee.jar", "/lib/jndi-properties.jar", "/lib/monitor",
-            "/lib/package-appclient.xml", "/lib/schemas", "/../README.txt", "/../LICENSE.txt", "/../mq/etc",
-            "/../mq/examples", "/../mq/javadoc", "/../mq/legal", "/../mq/lib"};
+    static final String[] MOVEFOLDERS = {
+            File.separator + "common",
+            File.separator + "config" + File.separator + "branding",
+            File.separator + "h2db" + File.separator + "license.html",
+            File.separator + "h2db" + File.separator + "service",
+            File.separator + ".." + File.separator + "h2db" + File.separator + "license.html",
+            File.separator + ".." + File.separator + "h2db" + File.separator + "service",
+            File.separator + "legal",
+            File.separator + "modules",
+            File.separator + "osgi",
+            File.separator + "lib" + File.separator + "appclient",
+            File.separator + "lib" + File.separator + "appserv-rt.jar",
+            File.separator + "lib" + File.separator + "asadmin",
+            File.separator + "lib" + File.separator + "client",
+            File.separator + "lib" + File.separator + "deployment",
+            File.separator + "lib" + File.separator + "dtds",
+            File.separator + "lib" + File.separator + "embedded",
+            File.separator + "lib" + File.separator + "gf-client.jar",
+            File.separator + "lib" + File.separator + "grizzly-npn-api.jar",
+            File.separator + "lib" + File.separator + "grizzly-npn-bootstrap.jar",
+            File.separator + "lib" + File.separator + "install",
+            File.separator + "lib" + File.separator + "javaee.jar",
+            File.separator + "lib" + File.separator + "jndi-properties.jar",
+            File.separator + "lib" + File.separator + "monitor",
+            File.separator + "lib" + File.separator + "package-appclient.xml",
+            File.separator + "lib" + File.separator + "schemas",
+            File.separator + ".." + File.separator + "README.txt",
+            File.separator + ".." + File.separator + "LICENSE.txt",
+            File.separator + ".." + File.separator + "mq" + File.separator + "etc",
+            File.separator + ".." + File.separator + "mq" + File.separator + "examples",
+            File.separator + ".." + File.separator + "mq" + File.separator + "javadoc",
+            File.separator + ".." + File.separator + "mq" + File.separator + "legal",
+            File.separator + ".." + File.separator + "mq" + File.separator + "lib"};
 
     @Override
     protected int executeCommand() {
