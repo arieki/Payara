@@ -14,8 +14,6 @@ DESCRIPTION
        The upgrade-server subcommand upgrades Payara Server to the specified
        version and distribution along with all ssh nodes in the domain.xml.
 
-       This subcommand is supported in POSIX-based systems only.
-
 OPTIONS
        --help, -?
            Displays the help text for the subcommand.
@@ -31,6 +29,15 @@ OPTIONS
            be payara, payara-web, payara-ml, or payara-web-ml. By default this
            is payara.
 
+       --stage
+           When enabled, the Payara Server being upgraded to is not installed
+           in-place, and is instead staged with ".new" suffixes. The user is
+           then expected to apply the upgrade using the supplied
+           applyStagedUpgrade script.
+           On Windows, this option is enabled by default and cannot be
+           disabled.
+           On Linux, this option defaults to false.
+
 EXAMPLES
        Example 1, Upgrading Payara Server
            In this example, a Payara Server Web domain is upgraded to version
@@ -38,6 +45,14 @@ EXAMPLES
 
                asadmin> upgrade-server --username example-user
                --distribution web --verson 5.23.1
+               Command upgrade-server executed successfully
+
+       Example 2, Staging Payara Server Upgrade
+           In this example, a Payara Server domain upgrade to version 5.26.1
+           is staged, ready for commit using the applyStagedUpgrade script
+
+               asadmin> upgrade-server --username example-user --verson 5.26.1 --stage
+               Upgrade successfully staged, please run the applyStagedUpgrade script to apply the upgrade.
                Command upgrade-server executed successfully
 
 EXIT STATUS
