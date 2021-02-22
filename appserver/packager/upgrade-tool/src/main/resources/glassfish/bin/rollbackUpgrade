@@ -47,7 +47,7 @@ esac
 
 . "${AS_INSTALL}/config/upgrade-tool.properties"
 
-for i in $(echo ${fish.payara.extras.upgrade.moveDirs} | sed "s/,/ /g")
+for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to new"
     mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.new

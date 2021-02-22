@@ -250,12 +250,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 if (!targetPath.toFile().exists()) {
                     Files.createDirectory(targetPath);
                 }
-
-                CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
-                Files.walkFileTree(sourcePath, visitor);
-            } else {
-                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
             }
+
+            CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
+            Files.walkFileTree(sourcePath, visitor);
         }
     }
     

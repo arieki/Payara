@@ -39,6 +39,10 @@ import java.util.logging.Logger;
 public abstract class BaseUpgradeCommand extends LocalDomainCommand {
 
     protected static final Logger LOGGER = Logger.getLogger(CLICommand.class.getPackage().getName());
+
+    // The property present in the upgrade-tool properties file
+    protected static final String PAYARA_UPGRADE_DIRS_PROP = "PAYARA_UPGRADE_DIRS";
+
     protected static final int DEFAULT_TIMEOUT_MSEC = 300000;
 
     protected String glassfishDir;
@@ -71,7 +75,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         }
 
         // Format property
-        String moveDirsPropertyString = properties.getProperty("fish.payara.extras.upgrade.moveDirs");
+        String moveDirsPropertyString = properties.getProperty(PAYARA_UPGRADE_DIRS_PROP);
 
         if (!StringUtils.ok(moveDirsPropertyString)) {
             throw new CommandValidationException("Error reading in expected fish.payara.extras.upgrade.moveDirs " +

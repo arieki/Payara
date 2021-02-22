@@ -49,7 +49,7 @@ exit /B 1
 call "%~dp0..\config\upgrade-tool.bat"
 
 
-for %%a in ("%fish.payara.extras.upgrade.moveDirs:,=" "%") do (
+for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     echo Moving %%a to new
     move %~dp0..\%%a %~dp0..\%%a.new
     echo Moving old %%a to expected location
