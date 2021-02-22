@@ -104,7 +104,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         super.validate();
 
         // Set up the install dir variable
-        glassfishDir = getDomainsDir().getParent();
+        glassfishDir = getInstallRootPath();
 
         // Initialise the MOVEFOLDERS variable
         initialiseMoveFolders();

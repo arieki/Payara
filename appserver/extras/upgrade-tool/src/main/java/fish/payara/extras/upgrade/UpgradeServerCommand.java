@@ -62,6 +62,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import com.sun.enterprise.util.OS;
+import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.ExecutionContext;
 import org.glassfish.api.Param;
 import org.glassfish.api.ParamDefaultCalculator;
@@ -198,10 +199,14 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     
     private void backupDomains() throws IOException, CommandException {
         LOGGER.log(Level.INFO, "Backing up domain configs");
-        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             CLICommand backupDomainCommand = CLICommand.getCommand(habitat, "backup-domain");
-            backupDomainCommand.execute("backup-domain", domaindir.getName());
+            if (StringUtils.ok(domainDirParam)) {
+                backupDomainCommand.execute("backup-domain", "--domaindir", domainDirParam, domaindir.getName());
+            } else {
+                backupDomainCommand.execute("backup-domain", domaindir.getName());
+            }
         }
     }
     

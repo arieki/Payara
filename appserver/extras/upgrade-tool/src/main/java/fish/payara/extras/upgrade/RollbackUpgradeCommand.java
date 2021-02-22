@@ -41,6 +41,7 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.util.OS;
+import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
@@ -110,10 +111,15 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void restoreDomains() throws CommandException {
         LOGGER.log(Level.INFO, "Restoring domain configs");
-        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             CLICommand restoreDomainCommand = CLICommand.getCommand(habitat, "restore-domain");
-            restoreDomainCommand.execute("restore-domain", domaindir.getName());
+            if (StringUtils.ok(domainDirParam)) {
+                restoreDomainCommand.execute("restore-domain", "--domaindir", domainDirParam, domaindir.getName());
+            } else {
+                restoreDomainCommand.execute("restore-domain", domaindir.getName());
+            }
+
         }
     }
 
