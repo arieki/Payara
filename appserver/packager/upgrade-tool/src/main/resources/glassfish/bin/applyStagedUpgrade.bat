@@ -51,7 +51,7 @@ call "%~dp0..\config\upgrade-tool.bat"
 
 for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     echo Moving %%a to old
-    move %~dp0..\%%a %~dp0..\%%a.old
+    move %~dp0..\%%a %~dp0..\%%a.old > nul
     echo Moving staged %%a to expected location
-    move %~dp0..\%%a.new %~dp0..\%%a
+    move %~dp0..\%%a.new %~dp0..\%%a > nul
 )

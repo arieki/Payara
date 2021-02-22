@@ -51,9 +51,9 @@ call "%~dp0..\config\upgrade-tool.bat"
 
 for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     echo Moving %%a to new
-    move %~dp0..\%%a %~dp0..\%%a.new
+    move %~dp0..\%%a %~dp0..\%%a.new > nul
     echo Moving old %%a to expected location
-    move %~dp0..\%%a.old %~dp0..\%%a
+    move %~dp0..\%%a.old %~dp0..\%%a > nul
 )
 
 echo Please use the restore-domain ASadmin command to restore your desired domains.
