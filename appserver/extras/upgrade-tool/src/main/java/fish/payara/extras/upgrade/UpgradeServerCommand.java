@@ -144,7 +144,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             cleanupExisting();
             moveFiles(unzippedDirectory);
 
-            updateNodes();
+            // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
+            if (!stage) {
+                updateNodes();
+            }
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
             ex.printStackTrace();

@@ -54,3 +54,5 @@ do
     echo "Moving staged ${i} to expected location"
     mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
 done
+
+exec ${AS_INSTALL}/bin/asadmin _upgrade-nodes "$@"

@@ -56,4 +56,7 @@ for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     move %~dp0..\%%a.old %~dp0..\%%a > nul
 )
 
+REM Temporarily disabled - install-node-ssh command not working?
+REM call %~dp0..\bin\asadmin.bat _upgrade-nodes --rollback=true %*
+
 echo Please use the restore-domain ASadmin command to restore your desired domains.
