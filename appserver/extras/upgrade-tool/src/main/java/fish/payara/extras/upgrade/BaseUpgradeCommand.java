@@ -146,7 +146,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
     }
 
     protected void updateNodes() throws MalformedURLException {
-        File[] domaindirs = Paths.get(glassfishDir, "domains").toFile().listFiles(File::isDirectory);
+        File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
             ConfigParser parser = new ConfigParser(habitat);
