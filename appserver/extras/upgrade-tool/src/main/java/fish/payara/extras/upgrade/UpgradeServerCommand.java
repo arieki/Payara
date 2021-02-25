@@ -371,6 +371,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             BinDirPermissionFileVisitor visitor = new BinDirPermissionFileVisitor();
             if (stage) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
+            } else {
+                Files.walkFileTree(Paths.get(glassfishDir, folder), visitor);
             }
         }
     }
@@ -444,16 +446,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         @Override
         public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-            if (dir.getFileName().equals("bin")) {
-                LOGGER.log(Level.FINE, "Fixing permissions for files under " + dir.getFileName());
-                return FileVisitResult.CONTINUE;
-            }
-
-            return FileVisitResult.SKIP_SUBTREE;
+            // Since MOVEDIRS only contains the top-level directory of what we want to upgrade (e.g. mq), checking
+            // whether the name is equal to "bin" before skipping subtrees here is too heavy-handed
+            return FileVisitResult.CONTINUE;
         }
 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            // If we're not in a bin directory, skip
+            if (!file.getParent().getFileName().toString().equals("bin")) {
+                return FileVisitResult.SKIP_SIBLINGS;
+            }
+
             if (!OS.isWindows()) {
                 LOGGER.log(Level.FINER, "Fixing file permissions for " + file.getFileName());
                 Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
