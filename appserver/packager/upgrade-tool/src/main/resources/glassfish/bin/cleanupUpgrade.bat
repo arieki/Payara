@@ -74,3 +74,7 @@ for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
         del /S /Q %~dp0..\%%a.new > nul
     )
 )
+
+echo Deleting upgrade-tool property files
+del /Q %~dp0..\config\upgrade-tool.bat
+del /Q %~dp0..\config\upgrade-tool.properties

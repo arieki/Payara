@@ -83,11 +83,9 @@ public class UpgradeNodesCommand extends BaseUpgradeCommand {
                     rollbackCommand.execute("rollback-upgrade");
                 }
             } else {
-                // If we weren't using the command to roll back, instruct the user to use the script.
-                if (!rollback) {
-                    LOGGER.log(Level.SEVERE, "rollback-upgrade command not supported on Windows, " +
-                            "please use the rollbackUpgrade script to undo the changes", ex);
-                }
+                // If we're on Windows, instruct the user to use the script.
+                LOGGER.log(Level.SEVERE, "rollback-upgrade command not supported on Windows, " +
+                        "please use the rollbackUpgrade script to undo the changes", ex);
             }
 
             return ERROR;

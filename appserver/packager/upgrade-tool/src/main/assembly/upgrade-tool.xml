@@ -60,12 +60,5 @@
                 <include>bin/*</include>
             </includes>
         </fileSet>
-        <fileSet>
-            <directory>${temp.dir}/glassfish</directory>
-            <outputDirectory>${install.dir.name}/glassfish</outputDirectory>
-            <includes>
-                <include>config/*</include>
-            </includes>
-        </fileSet>
     </fileSets>
 </assembly>

@@ -59,3 +59,7 @@ do
         rm -rf ${AS_INSTALL}/${i}.new
     fi
 done
+
+echo "Deleting upgrade-tool property files"
+rm -f ${AS_INSTALL}/config/upgrade-tool.properties
+rm -f ${AS_INSTALL}/config/upgrade-tool.bat

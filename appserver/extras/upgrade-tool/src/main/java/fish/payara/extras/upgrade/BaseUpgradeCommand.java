@@ -48,20 +48,15 @@ import com.sun.enterprise.config.serverbeans.SshAuth;
 import com.sun.enterprise.config.serverbeans.SshConnector;
 import com.sun.enterprise.universal.process.ProcessManager;
 import com.sun.enterprise.universal.process.ProcessManagerException;
-import com.sun.enterprise.util.OS;
-import com.sun.enterprise.util.StringUtils;
 import com.sun.enterprise.util.SystemPropertyConstants;
 import org.glassfish.api.admin.CommandException;
-import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.config.ConfigParser;
 import org.jvnet.hk2.config.DomDocument;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
@@ -70,9 +65,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -93,10 +86,40 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
     @Inject
     protected ServiceLocator habitat;
 
-    /**
-     * Folders that are moved in the upgrade process - initialised in prepare with values from properties file
-     */
-    protected static String[] MOVEFOLDERS;
+    // Folders and files that are moved in the upgrade process
+    // This will be converted to use Windows file separators if required during validate()
+    protected static final String[] MOVEFOLDERS = {"common",
+            "config" + File.separator + "branding",
+            "h2db" + File.separator + "license.html",
+            "h2db" + File.separator + "service",
+            ".." + File.separator + "h2db" + File.separator + "license.html",
+            ".." + File.separator + "h2db" + File.separator + "service",
+            "legal",
+            "modules",
+            "osgi",
+            "lib" + File.separator + "appclient",
+            "lib" + File.separator + "appserv-rt.jar",
+            "lib" + File.separator + "asadmin",
+            "lib" + File.separator + "client",
+            "lib" + File.separator + "deployment",
+            "lib" + File.separator + "dtds",
+            "lib" + File.separator + "embedded",
+            "lib" + File.separator + "gf-client.jar",
+            "lib" + File.separator + "grizzly-npn-api.jar",
+            "lib" + File.separator + "grizzly-npn-bootstrap.jar",
+            "lib" + File.separator + "install",
+            "lib" + File.separator + "javaee.jar",
+            "lib" + File.separator + "jndi-properties.jar",
+            "lib" + File.separator + "monitor",
+            "lib" + File.separator + "package-appclient.xml",
+            "lib" + File.separator + "schemas",
+            ".." + File.separator + "README.txt",
+            ".." + File.separator + "LICENSE.txt",
+            ".." + File.separator + "mq" + File.separator + "etc",
+            ".." + File.separator + "mq" + File.separator + "examples",
+            ".." + File.separator + "mq" + File.separator + "javadoc",
+            ".." + File.separator + "mq" + File.separator + "legal",
+            ".." + File.separator + "mq" + File.separator + "lib"};
 
     @Override
     protected void validate() throws CommandException {
@@ -105,44 +128,6 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
 
         // Set up the install dir variable
         glassfishDir = getInstallRootPath();
-
-        // Initialise the MOVEFOLDERS variable
-        initialiseMoveFolders();
-    }
-
-    /**
-     * Initialises the MOVEFOLDERS variable using the upgrade-tool.properties file.
-     * @throws CommandException If there's an issue reading from the properties file
-     */
-    private void initialiseMoveFolders() throws CommandException {
-        // Read in properties file
-        Properties properties = new Properties();
-        try (InputStream input = new FileInputStream((Paths.get(glassfishDir, "config", "upgrade-tool.properties")).toFile())) {
-            properties.load(input);
-        } catch (IOException ioException) {
-            throw new CommandValidationException("Error reading in properties file for upgrade tool: \n", ioException);
-        }
-
-        // Format property
-        String moveDirsPropertyString = properties.getProperty(PAYARA_UPGRADE_DIRS_PROP);
-
-        if (!StringUtils.ok(moveDirsPropertyString)) {
-            throw new CommandValidationException("Error reading in expected fish.payara.extras.upgrade.moveDirs " +
-                    "property from upgrade-tool.properties: property is not present or has no value.");
-        }
-
-        // Split on comma to make each item unique
-        String[] splitMoveDirs =  moveDirsPropertyString.split(",");
-
-        // Replace any file separators as required for Windows
-        if (OS.isWindows()) {
-            for (int i = 0; i < splitMoveDirs.length; i++) {
-                splitMoveDirs[i] = splitMoveDirs[i].replace("/", "\\");
-            }
-        }
-
-        // Store finished array in class variable
-        MOVEFOLDERS = Arrays.copyOf(splitMoveDirs, splitMoveDirs.length);
     }
 
     protected void updateNodes() throws MalformedURLException {

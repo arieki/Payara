@@ -42,8 +42,10 @@ package fish.payara.extras.upgrade;
 import com.sun.enterprise.admin.cli.CLICommand;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -56,6 +58,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.zip.ZipEntry;
@@ -107,6 +110,84 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         // in-place upgrades aren't supported
         if (OS.isWindows() && !stage) {
             throw new CommandValidationException("Non-staged upgrades are not supported on Windows.");
+        }
+
+        // Create property files
+        createPropertiesFile();
+        createBatFile();
+    }
+
+    /**
+     * Creates the upgrade-tool.properties file expected to be used by the applyStagedUpgrade, cleanupUpgrade, and
+     * rollbackUpgrade scripts. If a file is already present, it will be deleted.
+     *
+     * @throws CommandValidationException If there's an issue deleting or creating the properties file
+     */
+    private void createPropertiesFile() throws CommandValidationException {
+        // Perform file separator substitution for Linux if required
+        String[] folders = Arrays.copyOf(MOVEFOLDERS, MOVEFOLDERS.length);
+        if (OS.isWindows()) {
+            for (int i = 0; i < folders.length; i++) {
+                folders[i] = folders[i].replace("\\", "/");
+            }
+        }
+
+        // Delete existing property file if present
+        Path upgradeToolPropertiesPath = Paths.get(glassfishDir, "config", "upgrade-tool.properties");
+        try {
+            Files.deleteIfExists(upgradeToolPropertiesPath);
+        } catch (IOException ioException) {
+            throw new CommandValidationException("Encountered an error trying to existing delete " +
+                    "upgrade-tool.properties file:\n", ioException);
+        }
+
+        // Create new property file and populate
+        try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(upgradeToolPropertiesPath.toFile()))) {
+            // Add variable name expected by scripts
+            bufferedWriter.append(PAYARA_UPGRADE_DIRS_PROP + "=");
+
+            // Add the move folders, separated by commas
+            bufferedWriter.append(String.join(",", folders));
+        } catch (IOException ioException) {
+            throw new CommandValidationException("Encountered an error trying to write upgrade-tool.properties file:\n",
+                    ioException);
+        }
+    }
+
+    /**
+     * Creates the upgrade-tool.bat file expected to be used by the applyStagedUpgrade.bat, cleanupUpgrade.bat, and
+     * rollbackUpgrade.bat scripts. If a file is already present, it will be deleted.
+     *
+     * @throws CommandValidationException If there's an issue deleting or creating the properties file
+     */
+    private void createBatFile() throws CommandValidationException {
+        // Perform file separator substitution for Windows if required
+        String[] folders = Arrays.copyOf(MOVEFOLDERS, MOVEFOLDERS.length);
+        if (!OS.isWindows()) {
+            for (int i = 0; i < folders.length; i++) {
+                folders[i] = folders[i].replace("/", "\\");
+            }
+        }
+
+        // Delete existing property file if present
+        Path upgradeToolBatPath = Paths.get(glassfishDir, "config", "upgrade-tool.bat");
+        try {
+            Files.deleteIfExists(upgradeToolBatPath);
+        } catch (IOException ioException) {
+            throw new CommandValidationException("Encountered an error trying to existing delete " +
+                    "upgrade-tool.bat file:\n", ioException);
+        }
+
+        // Create new property file and populate
+        try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(upgradeToolBatPath.toFile()))) {
+            // Add variable name expected by scripts
+            bufferedWriter.append("SET " + PAYARA_UPGRADE_DIRS_PROP + "=");
+
+            // Add the move folders, separated by commas
+            bufferedWriter.append(String.join(",", folders));
+        } catch (IOException ioException) {
+            throw new CommandValidationException("Encountered an error trying to write upgrade-tool.bat file:\n",
+                    ioException);
         }
     }
 

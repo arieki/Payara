@@ -76,7 +76,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
     @Override
     protected int executeCommand() {
         try {
-            if (!Paths.get(glassfishDir, "/modules.old").toFile().exists()) {
+            if (!Paths.get(glassfishDir, "modules.old").toFile().exists()) {
                 LOGGER.log(Level.SEVERE, "No old version found to rollback");
                 return ERROR;
             }
