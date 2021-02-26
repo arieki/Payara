@@ -454,16 +454,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
             // If we're not in a bin directory, skip
-            if (!file.getParent().getFileName().toString().equals("bin")) {
-                return FileVisitResult.SKIP_SIBLINGS;
+            if (file.getParent().getFileName().toString().equals("bin") ||
+                    file.getParent().getFileName().toString().equals("bin.new")) {
+
+                if (!OS.isWindows()) {
+                    LOGGER.log(Level.FINER, "Fixing file permissions for " + file.getFileName());
+                    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
+                }
+
+                return FileVisitResult.CONTINUE;
             }
 
-            if (!OS.isWindows()) {
-                LOGGER.log(Level.FINER, "Fixing file permissions for " + file.getFileName());
-                Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
-            }
-
-            return FileVisitResult.CONTINUE;
+            return FileVisitResult.SKIP_SIBLINGS;
         }
 
         @Override
