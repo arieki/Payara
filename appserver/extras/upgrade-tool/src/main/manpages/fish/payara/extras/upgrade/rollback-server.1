@@ -5,6 +5,7 @@ NAME
 
 SYNOPSIS
            rollback-server [--help]
+           [--domaindir domain-dir]
 
 DESCRIPTION
        The rollback-server subcommand rolls back an upgrade of Payara Server.
@@ -12,10 +13,18 @@ DESCRIPTION
        upgrade-server command
 
        This subcommand is supported in POSIX-based systems only.
+       The rollbackUpgrade script can be used in conjunction with the
+       restore-domain command on a Windows system.
 
 OPTIONS
        --help, -?
            Displays the help text for the subcommand.
+
+       --domaindir
+           Specifies the domain root directory, the parent directory of the
+           domain upon which the command will operate.
+
+           The default value is as-install/domains.
 
 EXAMPLES
        Example 1, Rolling back Payara Server
