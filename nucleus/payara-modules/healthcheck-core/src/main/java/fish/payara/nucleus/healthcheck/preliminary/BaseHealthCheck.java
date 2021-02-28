@@ -98,7 +98,7 @@ public abstract class BaseHealthCheck<O extends HealthCheckExecutionOptions, C e
     private final AtomicInteger checksDone = new AtomicInteger();
     private final AtomicInteger checksFailed = new AtomicInteger();
     private final AtomicBoolean inProcess = new AtomicBoolean(false);
-    private volatile HealthCheckResultStatus mostRecentCumulativeStatus;
+    private volatile HealthCheckResult mostRecentResult;
 
     public final HealthCheckResult doCheck() {
         if (!getOptions().isEnabled() || inProcess.compareAndSet(false, true)) {
@@ -106,7 +106,7 @@ public abstract class BaseHealthCheck<O extends HealthCheckExecutionOptions, C e
         }
         try {
             HealthCheckResult result = doCheckInternal();
-            mostRecentCumulativeStatus = result.getCumulativeStatus();
+            mostRecentResult = result;
             return result;
         } catch (Exception ex) {
             checksFailed.incrementAndGet();
@@ -121,7 +121,11 @@ public abstract class BaseHealthCheck<O extends HealthCheckExecutionOptions, C e
     public abstract O constructOptions(C c);
 
     public HealthCheckResultStatus getMostRecentCumulativeStatus() {
-        return mostRecentCumulativeStatus;
+        return mostRecentResult.getCumulativeStatus();
+    }
+    
+     public HealthCheckResult getMostRecentResult() {
+        return mostRecentResult;
     }
 
     public boolean isInProgress() {
@@ -139,6 +143,10 @@ public abstract class BaseHealthCheck<O extends HealthCheckExecutionOptions, C e
     public boolean isReady() {
         O options = getOptions();
         return !isInProgress() && options != null && options.isEnabled();
+    }
+    
+    public boolean isEnabled(){ 
+        return getOptions().isEnabled();
     }
 
     protected <T extends BaseHealthCheck> O postConstruct(T t, Class<C> checkerType) {
@@ -160,7 +168,8 @@ public abstract class BaseHealthCheck<O extends HealthCheckExecutionOptions, C e
         return new HealthCheckExecutionOptions(
                 Boolean.valueOf(checker.getEnabled()),
                 Long.parseLong(checker.getTime()),
-                asTimeUnit(checker.getUnit()));
+                asTimeUnit(checker.getUnit()),
+                Boolean.valueOf(checker.getAddToMicroProfileHealth()));
     }
 
     /**
