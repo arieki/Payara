@@ -58,6 +58,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.logging.Level;
@@ -226,6 +227,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             cleanupExisting();
             moveFiles(unzippedDirectory);
 
+            if (!OS.isWindows()) {
+                fixPermissions();
+            }
+
             // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
             if (!stage) {
                 updateNodes();
@@ -353,6 +358,48 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
     }
 
+    private void fixPermissions() throws IOException {
+        LOGGER.log(Level.FINE, "Fixing file permissions");
+        // Fix the permissions of any bin directories in MOVEFOLDERS
+        fixBinDirPermissions();
+        // Fix the permissions of nadmin (since it's not in a bin directory)
+        fixNadminPermissions();
+    }
+
+    private void fixBinDirPermissions() throws IOException {
+        for (String folder : MOVEFOLDERS) {
+            BinDirPermissionFileVisitor visitor = new BinDirPermissionFileVisitor();
+            if (stage) {
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
+            } else {
+                Files.walkFileTree(Paths.get(glassfishDir, folder), visitor);
+            }
+        }
+    }
+
+    private void fixNadminPermissions() throws IOException {
+        // Check that we're actually upgrading the payara5/glassfish/lib directory before messing with permissions
+        if (Arrays.stream(MOVEFOLDERS).anyMatch(folder -> folder.equals("lib"))) {
+            Path nadminPath = Paths.get(glassfishDir, "lib", "nadmin");
+            if (stage) {
+                nadminPath = Paths.get(glassfishDir, "lib.new", "nadmin");
+            }
+
+            if (nadminPath.toFile().exists()) {
+                Files.setPosixFilePermissions(nadminPath, PosixFilePermissions.fromString("rwxr-xr-x"));
+            }
+
+            Path nadminBatPath = Paths.get(glassfishDir, "lib", "nadmin.bat");
+            if (stage) {
+                nadminBatPath = Paths.get(glassfishDir, "lib.new", "nadmin.bat");
+            }
+
+            if (nadminBatPath.toFile().exists()) {
+                Files.setPosixFilePermissions(nadminBatPath, PosixFilePermissions.fromString("rwxr-xr-x"));
+            }
+        }
+    }
+
     private class CopyFileVisitor implements FileVisitor<Path> {
         
         private final Path sourcePath;
@@ -393,6 +440,44 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             return FileVisitResult.CONTINUE;
         }
         
+    }
+
+    private class BinDirPermissionFileVisitor implements FileVisitor<Path> {
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            // Since MOVEDIRS only contains the top-level directory of what we want to upgrade (e.g. mq), checking
+            // whether the name is equal to "bin" before skipping subtrees here is too heavy-handed
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            // If we're not in a bin directory, skip
+            if (file.getParent().getFileName().toString().equals("bin") ||
+                    file.getParent().getFileName().toString().equals("bin.new")) {
+
+                if (!OS.isWindows()) {
+                    LOGGER.log(Level.FINER, "Fixing file permissions for " + file.getFileName());
+                    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
+                }
+
+                return FileVisitResult.CONTINUE;
+            }
+
+            return FileVisitResult.SKIP_SIBLINGS;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            LOGGER.log(Level.SEVERE, "File could not visited: {0}", file.toString());
+            throw exc;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+            return FileVisitResult.CONTINUE;
+        }
     }
 
     /**

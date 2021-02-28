@@ -50,9 +50,12 @@ esac
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to old"
-    mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.old
+    mkdir ${AS_INSTALL}/${i}.old
+    mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
+
     echo "Moving staged ${i} to expected location"
-    mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
+    mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
+    rm -rf ${AS_INSTALL}/${i}.new
 done
 
 exec ${AS_INSTALL}/bin/asadmin _upgrade-nodes "$@"
