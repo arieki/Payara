@@ -105,5 +105,13 @@
             <version>${project.version}</version>
             <type>zip</type>
         </dependency>
+
+        <!-- JMS Notifier -->
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-jms-l10n</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+        </dependency>
     </dependencies>
 </project>
