@@ -62,7 +62,7 @@
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
-                    <skip>false</skip>
+                    <skip>${deploy.skip}</skip>
                 </configuration>
             </plugin>
             <plugin>

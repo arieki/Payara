@@ -111,6 +111,16 @@
             </snapshots>
         </repository>
         <repository>
+            <id>payara-nexus-enterprise-distributions</id>
+            <url>https://nexus.payara.fish/repository/payara-enterprise</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>payara-nexus-enterprise-artifacts</id>
             <url>https://nexus.payara.fish/repository/payara-enterprise-artifacts-private</url>
             <releases>
