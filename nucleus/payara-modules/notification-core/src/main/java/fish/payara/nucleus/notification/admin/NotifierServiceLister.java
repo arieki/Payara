@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2016-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016-2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,29 +37,16 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+// Portions Copyright [2019] Payara Foundation and/or affiliates
 
 package fish.payara.nucleus.notification.admin;
 
-import static fish.payara.internal.notification.NotifierUtils.getNotifierName;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
-import javax.inject.Inject;
-
 import com.sun.enterprise.config.serverbeans.Domain;
 import com.sun.enterprise.util.LocalStringManagerImpl;
-
+import fish.payara.nucleus.notification.service.BaseNotifierService;
 import org.glassfish.api.ActionReport;
 import org.glassfish.api.I18n;
-import org.glassfish.api.admin.AdminCommand;
-import org.glassfish.api.admin.AdminCommandContext;
-import org.glassfish.api.admin.CommandLock;
-import org.glassfish.api.admin.ExecuteOn;
-import org.glassfish.api.admin.RestEndpoint;
-import org.glassfish.api.admin.RestEndpoints;
-import org.glassfish.api.admin.RuntimeType;
+import org.glassfish.api.admin.*;
 import org.glassfish.config.support.CommandTarget;
 import org.glassfish.config.support.TargetType;
 import org.glassfish.hk2.api.PerLookup;
@@ -67,13 +54,16 @@ import org.glassfish.hk2.api.ServiceHandle;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.annotations.Service;
 
-import fish.payara.internal.notification.PayaraNotifier;
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 
 /**
  * @author mertcaliskan
  */
-@Service(name = "list-notifiers")
+@Service(name = "notifier-list-services")
 @PerLookup
 @CommandLock(CommandLock.LockType.NONE)
 @I18n("notifier.list.services")
@@ -82,7 +72,7 @@ import fish.payara.internal.notification.PayaraNotifier;
 @RestEndpoints({
         @RestEndpoint(configBean = Domain.class,
                 opType = RestEndpoint.OpType.GET,
-                path = "list-notifiers",
+                path = "notifier-list-services",
                 description = "Lists the names of all available notifier services")
 })
 public class NotifierServiceLister implements AdminCommand {
@@ -90,12 +80,12 @@ public class NotifierServiceLister implements AdminCommand {
     final private static LocalStringManagerImpl strings = new LocalStringManagerImpl(NotifierServiceLister.class);
 
     @Inject
-    private ServiceLocator habitat;
+    ServiceLocator habitat;
 
     @Override
     public void execute(AdminCommandContext context) {
         final ActionReport report = context.getActionReport();
-        List<ServiceHandle<PayaraNotifier>> allServiceHandles = habitat.getAllServiceHandles(PayaraNotifier.class);
+        List<ServiceHandle<BaseNotifierService>> allServiceHandles = habitat.getAllServiceHandles(BaseNotifierService.class);
 
         if (allServiceHandles.isEmpty()) {
 
@@ -109,12 +99,11 @@ public class NotifierServiceLister implements AdminCommand {
 
             Properties extrasProps = new Properties();
             ArrayList<String> names = new ArrayList<String>();
-            for (ServiceHandle<?> serviceHandle : allServiceHandles) {
-                final String notifierName = getNotifierName(serviceHandle.getActiveDescriptor());
-                sb.append("\t" + notifierName + "\n");
-                names.add(notifierName);
+            for (ServiceHandle serviceHandle : allServiceHandles) {
+                sb.append("\t" + serviceHandle.getActiveDescriptor().getName() + "\n");
+                names.add(serviceHandle.getActiveDescriptor().getName());
             }
-            extrasProps.put("availableServices", names);
+            extrasProps.put("avaliableServices", names);
             report.setMessage(sb.toString());
             report.setExtraProperties(extrasProps);
             report.setActionExitCode(ActionReport.ExitCode.SUCCESS);

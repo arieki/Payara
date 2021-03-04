@@ -166,6 +166,12 @@
         </dependency>
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-hipchat</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
             <artifactId>notification-slack</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
@@ -191,18 +197,6 @@
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
             <artifactId>notification-newrelic</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-        </dependency>
-        <dependency>
-            <groupId>fish.payara.server.internal.packager</groupId>
-            <artifactId>notification-discord</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-        </dependency>
-        <dependency>
-            <groupId>fish.payara.server.internal.packager</groupId>
-            <artifactId>notification-teams</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
         </dependency>

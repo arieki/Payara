@@ -1,3 +1,0 @@
-[submodule "appserver/extras/notifiers"]
-	path = appserver/extras/notifiers
-	url = https://github.com/payara/Notifiers

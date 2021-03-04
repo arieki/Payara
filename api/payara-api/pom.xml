@@ -92,6 +92,8 @@
                         <configuration>
                             <instructions>
                                 <Import-Package>
+                                    fish.payara.nucleus.notification.domain,
+                                    fish.payara.nucleus.notification.service,
                                     fish.payara.cdi.jsr107.implementation,
                                     io.opentracing,
                                     javax.inject,
@@ -138,6 +140,13 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
+            
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                </configuration>
             </plugin>
         </plugins>
     </build>

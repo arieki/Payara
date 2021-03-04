@@ -41,17 +41,20 @@ package fish.payara.jmx.monitoring;
 
 import com.sun.enterprise.util.LocalStringManagerImpl;
 import fish.payara.admin.amx.config.AMXConfiguration;
-import fish.payara.internal.notification.PayaraNotification;
-import fish.payara.internal.notification.PayaraNotificationFactory;
 import fish.payara.jmx.monitoring.configuration.MonitoredAttribute;
 import fish.payara.jmx.monitoring.configuration.MonitoringServiceConfiguration;
 import fish.payara.nucleus.executorservice.PayaraExecutorService;
+import fish.payara.nucleus.notification.NotificationService;
+import fish.payara.nucleus.notification.configuration.Notifier;
+import fish.payara.nucleus.notification.configuration.NotifierConfigurationType;
+import fish.payara.nucleus.notification.domain.NotifierExecutionOptions;
+import fish.payara.nucleus.notification.domain.NotifierExecutionOptionsFactoryStore;
+import fish.payara.nucleus.notification.log.LogNotifierExecutionOptions;
+import fish.payara.nucleus.notification.service.NotificationEventFactoryStore;
 import java.beans.PropertyVetoException;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,10 +72,11 @@ import org.glassfish.api.event.EventListener;
 import org.glassfish.api.event.EventTypes;
 import org.glassfish.api.event.Events;
 import org.glassfish.hk2.api.ServiceLocator;
-import org.glassfish.hk2.api.messaging.Topic;
 import org.glassfish.hk2.runlevel.RunLevel;
 import org.jvnet.hk2.annotations.Optional;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigSupport;
+import org.jvnet.hk2.config.ConfigView;
 
 import static java.lang.management.ManagementFactory.getPlatformMBeanServer;
 
@@ -103,10 +107,13 @@ public class JMXMonitoringService implements EventListener {
     private Events events;
 
     @Inject
-    private Topic<PayaraNotification> notificationEventBus;
+    private NotifierExecutionOptionsFactoryStore executionOptionsFactoryStore;
 
     @Inject
-    private PayaraNotificationFactory notificationFactory;
+    private NotificationEventFactoryStore eventStore;
+
+    @Inject
+    private NotificationService notificationService;
     
     @Inject
     PayaraExecutorService executor;
@@ -116,7 +123,7 @@ public class JMXMonitoringService implements EventListener {
     private boolean enabled;
     private int amxBootDelay = 10;
     private long monitoringDelay = amxBootDelay + 15;
-    private final Set<String> enabledNotifiers = new LinkedHashSet<>();
+    private List<NotifierExecutionOptions> notifierExecutionOptionsList;
     private ScheduledFuture<?> monitoringFuture;
 
     @PostConstruct
@@ -148,7 +155,7 @@ public class JMXMonitoringService implements EventListener {
 
             final MBeanServer server = getPlatformMBeanServer();
 
-            formatter = new JMXMonitoringFormatter(server, buildJobs(), this, notificationEventBus, notificationFactory, enabledNotifiers);
+            formatter = new JMXMonitoringFormatter(server, buildJobs(), this, eventStore, notificationService);
 
             Logger.getLogger(JMXMonitoringService.class.getName()).log(Level.INFO, "JMX Monitoring Service will startup");
 
@@ -177,20 +184,31 @@ public class JMXMonitoringService implements EventListener {
      * @since 4.1.2.174
      */
     public void bootstrapNotifierList() {
-        enabledNotifiers.clear();
+        notifierExecutionOptionsList = new ArrayList<>();
         if (configuration.getNotifierList() != null) {
-            configuration.getNotifierList().forEach(enabledNotifiers::add);
+            for (Notifier notifier : configuration.getNotifierList()) {
+                ConfigView view = ConfigSupport.getImpl(notifier);
+                NotifierConfigurationType annotation = view.getProxyType().getAnnotation(NotifierConfigurationType.class);
+                notifierExecutionOptionsList.add(executionOptionsFactoryStore.get(annotation.type()).build(notifier));
+            }
+        }
+        if (notifierExecutionOptionsList.isEmpty()) {
+            // Add logging execution options by default
+            LogNotifierExecutionOptions logNotifierExecutionOptions = new LogNotifierExecutionOptions();
+            logNotifierExecutionOptions.setEnabled(true);
+            notifierExecutionOptionsList.add(logNotifierExecutionOptions);
         }
     }
 
     /**
-     * Returns all notifiers configured with the monitoring service
+     * Returns the configuration of all the notifiers configured with the
+     * monitoring service
      *
      * @since 4.1.2.174
      * @return
      */
-    public Set<String> getEnabledNotifiers() {
-        return enabledNotifiers;
+    public List<NotifierExecutionOptions> getNotifierExecutionOptionsList() {
+        return notifierExecutionOptionsList;
     }
 
     /**

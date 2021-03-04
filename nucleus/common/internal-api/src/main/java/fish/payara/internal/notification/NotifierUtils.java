@@ -71,33 +71,6 @@ public final class NotifierUtils {
     }
 
     /**
-     * List the names of all registered notifiers
-     * 
-     * @param serviceLocator the service locator to use to find the notifiers
-     * @return a set of all notifier names
-     * @see #getNotifierName(ActiveDescriptor)
-     */
-    public static final Set<String> getNotifierNames(ServiceLocator serviceLocator) {
-        final List<ServiceHandle<PayaraNotifier>> notifierHandles = serviceLocator.getAllServiceHandles(PayaraNotifier.class);
-        final Set<String> names = new HashSet<>();
-        for (ServiceHandle<PayaraNotifier> handle : notifierHandles) {
-            names.add(getNotifierName(handle.getActiveDescriptor()));
-        }
-        return names;
-    }
-
-    /**
-     * @param <C>           a generic class of the notifier configuration class
-     * @param notifierClass the notifier of the class
-     * @return the class used to configure the configured notifier
-     */
-    @SuppressWarnings("unchecked")
-    public static <C extends PayaraNotifierConfiguration> Class<C> getConfigurationClass(Class<?> notifierClass) {
-        final ParameterizedType genericSuperclass = (ParameterizedType) notifierClass.getGenericSuperclass();
-        return (Class<C>) genericSuperclass.getActualTypeArguments()[0];
-    }
-
-    /**
      * @return a camel cased string representing the result
      */
     public static String convertToCamelCase(String string) {

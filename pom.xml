@@ -65,6 +65,12 @@
         <tag>payara-server-5.27.0-SNAPSHOT</tag>
     </scm>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
     <issueManagement>
         <system>Github</system>
         <url>https://github.com/payara/Payara/issues</url>
@@ -110,26 +116,6 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        <repository>
-            <id>payara-nexus-enterprise-distributions</id>
-            <url>https://nexus.payara.fish/repository/payara-enterprise</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>payara-nexus-enterprise-artifacts</id>
-            <url>https://nexus.payara.fish/repository/payara-enterprise-artifacts-private</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
 
     </repositories>
 
@@ -152,8 +138,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <javase.version>1.8</javase.version>
-        <deploy.skip>true</deploy.skip>
-
+        <deploy.skip>false</deploy.skip>
         <!-- BOM-referenced versions -->
         <jakartaee.api.version>8.0.0</jakartaee.api.version>
         <servlet-api.version>4.0.2</servlet-api.version>
@@ -244,11 +229,6 @@
         <monitoring-console-process.version>1.7</monitoring-console-process.version>
         <monitoring-console-webapp.version>1.7</monitoring-console-webapp.version>
         <validation.xml.root>${project.build.outputDirectory}</validation.xml.root>
-        <payara.notifiers.version>1.0-enterprise</payara.notifiers.version>
-        <smack.version>4.1.9</smack.version>
-        <jxmpp.version>0.4.2</jxmpp.version>
-        <xpp3.version>1.1.4c_7</xpp3.version>
-        <snmp4j.version>2.5.3-payara.p1</snmp4j.version>
     </properties>
 
     <profiles>
@@ -378,20 +358,16 @@
         </profile>
 
         <profile>
+            <!-- only internal modules deployed, so tests can run without Server build built -->
             <id>deploy-internals</id>
-
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-
             <properties>
                 <deploy.skip>false</deploy.skip>
             </properties>
 
             <distributionManagement>
                 <repository>
-                    <id>payara-nexus-enterprise-artifacts</id>
-                    <url>https://nexus.payara.fish/repository/payara-enterprise-artifacts-private/</url>
+                    <id>payara-nexus-artifacts</id>
+                    <url>https://nexus.payara.fish/repository/payara-artifacts/</url>
                 </repository>
                 <snapshotRepository>
                     <id>payara-nexus-snapshots</id>
@@ -403,6 +379,14 @@
 
     <build>
         <defaultGoal>install</defaultGoal>
+        <plugins>
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
 
         <pluginManagement>
             <plugins>

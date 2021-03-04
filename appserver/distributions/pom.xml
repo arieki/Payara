@@ -77,7 +77,6 @@
     </developers>
 
     <properties>
-        <deploy.skip>false</deploy.skip>
         <stage.dir.name>stage</stage.dir.name>
         <stage.dir>${project.build.directory}/${stage.dir.name}</stage.dir>
         <temp.dir>${project.build.directory}/dependency</temp.dir>
@@ -207,26 +206,9 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-                <inherited>false</inherited>
-            </plugin>
-        </plugins>
     </build>
 
     <profiles>
-
-        <!-- Don't deploy any distributions if only the internals are being deployed -->
-        <profile>
-            <id>deploy-internals</id>
-            <properties>
-                <deploy.skip>true</deploy.skip>
-            </properties>
-        </profile>
 
         <!-- Default build profile -->
         <profile>

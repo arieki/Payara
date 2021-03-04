@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016-2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -38,24 +38,20 @@
  */
 package fish.payara.nucleus.healthcheck.configuration;
 
-import java.beans.PropertyVetoException;
-import java.util.List;
+import fish.payara.nucleus.notification.configuration.Notifier;
+import org.glassfish.api.admin.config.ConfigExtension;
+import org.jvnet.hk2.config.*;
 
 import javax.validation.constraints.Min;
-
-import fish.payara.extensions.notifiers.compat.config.Notifier;
-import org.glassfish.api.admin.config.ConfigExtension;
-import org.jvnet.hk2.config.Attribute;
-import org.jvnet.hk2.config.Configured;
-import org.jvnet.hk2.config.DuckTyped;
-import org.jvnet.hk2.config.Element;
+import java.beans.PropertyVetoException;
+import java.util.List;
 
 /**
  * @author mertcaliskan
  *
  */
 @Configured
-public interface HealthCheckServiceConfiguration extends ConfigExtension {
+public interface HealthCheckServiceConfiguration extends ConfigBeanProxy, ConfigExtension {
 
     @Attribute(defaultValue="false",dataType=Boolean.class)
     String getEnabled();
@@ -80,16 +76,11 @@ public interface HealthCheckServiceConfiguration extends ConfigExtension {
     @DuckTyped
     <T extends Checker> T getCheckerByType(Class<T> type);
 
-    @Element("notifier")
-    List<String> getNotifierList();
-
     @Element("*")
-    @Deprecated
-    List<Notifier> getLegacyNotifierList();
+    List<Notifier> getNotifierList();
 
     @DuckTyped
-    @Deprecated
-    <T extends Notifier> T getLegacyNotifierByType(Class<T> type);
+    <T extends Notifier> T getNotifierByType(Class<T> type);
 
     class Duck {
         public static <T extends Checker> T getCheckerByType(HealthCheckServiceConfiguration config, Class<T> type) {
@@ -103,15 +94,16 @@ public interface HealthCheckServiceConfiguration extends ConfigExtension {
             return null;
         }
 
-        public static <T extends Notifier> T getLegacyNotifierByType(HealthCheckServiceConfiguration config, Class<T> type) {
-            for (Notifier notifier : config.getLegacyNotifierList()) {
+        public static <T extends Notifier> T getNotifierByType(HealthCheckServiceConfiguration config, Class<T> type) {
+            for (Notifier notifier : config.getNotifierList()) {
                 try {
                     return type.cast(notifier);
                 } catch (Exception e) {
-                    // Do nothing
+                    // ignore, not the right type.
                 }
             }
             return null;
         }
+
     }
 }

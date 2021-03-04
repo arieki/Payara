@@ -1,7 +1,7 @@
 /*
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- *  Copyright (c) 2019-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ *  Copyright (c) [2019] Payara Foundation and/or its affiliates. All rights reserved.
  * 
  *  The contents of this file are subject to the terms of either the GNU
  *  General Public License Version 2 only ("GPL") or the Common Development
@@ -46,22 +46,25 @@ import java.io.BufferedReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.inject.Inject;
 
 import javax.security.auth.Subject;
 
 import com.sun.enterprise.admin.report.DoNothingActionReporter;
-import com.sun.enterprise.module.bootstrap.StartupContext;
 
 import fish.payara.audit.AdminAuditConfiguration;
 import fish.payara.audit.AdminAuditService;
 import fish.payara.audit.admin.GetAdminAuditServiceConfiguration;
-import fish.payara.extensions.notifiers.compat.config.Notifier;
-import fish.payara.internal.notification.PayaraNotification;
-import fish.payara.internal.notification.PayaraNotificationFactory;
-import fish.payara.internal.notification.PayaraNotifier;
-
+import fish.payara.nucleus.notification.NotificationService;
+import fish.payara.nucleus.notification.configuration.Notifier;
+import fish.payara.nucleus.notification.configuration.NotifierType;
+import fish.payara.nucleus.notification.domain.EventSource;
+import fish.payara.nucleus.notification.domain.NotificationEvent;
+import fish.payara.nucleus.notification.domain.NotifierExecutionOptionsFactoryStore;
+import fish.payara.nucleus.notification.log.LogNotificationEvent;
+import fish.payara.nucleus.notification.service.NotificationEventFactoryStore;
 import java.beans.PropertyVetoException;
 
 
@@ -77,6 +80,7 @@ import org.glassfish.api.admin.CommandRunner;
 import org.glassfish.api.admin.ParameterMap;
 import org.glassfish.api.admin.Payload;
 import org.glassfish.api.admin.ProgressStatus;
+
 import org.jvnet.hk2.config.ConfigBeanProxy;
 import org.jvnet.hk2.config.TransactionFailure;
 import org.glassfish.hk2.api.DynamicConfiguration;
@@ -90,13 +94,14 @@ import org.glassfish.hk2.runlevel.internal.RunLevelControllerImpl;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.internal.api.Globals;
 import org.glassfish.internal.api.Target;
-import org.glassfish.security.common.PrincipalImpl;
-import org.glassfish.server.ServerEnvironmentImpl;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.jvnet.hk2.annotations.ContractsProvided;
 import org.jvnet.hk2.annotations.Service;
 import org.testng.Assert;
+
+import sun.security.acl.PrincipalImpl;
 
 /**
  * Test for running a command to check that is is processed properly.
@@ -108,7 +113,7 @@ public class RunCommandTest {
     
     private ServiceLocator serviceLocator;
     
-    private List<PayaraNotification> events;
+    private List<NotificationEvent> events;
     
     @Before
     public void setUp() {
@@ -116,7 +121,7 @@ public class RunCommandTest {
         ServiceLocatorUtilities.addOneConstant(serviceLocator, new TestNotificationService());
         ServiceLocatorUtilities.addOneConstant(serviceLocator, this);
         ServiceLocatorUtilities.addClasses(serviceLocator, AdminAuditService.class, GetAdminAuditServiceConfiguration.class, TestConfiguration.class,
-                StartupContext.class, ServerEnvironmentImpl.class, PayaraNotificationFactory.class, Target.class, TestCommandRunner.class);
+                Target.class, NotificationEventFactoryStore.class, NotifierExecutionOptionsFactoryStore.class, TestCommandRunner.class);
         
         Globals.setDefaultHabitat(serviceLocator);
         
@@ -130,6 +135,21 @@ public class RunCommandTest {
         config.commit();
         
         serviceLocator.getService(RunLevelController.class).proceedTo(StartupRunLevel.VAL);
+        serviceLocator.getService(NotificationEventFactoryStore.class).register(NotifierType.LOG, new fish.payara.nucleus.notification.log.LogNotificationEventFactory() {
+            @Override
+            public LogNotificationEvent buildNotificationEvent(Level level, String subject, String message, Object[] parameters) {
+                LogNotificationEvent event = new LogNotificationEvent();
+                Assert.assertEquals(Level.WARNING, level);
+                event.setLevel(level);
+                Assert.assertNull(parameters);
+                event.setParameters(parameters);
+                event.setMessage(message);
+                Assert.assertEquals("AUDIT", subject);
+                event.setSubject(subject);
+                return event;
+            }
+        });
+        
         
         events = new LinkedList<>();
     }
@@ -145,13 +165,16 @@ public class RunCommandTest {
     }
     
     @Service
-    @ContractsProvided(PayaraNotifier.class)
-    class TestNotificationService implements PayaraNotifier {
-
+    @ContractsProvided(NotificationService.class)
+    class TestNotificationService extends NotificationService {
+        
         @Override
-        public void handleNotification(PayaraNotification event) {
-            Assert.assertEquals("Received wrong notification", event.getEventType(), "Audit");
-            events.add(event);
+        public void notify(EventSource source, NotificationEvent notificationEvent) {
+            if (!source.equals(EventSource.AUDIT)) {
+                Assert.fail("Recieved non-audit message, was of type" + source.getValue());
+            }
+            events.add(notificationEvent);
+            
         }
         
     }
@@ -187,18 +210,13 @@ public class RunCommandTest {
         }
 
         @Override
-        public List<String> getNotifierList() {
+        public List<Notifier> getNotifierList() {
             return new ArrayList<>();
         }
 
         @Override
-        public List<Notifier> getLegacyNotifierList() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public <T extends Notifier> T getLegacyNotifierByType(Class<T> type) {
-            throw new UnsupportedOperationException("Not supported yet.");
+        public <T extends Notifier> T getNotifierByType(Class<T> type) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override

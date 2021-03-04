@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016-2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -38,22 +38,18 @@
  */
 package fish.payara.jmx.monitoring.configuration;
 
+import fish.payara.nucleus.notification.configuration.Notifier;
 import java.beans.PropertyVetoException;
 import java.util.List;
-
-import fish.payara.extensions.notifiers.compat.config.Notifier;
 import org.glassfish.api.admin.config.ConfigExtension;
-import org.jvnet.hk2.config.Attribute;
-import org.jvnet.hk2.config.Configured;
-import org.jvnet.hk2.config.DuckTyped;
-import org.jvnet.hk2.config.Element;
+import org.jvnet.hk2.config.*;
 
 /**
  * @since 4.1.1.163
  * @author savage
  */
 @Configured
-public interface MonitoringServiceConfiguration extends ConfigExtension {
+public interface MonitoringServiceConfiguration extends ConfigBeanProxy, ConfigExtension {
 
     /**
      * Boolean value determining if the service is enabled or disabled.
@@ -99,28 +95,32 @@ public interface MonitoringServiceConfiguration extends ConfigExtension {
      * @since 4.1.2.174
      * @return 
      */
-    @Element("notifier")
-    List<String> getNotifierList();
-
     @Element("*")
-    @Deprecated
-    List<Notifier> getLegacyNotifierList();
+    List<Notifier> getNotifierList();
 
+    /**
+     * Gets a specific notifier
+     * @since 4.1.2.174
+     * @param <T>
+     * @param type The class name of the notifier to get
+     * @return 
+     */
     @DuckTyped
-    @Deprecated
-    <T extends Notifier> T getLegacyNotifierByType(Class<T> type);
+    <T extends Notifier> T getNotifierByType(Class type);
 
     class Duck {
-
-        public static <T extends Notifier> T getLegacyNotifierByType(MonitoringServiceConfiguration config, Class<T> type) {
-            for (Notifier notifier : config.getLegacyNotifierList()) {
+        
+        public static <T extends Notifier> T getNotifierByType(MonitoringServiceConfiguration config, Class<T> type) {
+            for (Notifier notifier : config.getNotifierList()) {
                 try {
                     return type.cast(notifier);
                 } catch (Exception e) {
-                    // Do nothing
+                    // ignore, not the right type.
                 }
             }
             return null;
         }
+
     }
+    
 }

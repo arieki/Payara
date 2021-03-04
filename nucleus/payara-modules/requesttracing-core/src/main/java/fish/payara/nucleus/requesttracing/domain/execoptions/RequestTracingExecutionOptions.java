@@ -39,12 +39,15 @@
  */
 package fish.payara.nucleus.requesttracing.domain.execoptions;
 
+import fish.payara.nucleus.notification.configuration.NotifierType;
+import fish.payara.nucleus.notification.domain.NotifierExecutionOptions;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Configuration class that holds the dynamic configuration of the Request
@@ -78,7 +81,7 @@ public class RequestTracingExecutionOptions {
     // Default timeout value **NOT** taken from RequestTracingServiceConfiguration, but from TimeUtil.setStoreTimeLimit
     private Long historicTraceStoreTimeout = 0L;
 
-    private final Set<String> enabledNotifiers = new LinkedHashSet<>();
+    private final Map<NotifierType, NotifierExecutionOptions> notifierExecutionOptionsList = new HashMap<>();
 
     public Boolean isEnabled() {
         if (enabled == null) {
@@ -248,20 +251,20 @@ public class RequestTracingExecutionOptions {
      * Gets the notifier options configured with request tracing
      * @return 
      */
-    public Set<String> getEnabledNotifiers() {
-        return enabledNotifiers;
+    public Map<NotifierType, NotifierExecutionOptions> getNotifierExecutionOptionsList() {
+        return notifierExecutionOptionsList;
     }
     
-    public void enableNotifier(String notifier) {
-        enabledNotifiers.add(notifier);
+    public void addNotifierExecutionOption(NotifierExecutionOptions notifierExecutionOptions) {
+        getNotifierExecutionOptionsList().put(notifierExecutionOptions.getNotifierType(), notifierExecutionOptions);
     }
 
-    public void disableNotifier(String notifier) {
-        enabledNotifiers.remove(notifier);
+    public void removeNotifierExecutionOption(NotifierExecutionOptions notifierExecutionOptions) {
+        getNotifierExecutionOptionsList().remove(notifierExecutionOptions.getNotifierType());
     }
 
-    public void clearNotifiers() {
-        enabledNotifiers.clear();
+    public void resetNotifierExecutionOptions() {
+        getNotifierExecutionOptionsList().clear();
     }
 
     @Override
@@ -274,7 +277,7 @@ public class RequestTracingExecutionOptions {
                 + ", adaptiveSamplingTimeValue=" + adaptiveSamplingTimeValue
                 + ", adaptiveSamplingTimeUnit=" + adaptiveSamplingTimeUnit
                 + ", applicationsOnlyEnabled=" + applicationsOnlyEnabled
-                + ", thresholdValue=" + thresholdValue
+                + " ,thresholdValue=" + thresholdValue
                 + ", thresholdUnit=" + thresholdUnit
                 + ", sampleRateFirstEnabled=" + sampleRateFirstEnabled
                 + ", traceStoreSize=" + traceStoreSize

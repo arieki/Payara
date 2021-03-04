@@ -2,7 +2,7 @@
 <!--
  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
- Copyright (c) 2017-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ Copyright (c) 2017-2019 Payara Foundation and/or its affiliates. All rights reserved.
 
  The contents of this file are subject to the terms of either the GNU
  General Public License Version 2 only ("GPL") or the Common Development
@@ -124,20 +124,15 @@
 
     <dependencies>
         <dependency>
-            <groupId>fish.payara.extensions.notifiers</groupId>
-            <artifactId>datadog-notifier-console-plugin</artifactId>
-            <version>${payara.notifiers.version}</version>
-            <optional>true</optional>
+           <groupId>fish.payara.server.internal.admingui</groupId>
+           <artifactId>datadog-notifier-console-plugin</artifactId>
+           <version>${project.version}</version>
+           <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>fish.payara.extensions.notifiers</groupId>
-            <artifactId>datadog-notifier-core</artifactId>
-            <version>${payara.notifiers.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>fish.payara.extensions.notifiers</groupId>
-            <artifactId>datadog-notifier-backwards-compatibility</artifactId>
-            <version>${payara.notifiers.version}</version>
+            <groupId>fish.payara.server.internal.payara-appserver-modules</groupId>
+            <artifactId>notification-datadog-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
