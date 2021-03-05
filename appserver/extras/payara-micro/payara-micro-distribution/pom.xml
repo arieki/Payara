@@ -53,6 +53,7 @@
 
     <properties>
         <product.name>Payara Micro Enterprise</product.name>
+        <deploy.skip>false</deploy.skip>
     </properties>
 
     <build>
@@ -61,7 +62,7 @@
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
-                    <skip>false</skip>
+                    <skip>${deploy.skip}</skip>
                 </configuration>
             </plugin>
             <plugin>
@@ -129,12 +130,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>false</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -522,6 +517,12 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>deploy-internals</id>
+            <properties>
+                <deploy.skip>true</deploy.skip>
+            </properties>
         </profile>
     </profiles>
 </project>
