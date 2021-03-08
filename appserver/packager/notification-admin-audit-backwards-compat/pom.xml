@@ -127,7 +127,6 @@
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>admin-audit-notifiers-backwards-compatibility</artifactId>
             <version>${payara.notifiers.version}</version>
-            <type>glassfish-jar</type>
         </dependency>
     </dependencies>
 </project>

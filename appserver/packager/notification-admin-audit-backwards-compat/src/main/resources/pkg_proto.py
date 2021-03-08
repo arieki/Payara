@@ -46,8 +46,8 @@ pkg = {
     "name"          : "notification-admin-audit",
     "version"       : conf.notification_version,
     "attributes"    : {
-                        "pkg.summary" : "Notification Services Integration",
-                        "pkg.description" : "Notification Core module",
+                        "pkg.summary" : "Notification Services Admin Audit Integration",
+                        "pkg.description" : "Notification Admin Audit Backwards Compatibility module",
                         "info.classification" : "OSGi Service Platform Release 4",
                       },
     "dirtrees"      : { "glassfish/modules" : {},
