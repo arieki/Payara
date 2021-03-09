@@ -40,17 +40,28 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
+import com.sun.enterprise.universal.i18n.LocalStringsImpl;
+import com.sun.enterprise.util.OS;
+import com.sun.enterprise.util.StringUtils;
+import org.glassfish.api.ExecutionContext;
+import org.glassfish.api.Param;
+import org.glassfish.api.ParamDefaultCalculator;
+import org.glassfish.api.admin.CommandException;
+import org.glassfish.api.admin.CommandModel;
+import org.glassfish.api.admin.CommandValidationException;
+import org.glassfish.hk2.api.PerLookup;
+import org.jvnet.hk2.annotations.Service;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.io.FileOutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -61,19 +72,10 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import com.sun.enterprise.util.OS;
-import com.sun.enterprise.util.StringUtils;
-import org.glassfish.api.ExecutionContext;
-import org.glassfish.api.Param;
-import org.glassfish.api.ParamDefaultCalculator;
-import org.glassfish.api.admin.CommandException;
-import org.glassfish.api.admin.CommandValidationException;
-import org.glassfish.hk2.api.PerLookup;
-import org.jvnet.hk2.annotations.Service;
 
 /**
  * Command to upgrade Payara server to a newer version
@@ -82,25 +84,128 @@ import org.jvnet.hk2.annotations.Service;
 @Service(name = "upgrade-server")
 @PerLookup
 public class UpgradeServerCommand extends BaseUpgradeCommand {
-    
-    @Param
+
+    private static final String USE_DOWNLOADED_PARAM_NAME = "useDownloaded";
+    private static final String USERNAME_PARAM_NAME = "username";
+    private static final String NEXUS_PASSWORD_PARAM_NAME = "nexusPassword";
+    private static final String VERSION_PARAM_NAME = "version";
+
+    @Param(name = USERNAME_PARAM_NAME, optional = true)
     private String username;
     
-    @Param(password = true)
+    @Param(name = NEXUS_PASSWORD_PARAM_NAME, password = true, optional = true, alias = "nexuspassword")
     private String nexusPassword;
     
-    @Param(defaultValue="payara", acceptableValues = "payara, payara-ml, payara-web, payara-web-ml")
+    @Param(defaultValue="payara", acceptableValues = "payara, payara-ml, payara-web, payara-web-ml", optional = true)
     private String distribution;
     
-    @Param
+    @Param(name = VERSION_PARAM_NAME, optional = true)
     private String version;
 
     @Param(name = "stage", optional = true, defaultCalculator = DefaultStageParamCalculator.class)
     private boolean stage;
+    
+    @Param(name = USE_DOWNLOADED_PARAM_NAME, optional = true, alias = "usedownloaded")
+    private File useDownloadedFile;
 
     private static final String NEXUS_URL = System.getProperty("fish.payara.upgrade.repo.url",
             "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
     private static final String ZIP = ".zip";
+
+    private static final LocalStringsImpl strings = new LocalStringsImpl(CLICommand.class);
+
+    @Override
+    protected void prevalidate() throws CommandException {
+        // Perform usual pre-validation; we don't want to skip it or alter it in anyway, we just want to add to it
+        super.prevalidate();
+
+        // If useDownloaded is present, check it's present. If it isn't, we need to pre-validate the download parameters
+        // again with optional set to false so as to mimic a "conditional optional".
+        // Note that we can't use the parameter variables here since CLICommand#inject() hasn't been called yet
+        if (getOption(USE_DOWNLOADED_PARAM_NAME) != null) {
+            if (!Paths.get(getOption(USE_DOWNLOADED_PARAM_NAME)).toFile().exists()) {
+                throw new CommandValidationException("File specified does not exist: " + useDownloadedFile);
+            }
+        } else {
+            if (getOption(USERNAME_PARAM_NAME) == null) {
+                prevalidateParameter(USERNAME_PARAM_NAME);
+            }
+
+            if (getOption(VERSION_PARAM_NAME) == null) {
+                prevalidateParameter(VERSION_PARAM_NAME);
+            }
+
+            if (getOption(NEXUS_PASSWORD_PARAM_NAME) == null) {
+                prevalidatePasswordParameter(NEXUS_PASSWORD_PARAM_NAME);
+            }
+        }
+    }
+
+    /**
+     * Adapted from method in parent class, namely {@link CLICommand#prevalidate()}
+     * @param parameterName
+     * @throws CommandValidationException
+     */
+    private void prevalidateParameter(String parameterName) throws CommandValidationException {
+        // if option isn't set, prompt for it (if interactive), otherwise throw an error
+        if (programOpts.isInteractive()) {
+            try {
+                // Build the terminal if it isn't present
+                buildTerminal();
+                buildLineReader();
+
+                // Prompt for it
+                if (getOption(parameterName) == null && lineReader != null) {
+                    String val = lineReader.readLine(strings.get("optionPrompt", parameterName.toLowerCase(Locale.ENGLISH)));
+                    if (ok(val)) {
+                        options.set(parameterName, val);
+                    }
+                }
+                // if it's still not set, that's an error
+                if (getOption(parameterName) == null) {
+                    logger.log(Level.INFO, strings.get("missingOption", "--" + parameterName));
+                    throw new CommandValidationException(strings.get("missingOptions", parameterName));
+                }
+            } finally {
+                closeTerminal();
+            }
+        } else {
+            throw new CommandValidationException(strings.get("missingOptions", parameterName));
+        }
+    }
+
+    /**
+     * Adapted from method in parent class, namely {@link CLICommand#initializeCommandPassword()}
+     * @param passwordParameterName
+     * @throws CommandValidationException
+     */
+    private void prevalidatePasswordParameter(String passwordParameterName) throws CommandValidationException {
+        // Get the ParamModel
+        CommandModel.ParamModel passwordParam = commandModel.getParameters()
+                .stream().filter(paramModel -> paramModel.getName().equalsIgnoreCase(passwordParameterName))
+                .findFirst().orElse(null);
+
+        // Get the password
+        char[] passwordChars = null;
+        if (passwordParam != null) {
+            passwordChars = getPassword(passwordParam.getName(), passwordParam.getLocalizedPrompt(),
+                    passwordParam.getLocalizedPromptAgain(), true);
+        }
+
+        if (passwordChars == null) {
+            // if not terse, provide more advice about what to do
+            String msg;
+            if (programOpts.isTerse()){
+                msg = strings.get("missingPassword", name, passwordParameterName);
+            } else {
+                msg = strings.get("missingPasswordAdvice", name, passwordParameterName);
+            }
+
+            throw new CommandValidationException(msg);
+        }
+
+        options.set(passwordParameterName, new String(passwordChars));
+    }
 
     @Override
     protected void validate() throws CommandException {
@@ -199,20 +304,25 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         String authBytes = "Basic " + Base64.getEncoder().encodeToString(basicAuthString.getBytes());
         
         try {
-            LOGGER.log(Level.INFO, "Downloading new Payara version...");
-            URL nexusUrl = new URL(url);
-            HttpURLConnection connection = (HttpURLConnection) nexusUrl.openConnection();
-            connection.setRequestProperty("Authorization", authBytes);
-            
-            int code = connection.getResponseCode();
-            if (code != 200) {
-                LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
-                return ERROR;
-            }
-                
             Path tempFile = Files.createTempFile("payara", ".zip");
-            Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
-            
+
+            if (useDownloadedFile != null) {
+                Files.copy(useDownloadedFile.toPath(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                LOGGER.log(Level.INFO, "Downloading new Payara version...");
+                URL nexusUrl = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) nexusUrl.openConnection();
+                connection.setRequestProperty("Authorization", authBytes);
+
+                int code = connection.getResponseCode();
+                if (code != 200) {
+                    LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
+                    return ERROR;
+                }
+
+                Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             Path unzippedDirectory = extractZipFile(unzipFileStream);
 
