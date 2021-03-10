@@ -413,13 +413,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         Path oldModules = Paths.get(glassfishDir, "modules.old");
         if (oldModules.toFile().exists()) {
             for (String folder : MOVEFOLDERS) {
-                try {
-                    Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
-                } catch (NoSuchFileException nsfe) {
-                    // Don't fail out on NSFE, just try to delete all of them
-                    LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for directory {0} and continuing cleanup.",
-                            folder + ".old");
-                }
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
             }
         }
         deleteStagedInstall();
@@ -431,13 +425,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         Path newModules = Paths.get(glassfishDir, "modules.new");
         if (newModules.toFile().exists()) {
             for (String folder : MOVEFOLDERS) {
-                try {
-                    Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
-                } catch (NoSuchFileException nsfe) {
-                    // Don't fail out on NSFE, just try to delete all of them
-                    LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for directory {0} and continuing cleanup.",
-                            folder + ".new");
-                }
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
             }
         }
     }
@@ -454,8 +442,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     // to move all and specifically catch a NSFE for the MQ directory
                     if (nsfe.getMessage().contains(
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
-                        LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for mq directory under assumption " +
-                                "this is a payara-web distribution.");
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                                "this is a payara-web distribution. Continuing to move files...");
                     } else {
                         throw nsfe;
                     }
@@ -483,20 +471,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             }
 
             CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
-            try {
-                Files.walkFileTree(sourcePath, visitor);
-            } catch (NoSuchFileException nsfe) {
-                // We can't nicely check if the "new" installation is a web distribution or not, so just attempt
-                // to move all and specifically catch a NSFE for the MQ directory
-                if (nsfe.getMessage().contains(
-                        "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
-                    LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for mq directory under assumption " +
-                            "this is a payara-web distribution.");
-                } else {
-                    throw nsfe;
-                }
-            }
-
+            Files.walkFileTree(sourcePath, visitor);
         }
     }
     
@@ -508,8 +483,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             } catch (NoSuchFileException nsfe) {
                 // Don't exit out on NoSuchFileExceptions, just keep going - any NoSuchFileException is likely
                 // just a case of the file not having been moved yet.
-                LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for directory {0} under assumption " +
-                        "it hasn't been moved yet. Continuing rollback.", folder + ".old");
+                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for directory {0} under assumption " +
+                        "it hasn't been moved yet. Continuing rollback...", folder + ".old");
             }
         }
     }
@@ -525,22 +500,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     private void fixBinDirPermissions() throws IOException {
         for (String folder : MOVEFOLDERS) {
             BinDirPermissionFileVisitor visitor = new BinDirPermissionFileVisitor();
-            try {
-                if (stage) {
-                    Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
-                } else {
-                    Files.walkFileTree(Paths.get(glassfishDir, folder), visitor);
-                }
-            } catch (NoSuchFileException nsfe) {
-                // We can't nicely check if the "new" installation is a web distribution or not, so just attempt
-                // to move all and specifically catch a NSFE for the MQ directory.
-                if (nsfe.getMessage().contains(
-                        "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
-                    LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for mq directory under assumption " +
-                            "this is a payara-web distribution.");
-                } else {
-                    throw nsfe;
-                }
+            if (stage) {
+                Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
+            } else {
+                Files.walkFileTree(Paths.get(glassfishDir, folder), visitor);
             }
         }
     }
@@ -599,6 +562,15 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         @Override
         public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            // We can't nicely check if the "new" installation is a web distribution or not, so specifically catch a
+            // NSFE for the MQ directory.
+            if (arg1 instanceof NoSuchFileException && arg1.getMessage().contains(
+                    "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
+                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                        "this is a payara-web distribution. Continuing copy...");
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+
             LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
             throw arg1;
         }
@@ -614,12 +586,6 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         @Override
         public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-            if (!dir.toFile().exists()) {
-                LOGGER.log(Level.FINER, "Skipping fixing of permissions of directory {0} since it doesn't exist.",
-                        dir);
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-
             // Since MOVEDIRS only contains the top-level directory of what we want to upgrade (e.g. mq), checking
             // whether the name is equal to "bin" before skipping subtrees here is too heavy-handed
             return FileVisitResult.CONTINUE;
@@ -644,6 +610,15 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         @Override
         public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            // We can't nicely check if the "new" installation is a web distribution or not, so specifically catch a
+            // NSFE for the MQ directory.
+            if (exc instanceof NoSuchFileException && exc.getMessage().contains(
+                    "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
+                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                        "this is a payara-web distribution. Continuing fixing of permissions...");
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+
             LOGGER.log(Level.SEVERE, "File could not visited: {0}", file.toString());
             throw exc;
         }

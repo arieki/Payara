@@ -61,6 +61,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -202,6 +203,13 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
 
         @Override
         public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            // Don't fail out on NSFE, just try to delete all of them
+            if (arg1 instanceof NoSuchFileException) {
+                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for directory {0} and continuing cleanup.",
+                        arg0);
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+
             LOGGER.log(Level.SEVERE, "File could not deleted: {0}", arg0.toString());
             throw arg1;
         }

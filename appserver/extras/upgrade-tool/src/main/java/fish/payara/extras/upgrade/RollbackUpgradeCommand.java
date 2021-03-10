@@ -86,8 +86,8 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             DeleteFileVisitor visitor = new DeleteFileVisitor();
             LOGGER.log(Level.INFO, "Rolling back server...");
             for (String file : MOVEFOLDERS) {
+                Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
                 try {
-                    Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
                     Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
                             StandardCopyOption.REPLACE_EXISTING);
                 } catch (NoSuchFileException nsfe) {
@@ -95,8 +95,8 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                     // attempt to move all and specifically catch a FNFE for the MQ directory
                     if (nsfe.getMessage().contains(
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
-                        LOGGER.log(Level.FINER, "Ignoring NoSuchFileException for mq directory under assumption " +
-                                "this is a payara-web distribution.");
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                                "this is a payara-web distribution. Continuing to move files...");
                     } else {
                         throw nsfe;
                     }
