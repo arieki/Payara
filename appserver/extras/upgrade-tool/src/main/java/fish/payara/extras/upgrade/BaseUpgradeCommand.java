@@ -61,9 +61,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,7 +114,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         glassfishDir = getInstallRootPath();
     }
 
-    protected void updateNodes() throws MalformedURLException {
+    protected void updateNodes() throws MalformedURLException, ProcessManagerException {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
@@ -136,7 +138,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         }
     }
 
-    protected void updateSSHNode(Node node) {
+    protected void updateSSHNode(Node node) throws ProcessManagerException {
         LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
@@ -172,6 +174,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             processManager.execute();
         } catch (ProcessManagerException ex) {
             logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
+            throw ex;
         }
     }
 
@@ -186,6 +189,71 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         }
 
         return sshPasswords;
+    }
+
+    protected void deleteStagedInstall() throws IOException {
+        LOGGER.log(Level.FINE, "Deleting staged install if present");
+        DeleteFileVisitor visitor = new DeleteFileVisitor();
+        for (String folder : MOVEFOLDERS) {
+            // Only attempt to delete folders which exist
+            // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
+            Path folderPath = Paths.get(glassfishDir, folder + ".new");
+            if (folderPath.toFile().exists()) {
+                Files.walkFileTree(folderPath, visitor);
+            }
+        }
+        LOGGER.log(Level.FINE, "Deleted staged install");
+    }
+
+    protected class CopyFileVisitor implements FileVisitor<Path> {
+
+        private final Path sourcePath;
+        private final Path targetPath;
+
+        public CopyFileVisitor(Path sourcePath, Path targetPath) {
+            this.sourcePath = sourcePath;
+            this.targetPath = targetPath;
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
+            Path resolvedPath = targetPath.resolve(sourcePath.relativize(arg0));
+
+            File parentFile = resolvedPath.toFile().getParentFile();
+            if (!parentFile.exists()) {
+                parentFile.mkdirs();
+            }
+
+            Files.copy(arg0, resolvedPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
+            // We can't nicely check if the "new" installation is a web distribution or not ("distribution" param is
+            // optional with "useDownloaded"), so specifically catch a NSFE for the MQ directory.
+            if (arg1 instanceof NoSuchFileException && arg1.getMessage().contains(
+                    "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
+                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                        "this is a payara-web distribution. Continuing copy...");
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+
+            LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
+            throw arg1;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
     }
 
     protected class DeleteFileVisitor implements FileVisitor<Path> {
@@ -206,7 +274,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             // Don't fail out on NSFE, just try to delete all of them
             if (arg1 instanceof NoSuchFileException) {
                 LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for directory {0} and continuing cleanup.",
-                        arg0);
+                        arg0.toString());
                 return FileVisitResult.SKIP_SUBTREE;
             }
 

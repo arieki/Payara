@@ -40,23 +40,27 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
+import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
+import org.glassfish.pfl.dynamic.copyobject.spi.Copy;
 import org.jvnet.hk2.annotations.Service;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
 
 /**
  * Rolls back an upgrade
+ *
  * @author Jonathan Coustick
  */
 @Service(name = "rollback-server")
@@ -76,22 +80,32 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     @Override
     protected int executeCommand() {
-        try {
-            if (!Paths.get(glassfishDir, "modules.old").toFile().exists()) {
-                LOGGER.log(Level.SEVERE, "No old version found to rollback");
-                return ERROR;
-            }
+        if (!Paths.get(glassfishDir, "modules.old").toFile().exists()) {
+            LOGGER.log(Level.SEVERE, "No old version found to rollback");
+            return ERROR;
+        }
 
-            DeleteFileVisitor visitor = new DeleteFileVisitor();
-            LOGGER.log(Level.INFO, "Rolling back server...");
+        LOGGER.log(Level.INFO, "Rolling back server...");
+
+        // First up, remove any "staged" install
+        try {
+            deleteStagedInstall();
+        } catch (IOException ioe) {
+            LOGGER.log(Level.SEVERE, "Error cleaning up previous staged upgrade, aborting rollback: {0}",
+                    ioe.toString());
+            return ERROR;
+        }
+
+        // Second step, move "current" into "staged"
+        try {
+            LOGGER.log(Level.FINE, "Moving current install into a staged rollback directory");
             for (String file : MOVEFOLDERS) {
-                Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
                 try {
-                    Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
+                    Files.move(Paths.get(glassfishDir, file), Paths.get(glassfishDir, file + ".new"),
                             StandardCopyOption.REPLACE_EXISTING);
                 } catch (NoSuchFileException nsfe) {
                     // We can't nicely check if the current or old installation is a web distribution or not, so just
-                    // attempt to move all and specifically catch a FNFE for the MQ directory
+                    // attempt to move all and specifically catch a NSFE for the MQ directory
                     if (nsfe.getMessage().contains(
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                         LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
@@ -101,25 +115,196 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                     }
                 }
             }
+            LOGGER.log(Level.FINE, "Moved current install into a staged rollback directory");
+        } catch (IOException ioe) {
+            LOGGER.log(Level.SEVERE, "Error rolling back current install: {0}", ioe.toString());
 
-            // Roll back the nodes for all domains
-            updateNodes();
-
-            // Restore the original domain configs
+            // Attempt to undo the rollback
+            LOGGER.log(Level.INFO, "Attempting to undo rollback");
             try {
-                restoreDomains();
-            } catch (CommandException ce) {
-                LOGGER.log(Level.SEVERE, "Could not find restore-domain command! " +
-                        "Please restore your domain config manually.");
-                ce.printStackTrace();
-                return WARNING;
+                moveStagedToCurrent();
+            } catch (IOException ioe1) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
             }
 
-            return SUCCESS;
-        } catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, "Error restoring Payara Server", ex);
-            ex.printStackTrace();
             return ERROR;
+        }
+
+        // Third step, move "old" into "current"
+        try {
+            for (String file : MOVEFOLDERS) {
+                try {
+                    Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
+                            StandardCopyOption.REPLACE_EXISTING);
+                } catch (NoSuchFileException nsfe) {
+                    // We can't nicely check if the current or old installation is a web distribution or not, so just
+                    // attempt to move all and specifically catch a NSFE for the MQ directory
+                    if (nsfe.getMessage().contains(
+                            "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                                "this is a payara-web distribution. Continuing to move files...");
+                    } else {
+                        throw nsfe;
+                    }
+                }
+            }
+        } catch (IOException ioe) {
+            LOGGER.log(Level.SEVERE, "Error rolling back current install: {0}", ioe.toString());
+
+            // Attempt to undo the rollback
+            LOGGER.log(Level.INFO, "Attempting to undo rollback");
+
+            // First up, move "current" back to "old"
+            try {
+                moveCurrentToOld();
+            } catch (IOException ioe1) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+                return ERROR;
+            }
+
+            // After moving "current" back to "old", move "staged" back to "current"
+            try {
+                moveStagedToCurrent();
+            } catch (IOException ioe1) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+            }
+
+            return ERROR;
+        }
+
+        // Fourth step, roll back the nodes for all domains
+        try {
+            LOGGER.log(Level.INFO, "Rolling back nodes");
+            updateNodes();
+            LOGGER.log(Level.INFO, "Rolled back nodes");
+        } catch (IOException ioe) {
+            // The IOException *should* be a MalformedURLException, since that's all updateNodes() currently throws
+            LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", ioe.toString());
+
+            // Attempt to undo the rollback
+            LOGGER.log(Level.INFO, "Attempting to undo rollback");
+
+            // First up, move "current" back to "old"
+            try {
+                moveCurrentToOld();
+            } catch (IOException ioe1) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+                return ERROR;
+            }
+
+            // After moving "current" back to "old", move "staged" back to "current"
+            try {
+                moveStagedToCurrent();
+            } catch (IOException ioe1) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+                return ERROR;
+            }
+
+            // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
+            return ERROR;
+        } catch (ProcessManagerException pme) {
+            LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", pme.toString());
+
+            // Attempt to undo the rollback
+            LOGGER.log(Level.INFO, "Attempting to undo rollback");
+
+            // First up, move "current" back to "old"
+            try {
+                moveCurrentToOld();
+            } catch (IOException ioe) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
+                return ERROR;
+            }
+
+            // After moving "current" back to "old", move "staged" back to "current"
+            try {
+                moveStagedToCurrent();
+            } catch (IOException ioe) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
+                return ERROR;
+            }
+
+            // Finally, attempt to restore the nodes
+            try {
+                LOGGER.log(Level.INFO, "Reinstalling nodes");
+                updateNodes();
+                LOGGER.log(Level.INFO, "Reinstalled nodes");
+            } catch (Exception exception) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", exception.toString());
+            }
+
+            return ERROR;
+        }
+
+
+        // Fifth step, remove "staged" again - if we've reached this point the install should have been successfully
+        // rolled back so we don't need it anymore
+        boolean logWarning = false;
+        try {
+            deleteStagedInstall();
+        } catch (IOException ioe) {
+            // Log the error, but we don't need to fail the command and exit out at this point
+            LOGGER.log(Level.WARNING, "Error cleaning up rolled back upgrade: {0}", ioe.toString());
+            logWarning = true;
+        }
+
+        // Fifth and final step, restore the original domain configs
+        try {
+            restoreDomains();
+        } catch (CommandException ce) {
+            LOGGER.log(Level.WARNING, "Error restore-domain command! " +
+                    "Please restore your domain config manually. \n{0}", ce.toString());
+            logWarning = true;
+        }
+
+        if (logWarning) {
+            return WARNING;
+        }
+
+        return SUCCESS;
+    }
+
+    private void moveStagedToCurrent() throws IOException {
+        LOGGER.log(Level.INFO, "Moving staged back to current");
+        for (String file : MOVEFOLDERS) {
+            Path stagedPath = Paths.get(glassfishDir, file + ".new");
+            Path targetPath = Paths.get(glassfishDir, file);
+
+            // Use copy with overwrite since we don't know what state the move was in
+            CopyFileVisitor copyFileVisitor = new CopyFileVisitor(stagedPath, targetPath);
+            Files.walkFileTree(stagedPath, copyFileVisitor);
+
+            // Now delete
+            deleteStagedInstall();
+        }
+        LOGGER.log(Level.INFO, "Moved staged back to current");
+    }
+
+    private void moveCurrentToOld() throws IOException {
+        LOGGER.log(Level.INFO, "Moving current install back to old");
+        for (String file : MOVEFOLDERS) {
+            Path currentPath = Paths.get(glassfishDir, file);
+            Path targetPath = Paths.get(glassfishDir, file + ".old");
+
+            // Use copy with overwrite since we don't know what state the move was in
+            CopyFileVisitor copyFileVisitor = new CopyFileVisitor(currentPath, targetPath);
+            Files.walkFileTree(currentPath, copyFileVisitor);
+
+            // Now delete
+            deleteCurrentInstall();
+        }
+        LOGGER.log(Level.INFO, "Moved current install back to old");
+    }
+
+    private void deleteCurrentInstall() throws IOException {
+        DeleteFileVisitor visitor = new DeleteFileVisitor();
+        for (String folder : MOVEFOLDERS) {
+            // Only attempt to delete folders which exist
+            // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
+            Path folderPath = Paths.get(glassfishDir, folder);
+            if (folderPath.toFile().exists()) {
+                Files.walkFileTree(folderPath, visitor);
+            }
         }
     }
 

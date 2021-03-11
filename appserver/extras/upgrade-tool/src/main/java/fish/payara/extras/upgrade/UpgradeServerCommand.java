@@ -41,6 +41,7 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.universal.i18n.LocalStringsImpl;
+import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.ExecutionContext;
@@ -80,6 +81,7 @@ import java.util.zip.ZipInputStream;
 
 /**
  * Command to upgrade Payara server to a newer version
+ *
  * @author Jonathan Coustick
  */
 @Service(name = "upgrade-server")
@@ -93,19 +95,19 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     @Param(name = USERNAME_PARAM_NAME, optional = true)
     private String username;
-    
+
     @Param(name = NEXUS_PASSWORD_PARAM_NAME, password = true, optional = true, alias = "nexuspassword")
     private String nexusPassword;
-    
-    @Param(defaultValue="payara", acceptableValues = "payara, payara-ml, payara-web, payara-web-ml", optional = true)
+
+    @Param(defaultValue = "payara", acceptableValues = "payara, payara-ml, payara-web, payara-web-ml", optional = true)
     private String distribution;
-    
+
     @Param(name = VERSION_PARAM_NAME, optional = true)
     private String version;
 
     @Param(name = "stage", optional = true, defaultCalculator = DefaultStageParamCalculator.class)
     private boolean stage;
-    
+
     @Param(name = USE_DOWNLOADED_PARAM_NAME, optional = true, alias = "usedownloaded")
     private File useDownloadedFile;
 
@@ -144,6 +146,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Adapted from method in parent class, namely {@link CLICommand#prevalidate()}
+     *
      * @param parameterName
      * @throws CommandValidationException
      */
@@ -176,7 +179,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     }
 
     /**
-     * Adapted from method in parent class, namely {@link CLICommand#initializeCommandPassword()}
+     * Adapted from method in parent class, namely CLICommand#initializeCommandPassword
+     *
      * @param passwordParameterName
      * @throws CommandValidationException
      */
@@ -196,7 +200,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         if (passwordChars == null) {
             // if not terse, provide more advice about what to do
             String msg;
-            if (programOpts.isTerse()){
+            if (programOpts.isTerse()) {
                 msg = strings.get("missingPassword", name, passwordParameterName);
             } else {
                 msg = strings.get("missingPasswordAdvice", name, passwordParameterName);
@@ -304,6 +308,9 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         String basicAuthString = username + ":" + nexusPassword;
         String authBytes = "Basic " + Base64.getEncoder().encodeToString(basicAuthString.getBytes());
 
+        Path unzippedDirectory = null;
+
+        // Download and/or unzip payara distribution, aborting upgrade if this fails
         try {
             Path tempFile = Files.createTempFile("payara", ".zip");
 
@@ -325,30 +332,40 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             }
 
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
-            Path unzippedDirectory = extractZipFile(unzipFileStream);
+            unzippedDirectory = extractZipFile(unzipFileStream);
+        } catch (IOException ioe) {
+            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: {0}", ioe);
+            return ERROR;
+        }
+        if (unzippedDirectory == null) {
+            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: could not extract archive");
+            return ERROR;
+        }
 
-            try {
-                backupDomains();
-            } catch (CommandException ce) {
-                LOGGER.log(Level.SEVERE, "Could not find backup-domain command, exiting...");
-                ce.printStackTrace();
-                return ERROR;
-            }
+        // Attempt to backup domains, exiting out if it fails
+        try {
+            backupDomains();
+        } catch (CommandException ce) {
+            LOGGER.log(Level.SEVERE, "Error executing backup-domain command, aborting upgrade: {0}", ce.toString());
+            return ERROR;
+        }
 
+        try {
             cleanupExisting();
+        } catch (IOException ioe) {
+            LOGGER.log(Level.SEVERE, "Error cleaning up previous upgrades, aborting upgrade: {0}", ioe.toString());
+            return ERROR;
+        }
+
+        try {
             moveFiles(unzippedDirectory);
 
             if (!OS.isWindows()) {
                 fixPermissions();
             }
-
-            // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
-            if (!stage) {
-                updateNodes();
-            }
         } catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server", ex);
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server, rolling back upgrade: {0}", ex.toString());
+
             try {
                 if (stage) {
                     deleteStagedInstall();
@@ -356,11 +373,56 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     undoMoveFiles();
                 }
             } catch (IOException ex1) {
-                LOGGER.log(Level.WARNING, "Failed to restore previous state", ex1);
+                LOGGER.log(Level.WARNING, "Failed to restore previous state: {0}", ex.toString());
             }
             return ERROR;
         }
-        
+
+        // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
+        if (!stage) {
+            try {
+                updateNodes();
+            } catch (IOException ex) {
+                // The IOException *should* be a MalformedURLException, since that's all updateNodes() currently throws
+                LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back upgrade: {0}", ex.toString());
+                try {
+                    if (stage) {
+                        deleteStagedInstall();
+                    } else {
+                        undoMoveFiles();
+                    }
+                } catch (IOException ex1) {
+                    // Exit out here if we failed to restore, we don't want to push a broken install to the nodes
+                    LOGGER.log(Level.SEVERE, "Failed to restore previous state of local install", ex1.toString());
+                    return ERROR;
+                }
+
+                // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
+                return ERROR;
+            } catch (ProcessManagerException pme) {
+                LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back upgrade: {0}", pme.toString());
+                try {
+                    if (stage) {
+                        deleteStagedInstall();
+                    } else {
+                        undoMoveFiles();
+                    }
+                } catch (IOException ioe) {
+                    // Exit out here if we failed to restore, we don't want to push a broken install to the nodes
+                    LOGGER.log(Level.SEVERE, "Failed to restore previous state of local install, " +
+                            "nodes will not be restored: {0}", ioe.toString());
+                    return ERROR;
+                }
+
+                try {
+                    updateNodes();
+                } catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, "Failed to restore previous state of nodes: {0}", ex.toString());
+                }
+                return ERROR;
+            }
+        }
+
         if (stage) {
             LOGGER.log(Level.INFO,
                     "Upgrade successfully staged, please run the applyStagedUpgrade script to apply the upgrade.");
@@ -368,10 +430,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         return SUCCESS;
     }
-    
+
     private Path extractZipFile(InputStream remote) throws IOException {
         Path tempDirectory = Files.createTempDirectory("payara-new");
-        
+
         try (ZipInputStream zipInput = new ZipInputStream(remote)) {
             ZipEntry entry = zipInput.getNextEntry();
             while (entry != null) {
@@ -379,7 +441,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 if (entry.isDirectory()) {
                     endPath.toFile().mkdirs();
                 } else {
-                    try ( BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(endPath.toFile()))) {
+                    try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(endPath.toFile()))) {
                         byte[] buffer = new byte[1024];
                         int length;
                         while ((length = zipInput.read(buffer)) != -1) {
@@ -393,8 +455,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
         return tempDirectory;
     }
-    
-    private void backupDomains() throws IOException, CommandException {
+
+    private void backupDomains() throws CommandException {
         LOGGER.log(Level.INFO, "Backing up domain configs");
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
@@ -406,28 +468,20 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             }
         }
     }
-    
+
     private void cleanupExisting() throws IOException {
         LOGGER.log(Level.FINE, "Deleting old server backup if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        Path oldModules = Paths.get(glassfishDir, "modules.old");
-        if (oldModules.toFile().exists()) {
-            for (String folder : MOVEFOLDERS) {
-                Files.walkFileTree(Paths.get(glassfishDir, folder + ".old"), visitor);
+        for (String folder : MOVEFOLDERS) {
+            Path folderPath = Paths.get(glassfishDir, folder + ".old");
+            // Only attempt to delete folders which exist
+            // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
+            if (folderPath.toFile().exists()) {
+                Files.walkFileTree(folderPath, visitor);
             }
         }
+        LOGGER.log(Level.FINE, "Deleted old server backup");
         deleteStagedInstall();
-    }
-
-    private void deleteStagedInstall() throws IOException {
-        LOGGER.log(Level.FINE, "Deleting staged install if present");
-        DeleteFileVisitor visitor = new DeleteFileVisitor();
-        Path newModules = Paths.get(glassfishDir, "modules.new");
-        if (newModules.toFile().exists()) {
-            for (String folder : MOVEFOLDERS) {
-                Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
-            }
-        }
     }
 
     private void moveFiles(Path newVersion) throws IOException {
@@ -435,11 +489,14 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             LOGGER.log(Level.FINE, "Moving files to old");
             for (String folder : MOVEFOLDERS) {
                 try {
+                    // Just attempt to move all folders - any exceptions aside from NoSuchFile on an MQ directory
+                    // are unexpected and we should cancel out if we hit one
                     Files.move(Paths.get(glassfishDir, folder), Paths.get(glassfishDir, folder + ".old"),
                             StandardCopyOption.REPLACE_EXISTING);
                 } catch (NoSuchFileException nsfe) {
-                    // We can't nicely check if the "current" installation is a web distribution or not, so just attempt
-                    // to move all and specifically catch a NSFE for the MQ directory
+                    // We can't nicely check if the "current" installation is a web distribution or not ("distribution"
+                    // param is optional with "useDownloaded"), so just attempt to move all and specifically catch a
+                    // NSFE for the MQ directory
                     if (nsfe.getMessage().contains(
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                         LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
@@ -450,10 +507,11 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 }
             }
         }
+        LOGGER.log(Level.FINE, "Moved files to old");
 
         moveExtracted(newVersion);
     }
-    
+
     private void moveExtracted(Path newVersion) throws IOException {
         LOGGER.log(Level.FINE, "Copying extracted files");
 
@@ -473,13 +531,31 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
             Files.walkFileTree(sourcePath, visitor);
         }
+        LOGGER.log(Level.FINE, "Extracted files copied");
     }
-    
+
     private void undoMoveFiles() throws IOException {
+        // We don't know the state of the "current" or "old" installs, so we need to do this file by file with
+        // a visitor that overwrites rather than doing it by folder with Files.move since Files.move would
+        // require us to deal with DirectoryNotEmptyExceptions
         LOGGER.log(Level.FINE, "Moving old back");
         for (String folder : MOVEFOLDERS) {
             try {
-                Files.move(Paths.get(glassfishDir, folder + ".old"), Paths.get(glassfishDir, folder), StandardCopyOption.REPLACE_EXISTING);
+                Path movedToPath = Paths.get(glassfishDir, folder + ".old");
+
+                // Skip this folder if we don't appear to have moved it
+                if (!movedToPath.toFile().exists()) {
+                    continue;
+                }
+
+                // Copy the files from the folder, overwriting any
+                Path movedFromPath = Paths.get(glassfishDir, folder);
+                CopyFileVisitor copyVisitor = new CopyFileVisitor(movedToPath, movedFromPath);
+                Files.walkFileTree(movedToPath, copyVisitor);
+
+                // Clear out the leftover "old" install
+                DeleteFileVisitor deleteVisitor = new DeleteFileVisitor();
+                Files.walkFileTree(movedToPath, deleteVisitor);
             } catch (NoSuchFileException nsfe) {
                 // Don't exit out on NoSuchFileExceptions, just keep going - any NoSuchFileException is likely
                 // just a case of the file not having been moved yet.
@@ -487,6 +563,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                         "it hasn't been moved yet. Continuing rollback...", folder + ".old");
             }
         }
+        LOGGER.log(Level.FINE, "Moved old back");
     }
 
     private void fixPermissions() throws IOException {
@@ -495,6 +572,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         fixBinDirPermissions();
         // Fix the permissions of nadmin (since it's not in a bin directory)
         fixNadminPermissions();
+        LOGGER.log(Level.FINE, "File permissions fixed");
     }
 
     private void fixBinDirPermissions() throws IOException {
@@ -531,57 +609,6 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
     }
 
-    private class CopyFileVisitor implements FileVisitor<Path> {
-        
-        private final Path sourcePath;
-        private final Path targetPath;
-
-        public CopyFileVisitor(Path sourcePath, Path targetPath) {
-            this.sourcePath = sourcePath;
-            this.targetPath = targetPath;
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path arg0, BasicFileAttributes arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path arg0, BasicFileAttributes arg1) throws IOException {
-            Path resolvedPath = targetPath.resolve(sourcePath.relativize(arg0));
-
-            File parentFile = resolvedPath.toFile().getParentFile();
-            if (!parentFile.exists()) {
-                parentFile.mkdirs();
-            }
-
-            Files.copy(arg0, resolvedPath, StandardCopyOption.REPLACE_EXISTING);
-
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path arg0, IOException arg1) throws IOException {
-            // We can't nicely check if the "new" installation is a web distribution or not, so specifically catch a
-            // NSFE for the MQ directory.
-            if (arg1 instanceof NoSuchFileException && arg1.getMessage().contains(
-                    "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
-                LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
-                        "this is a payara-web distribution. Continuing copy...");
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-
-            LOGGER.log(Level.SEVERE, "File could not visited: {0}", arg0.toString());
-            throw arg1;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path arg0, IOException arg1) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-        
-    }
-
     private class BinDirPermissionFileVisitor implements FileVisitor<Path> {
 
         @Override
@@ -610,8 +637,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         @Override
         public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-            // We can't nicely check if the "new" installation is a web distribution or not, so specifically catch a
-            // NSFE for the MQ directory.
+            // We can't nicely check if the "new" installation is a web distribution or not ("distribution" param is
+            // optional with "useDownloaded"), so specifically catch a NSFE for the MQ directory.
             if (exc instanceof NoSuchFileException && exc.getMessage().contains(
                     "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                 LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
