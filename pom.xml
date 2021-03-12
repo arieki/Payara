@@ -130,7 +130,16 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-
+        <repository>
+            <id>payara-nexus-enterprise-snapshots</id>
+            <url>https://nexus.payara.fish/repository/payara-enterprise-snapshots-private</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <properties>
@@ -244,7 +253,7 @@
         <monitoring-console-process.version>1.7</monitoring-console-process.version>
         <monitoring-console-webapp.version>1.7</monitoring-console-webapp.version>
         <validation.xml.root>${project.build.outputDirectory}</validation.xml.root>
-        <payara.notifiers.version>1.0.1-enterprise</payara.notifiers.version>
+        <payara.notifiers.version>1.0.1-enterprise-SNAPSHOT</payara.notifiers.version>
         <smack.version>4.1.9</smack.version>
         <jxmpp.version>0.4.2</jxmpp.version>
         <xpp3.version>1.1.4c_7</xpp3.version>
@@ -394,8 +403,8 @@
                     <url>https://nexus.payara.fish/repository/payara-enterprise-artifacts-private/</url>
                 </repository>
                 <snapshotRepository>
-                    <id>payara-nexus-snapshots</id>
-                    <url>https://nexus.payara.fish/repository/payara-snapshots/</url>
+                    <id>payara-nexus-enterprise-snapshots</id>
+                    <url>https://nexus.payara.fish/repository/payara-enterprise-snapshots-private/</url>
                 </snapshotRepository>
             </distributionManagement>
         </profile>
