@@ -277,10 +277,11 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             // Use copy with overwrite since we don't know what state the move was in
             CopyFileVisitor copyFileVisitor = new CopyFileVisitor(stagedPath, targetPath);
             Files.walkFileTree(stagedPath, copyFileVisitor);
-
-            // Now delete
-            deleteStagedInstall();
         }
+
+        // Now delete
+        deleteStagedInstall();
+
         LOGGER.log(Level.INFO, "Moved staged back to current");
     }
 
@@ -298,10 +299,11 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             // Use copy with overwrite since we don't know what state the move was in
             CopyFileVisitor copyFileVisitor = new CopyFileVisitor(currentPath, targetPath);
             Files.walkFileTree(currentPath, copyFileVisitor);
-
-            // Now delete
-            deleteCurrentInstall();
         }
+
+        // Now delete
+        deleteCurrentInstall();
+
         LOGGER.log(Level.INFO, "Moved current install back to old");
     }
 
