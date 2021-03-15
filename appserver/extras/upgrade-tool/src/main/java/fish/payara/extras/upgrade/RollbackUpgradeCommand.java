@@ -46,7 +46,6 @@ import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
-import org.glassfish.pfl.dynamic.copyobject.spi.Copy;
 import org.jvnet.hk2.annotations.Service;
 
 import java.io.File;

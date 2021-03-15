@@ -47,7 +47,6 @@ import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
-import java.net.MalformedURLException;
 import java.util.logging.Level;
 
 /**
