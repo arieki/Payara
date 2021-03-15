@@ -248,7 +248,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             logWarning = true;
         }
 
-        // Fifth and final step, restore the original domain configs
+        // Final step, restore the original domain configs
         try {
             restoreDomains();
         } catch (CommandException ce) {
@@ -270,6 +270,11 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             Path stagedPath = Paths.get(glassfishDir, file + ".new");
             Path targetPath = Paths.get(glassfishDir, file);
 
+            // Only move the stuff that exists - if it doesn't, it implies it was never moved to begin with
+            if (!stagedPath.toFile().exists()) {
+                continue;
+            }
+
             // Use copy with overwrite since we don't know what state the move was in
             CopyFileVisitor copyFileVisitor = new CopyFileVisitor(stagedPath, targetPath);
             Files.walkFileTree(stagedPath, copyFileVisitor);
@@ -285,6 +290,11 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         for (String file : MOVEFOLDERS) {
             Path currentPath = Paths.get(glassfishDir, file);
             Path targetPath = Paths.get(glassfishDir, file + ".old");
+
+            // Only move the stuff that exists - if it doesn't, it implies it was never moved to begin with
+            if (!currentPath.toFile().exists()) {
+                continue;
+            }
 
             // Use copy with overwrite since we don't know what state the move was in
             CopyFileVisitor copyFileVisitor = new CopyFileVisitor(currentPath, targetPath);
