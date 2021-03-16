@@ -201,40 +201,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
             // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
             return ERROR;
-        } catch (ProcessManagerException pme) {
-            LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", pme.toString());
-
-            // Attempt to undo the rollback
-            LOGGER.log(Level.INFO, "Attempting to undo rollback");
-
-            // First up, move "current" back to "old"
-            try {
-                moveCurrentToOld();
-            } catch (IOException ioe) {
-                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
-                return ERROR;
-            }
-
-            // After moving "current" back to "old", move "staged" back to "current"
-            try {
-                moveStagedToCurrent();
-            } catch (IOException ioe) {
-                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
-                return ERROR;
-            }
-
-            // Finally, attempt to restore the nodes
-            try {
-                LOGGER.log(Level.INFO, "Reinstalling nodes");
-                updateNodes();
-                LOGGER.log(Level.INFO, "Reinstalled nodes");
-            } catch (Exception exception) {
-                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", exception.toString());
-            }
-
-            return ERROR;
         }
-
 
         // Fifth step, remove "staged" again - if we've reached this point the install should have been successfully
         // rolled back so we don't need it anymore

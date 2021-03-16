@@ -114,7 +114,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         glassfishDir = getInstallRootPath();
     }
 
-    protected void updateNodes() throws MalformedURLException, ProcessManagerException {
+    protected void updateNodes() throws MalformedURLException {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
@@ -138,7 +138,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         }
     }
 
-    protected void updateSSHNode(Node node) throws ProcessManagerException {
+    protected void updateSSHNode(Node node) {
         LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
@@ -174,7 +174,6 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             processManager.execute();
         } catch (ProcessManagerException ex) {
             logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
-            throw ex;
         }
     }
 

@@ -399,27 +399,6 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
                 // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
                 return ERROR;
-            } catch (ProcessManagerException pme) {
-                LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back upgrade: {0}", pme.toString());
-                try {
-                    if (stage) {
-                        deleteStagedInstall();
-                    } else {
-                        undoMoveFiles();
-                    }
-                } catch (IOException ioe) {
-                    // Exit out here if we failed to restore, we don't want to push a broken install to the nodes
-                    LOGGER.log(Level.SEVERE, "Failed to restore previous state of local install, " +
-                            "nodes will not be restored: {0}", ioe.toString());
-                    return ERROR;
-                }
-
-                try {
-                    updateNodes();
-                } catch (Exception ex) {
-                    LOGGER.log(Level.SEVERE, "Failed to restore previous state of nodes: {0}", ex.toString());
-                }
-                return ERROR;
             }
         }
 
