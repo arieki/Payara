@@ -58,4 +58,4 @@ do
     rm -rf ${AS_INSTALL}/${i}.new
 done
 
-exec ${AS_INSTALL}/bin/asadmin _upgrade-nodes "$@"
+exec ${AS_INSTALL}/bin/asadmin upgrade-nodes "$@"

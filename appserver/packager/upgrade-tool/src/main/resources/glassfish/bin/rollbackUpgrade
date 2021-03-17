@@ -58,6 +58,6 @@ do
     rm -rf ${AS_INSTALL}/${i}.old
 done
 
-${AS_INSTALL}/bin/asadmin _upgrade-nodes --rollback=true "$@"
+${AS_INSTALL}/bin/asadmin upgrade-nodes --rollback=true "$@"
 
 echo "Please use the restore-domain ASadmin command to restore your desired domains."

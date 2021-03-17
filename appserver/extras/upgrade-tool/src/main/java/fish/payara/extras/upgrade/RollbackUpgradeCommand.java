@@ -177,7 +177,8 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             updateNodes();
             LOGGER.log(Level.INFO, "Rolled back nodes");
         } catch (IOException ioe) {
-            // The IOException *should* be a MalformedURLException, since that's all updateNodes() currently throws
+            // The IOException *should* be a MalformedURLException, which occurs before an attempt to update the nodes
+            // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
             LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", ioe.toString());
 
             // Attempt to undo the rollback
@@ -201,6 +202,17 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
             // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
             return ERROR;
+        } catch (CommandException ce) {
+            // CommandException gets thrown once all nodes have been attempted to be rolled back and if at
+            // least one roll back hit an error. We don't want to undo the roll back since the failure might be valid
+            LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
+                            "the reasons. You can roll back the nodes installs individually using the " +
+                            "rollback-server command on each node, or attempt to roll them all back again using the " +
+                            "upgrade-nodes command. \n{0}",
+                    ce.getMessage());
+            return WARNING;
+
+
         }
 
         // Fifth step, remove "staged" again - if we've reached this point the install should have been successfully

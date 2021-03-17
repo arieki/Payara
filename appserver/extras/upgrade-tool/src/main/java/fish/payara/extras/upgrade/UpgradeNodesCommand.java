@@ -47,24 +47,27 @@ import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
+import java.io.IOException;
 import java.util.logging.Level;
 
 /**
  * Helper command used in conjunction with the upgrade/rollback scripts to update nodes.
  */
-@Service(name = "_upgrade-nodes")
+@Service(name = "upgrade-nodes")
 @PerLookup
 public class UpgradeNodesCommand extends BaseUpgradeCommand {
 
     @Param(name = "rollback", defaultValue = "false")
-    private boolean rollback;
+    protected boolean rollback;
 
     @Override
     protected int executeCommand() throws CommandException {
         try {
             updateNodes();
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes: {0}", ex.toString());
+        } catch (IOException ioe) {
+            // The IOException should be a MalformedURLException, which occurs before an attempt to update the nodes
+            // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
+            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes: {0}", ioe.toString());
 
             // If we were using this command to roll back, don't rollback again if we've failed
             if (rollback) {
@@ -73,7 +76,7 @@ public class UpgradeNodesCommand extends BaseUpgradeCommand {
 
             // If we're on Linux, we can use the rollback-upgrade command
             if (!OS.isWindows()) {
-                LOGGER.log(Level.INFO, "Attempting to rollback changes", ex);
+                LOGGER.log(Level.INFO, "Attempting to rollback changes", ioe);
                 CLICommand rollbackCommand = CLICommand.getCommand(habitat, "rollback-upgrade");
                 if (StringUtils.ok(domainDirParam)) {
                     rollbackCommand.execute("rollback-upgrade", "--domaindir", domainDirParam);
@@ -83,10 +86,29 @@ public class UpgradeNodesCommand extends BaseUpgradeCommand {
             } else {
                 // If we're on Windows, instruct the user to use the script.
                 LOGGER.log(Level.SEVERE, "rollback-upgrade command not supported on Windows, " +
-                        "please use the rollbackUpgrade script to undo the changes", ex);
+                        "please use the rollbackUpgrade script to undo the changes", ioe);
             }
 
             return ERROR;
+        } catch (CommandException ce) {
+            // CommandException gets thrown once all nodes have been attempted to be upgraded and if at
+            // least one upgrade hit an error. We don't want to roll back since the failure might be valid
+            if (!rollback) {
+                LOGGER.log(Level.WARNING, "Failed to upgrade all nodes: inspect the logs from this command for " +
+                                "the reasons. You can rollback the server upgrade and all of its nodes using the " +
+                                "rollback-server command, upgrade the nodes installs individually using the " +
+                                "upgrade-server command on each node, or attempt to upgrade them all again using the " +
+                                "upgrade-nodes command. \n{0}",
+                        ce.getMessage());
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
+                                "the reasons. You can roll back the nodes installs individually using the " +
+                                "rollback-server command on each node, or attempt to roll them all back again using the " +
+                                "upgrade-nodes command. \n{0}",
+                        ce.getMessage());
+            }
+
+            return WARNING;
         }
 
         return SUCCESS;

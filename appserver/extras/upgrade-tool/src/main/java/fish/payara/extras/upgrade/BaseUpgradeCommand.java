@@ -114,7 +114,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         glassfishDir = getInstallRootPath();
     }
 
-    protected void updateNodes() throws MalformedURLException {
+    protected void updateNodes() throws MalformedURLException, CommandException {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
@@ -130,15 +130,25 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
             LOGGER.log(Level.INFO, "Updating nodes for domain " + domaindir.getName());
+            boolean throwException = false;
+            List<String> failingNodes = new ArrayList<>();
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
                 if (node.getType().equals("SSH")) {
-                    updateSSHNode(node);
+                    boolean commandSuccess = updateSSHNode(node);
+                    if (!commandSuccess) {
+                        throwException = true;
+                        failingNodes.add(node.getName());
+                    }
                 }
+            }
+
+            if (throwException) {
+                throw new CommandException("Error upgrading nodes: " + String.join(", ", failingNodes));
             }
         }
     }
 
-    protected void updateSSHNode(Node node) {
+    protected boolean updateSSHNode(Node node) {
         LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
@@ -170,11 +180,17 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         processManager.setTimeoutMsec(DEFAULT_TIMEOUT_MSEC);
         processManager.setEcho(logger.isLoggable(Level.SEVERE));
 
+        boolean commandSuccess = true;
         try {
             processManager.execute();
+            if (processManager.getStdout().contains("Command install-node-ssh failed")) {
+                commandSuccess = false;
+            }
         } catch (ProcessManagerException ex) {
             logger.log(Level.SEVERE, "Error while executing command: {0}", ex.getMessage());
         }
+
+        return commandSuccess;
     }
 
     protected List<String> getPasswords(SshAuth auth) {
