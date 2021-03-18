@@ -40,7 +40,7 @@
     holder.
 
 -->
-<!-- Portions Copyright [2016-2020] [Payara Foundation and/or its affiliates] -->
+<!-- Portions Copyright 2016-2021 Payara Foundation and/or its affiliates -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd"> <modelVersion>4.0.0</modelVersion>
     <parent>
@@ -150,17 +150,27 @@
         <module>phonehome</module>
         <module>requesttracing</module>
         <module>notification</module>
+        <module>notification-l10n</module>
+        <module>notification-jms</module>
+        <module>notification-jms-l10n</module>
+        <module>notification-datadog</module>
+        <module>notification-datadog-l10n</module>
+        <module>notification-discord</module>
+        <module>notification-email</module>
+        <module>notification-email-l10n</module>
+        <module>notification-newrelic</module>
+        <module>notification-newrelic-l10n</module>
+        <module>notification-slack</module>
+        <module>notification-slack-l10n</module>
+        <module>notification-snmp</module>
+        <module>notification-snmp-l10n</module>
+        <module>notification-teams</module>
+        <module>notification-xmpp</module>
+        <module>notification-xmpp-l10n</module>
+        <module>notification-admin-audit-backwards-compat</module>
         <module>asadmin-recorder</module>
         <module>JMX-Monitoring</module>
         <module>payara-micro</module>
-        <module>notification-email</module>
-        <module>notification-hipchat</module>
-        <module>notification-jms</module>
-        <module>notification-slack</module>
-        <module>notification-snmp</module>
-        <module>notification-xmpp</module>
-        <module>notification-newrelic</module>
-        <module>notification-datadog</module>
         <module>zendesk-support</module>
         <module>payara-api</module>
         <module>environment-warning</module>
@@ -522,6 +532,12 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>deploy-internals</id>
+            <properties>
+                <deploy.skip>false</deploy.skip>
+            </properties>
         </profile>
     </profiles>
     

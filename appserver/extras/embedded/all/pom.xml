@@ -40,7 +40,7 @@
     holder.
 
 -->
-<!-- Portions Copyright [2016-2020] [Payara Foundation and/or its affiliates] -->
+<!-- Portions Copyright 2016-2021 [Payara Foundation and/or its affiliates] -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
@@ -51,8 +51,13 @@
         <version>5.27.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
+
     <artifactId>payara-embedded-all</artifactId>
     <name>Embedded Payara All-In-One</name>
+
+    <properties>
+        <deploy.skip>false</deploy.skip>
+    </properties>
 
     <build>
         <defaultGoal>install</defaultGoal>
@@ -111,12 +116,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>false</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -354,7 +353,7 @@
 
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
-            <artifactId>notification-package</artifactId>
+            <artifactId>notification</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
             <optional>true</optional>
@@ -363,13 +362,6 @@
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
             <artifactId>notification-email</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>fish.payara.server.internal.packager</groupId>
-            <artifactId>notification-hipchat</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
             <optional>true</optional>
@@ -409,6 +401,28 @@
             <type>zip</type>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-discord</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-teams</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-admin-audit-backwards-compat</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
             <artifactId>asadmin-recorder</artifactId>
@@ -531,6 +545,12 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>deploy-internals</id>
+            <properties>
+                <deploy.skip>true</deploy.skip>
+            </properties>
         </profile>
     </profiles>
 </project>

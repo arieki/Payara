@@ -3,7 +3,7 @@
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) [2016-2020] Payara Foundation and/or its affiliates. All rights reserved.
+    Copyright (c) 2016-2021 Payara Foundation and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -53,6 +53,7 @@
 
     <properties>
         <product.name>Payara Micro Enterprise</product.name>
+        <deploy.skip>false</deploy.skip>
     </properties>
 
     <build>
@@ -61,7 +62,7 @@
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
-                    <skip>false</skip>
+                    <skip>${deploy.skip}</skip>
                 </configuration>
             </plugin>
             <plugin>
@@ -129,12 +130,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>false</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -344,7 +339,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- notification package -->
+        <!-- notification package and extensions -->
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
             <artifactId>notification</artifactId>
@@ -352,6 +347,63 @@
             <type>zip</type>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-datadog</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-discord</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-email</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-newrelic</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-slack</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-snmp</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-teams</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.packager</groupId>
+            <artifactId>notification-xmpp</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <optional>true</optional>
+        </dependency>
+
 
         <!-- phonehome package -->
         <dependency>
@@ -522,6 +574,12 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>deploy-internals</id>
+            <properties>
+                <deploy.skip>true</deploy.skip>
+            </properties>
         </profile>
     </profiles>
 </project>
