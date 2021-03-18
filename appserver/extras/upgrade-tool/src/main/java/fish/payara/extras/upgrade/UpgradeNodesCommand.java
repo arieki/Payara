@@ -47,7 +47,6 @@ import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
-import java.net.MalformedURLException;
 import java.util.logging.Level;
 
 /**
@@ -64,9 +63,8 @@ public class UpgradeNodesCommand extends BaseUpgradeCommand {
     protected int executeCommand() throws CommandException {
         try {
             updateNodes();
-        } catch (MalformedURLException ex) {
-            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes", ex);
-            ex.printStackTrace();
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes: {0}", ex.toString());
 
             // If we were using this command to roll back, don't rollback again if we've failed
             if (rollback) {
