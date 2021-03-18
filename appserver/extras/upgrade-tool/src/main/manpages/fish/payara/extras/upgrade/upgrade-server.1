@@ -10,6 +10,7 @@ SYNOPSIS
            [--distribution={payara|payara-web|payara-ml|payara-web-ml}]
            [--stage={true|false}]
            [--domaindir domain-dir]
+           [--usedownloaded distribution.zip]
 
 DESCRIPTION
        The upgrade-server subcommand upgrades Payara Server to the specified
@@ -44,6 +45,15 @@ OPTIONS
            domain upon which the command will operate.
 
            The default value is as-install/domains.
+
+       --usedownloaded
+           Specifies a pre-downloaded Payara Server distribution zip file
+           that you'd like to upgrade your existing installation to use,
+           instead of downloading one from the Payara Nexus.
+
+           When this option is specified, the username, password,
+           distribution, and version parameters are all ignored and are
+           no longer mandatory.
 
 EXAMPLES
        Example 1, Upgrading Payara Server

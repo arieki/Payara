@@ -50,6 +50,7 @@ import org.jvnet.hk2.annotations.Service;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
@@ -85,7 +86,20 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             LOGGER.log(Level.INFO, "Rolling back server...");
             for (String file : MOVEFOLDERS) {
                 Files.walkFileTree(Paths.get(glassfishDir, file), visitor);
-                Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file), StandardCopyOption.REPLACE_EXISTING);
+                try {
+                    Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
+                            StandardCopyOption.REPLACE_EXISTING);
+                } catch (NoSuchFileException nsfe) {
+                    // We can't nicely check if the current or old installation is a web distribution or not, so just
+                    // attempt to move all and specifically catch a FNFE for the MQ directory
+                    if (nsfe.getMessage().contains(
+                            "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
+                                "this is a payara-web distribution. Continuing to move files...");
+                    } else {
+                        throw nsfe;
+                    }
+                }
             }
 
             // Roll back the nodes for all domains
