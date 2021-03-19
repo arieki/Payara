@@ -405,7 +405,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 // least one upgrade hit an error. We don't want to roll back now since the failure might be valid
                 LOGGER.log(Level.WARNING, "Failed to upgrade all nodes: inspect the logs from this command for " +
                                 "the reasons. You can rollback the server upgrade and all of its nodes using the " +
-                                "rollback-server command, upgrade the nodes installs individually using the " +
+                                "rollback-server command, upgrade the node installs individually using the " +
                                 "upgrade-server command on each node, or attempt to upgrade them all again using the " +
                                 "upgrade-nodes command. \n{0}",
                         ce.getMessage());

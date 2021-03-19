@@ -206,7 +206,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             // CommandException gets thrown once all nodes have been attempted to be rolled back and if at
             // least one roll back hit an error. We don't want to undo the roll back since the failure might be valid
             LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
-                            "the reasons. You can roll back the nodes installs individually using the " +
+                            "the reasons. You can roll back the node installs individually using the " +
                             "rollback-server command on each node, or attempt to roll them all back again using the " +
                             "upgrade-nodes command. \n{0}",
                     ce.getMessage());
