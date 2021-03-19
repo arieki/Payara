@@ -57,26 +57,22 @@ public class ReinstallNodesCommand extends BaseUpgradeCommand {
     protected int executeCommand() throws CommandException {
         try {
             reinstallNodes();
-        } catch (IOException ioe) {
-            // The IOException should be a MalformedURLException, which occurs before an attempt to update the nodes
-            // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
-            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes: {0}", ioe.toString());
-
+        } catch (Exception exception) {
+            /**
+             * MalformedURLException should occur before an attempt to update the nodes. It gets thrown if the
+             * domain.xml couldn't be found, which implies something has gone wrong during upgrade/rollback. Since we
+             * don't know if we're rolling back or not, take no action and log error.
+             * CommandException gets thrown once all nodes have been attempted to be upgraded and if at
+             * least one upgrade hit an error. Since we don't know if this was all nodes or just a subset,
+             * pessimistically log a full error rather than a warning.
+             */
             LOGGER.log(Level.SEVERE, "Failed to reinstall all nodes: inspect the logs from this command for " +
                             "the reasons. You can roll back or upgrade the node installs individually using the " +
                             "rollback-server or upgrade-server commands on each node respectively, or attempt to " +
-                            "reinstall them again by re-running this command");
-            return ERROR;
-        } catch (CommandException ce) {
-            // CommandException gets thrown once all nodes have been attempted to be upgraded and if at
-            // least one upgrade hit an error. We don't want to roll back since the failure might be valid
-            LOGGER.log(Level.WARNING, "Failed to reinstall all nodes: inspect the logs from this command for " +
-                            "the reasons. You can roll back or upgrade the node installs individually using the " +
-                            "rollback-server or upgrade-server commands on each node respectively, or attempt to " +
                             "reinstall them again by re-running this command \n{0}",
-                    ce.getMessage());
+                    exception.getMessage());
 
-            return WARNING;
+            return ERROR;
         }
 
         return SUCCESS;
