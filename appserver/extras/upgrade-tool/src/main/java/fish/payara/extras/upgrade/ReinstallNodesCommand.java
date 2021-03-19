@@ -43,7 +43,6 @@ import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
-import java.io.IOException;
 import java.util.logging.Level;
 
 /**
