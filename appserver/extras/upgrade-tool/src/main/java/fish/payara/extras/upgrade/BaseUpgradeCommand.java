@@ -114,7 +114,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         glassfishDir = getInstallRootPath();
     }
 
-    protected void updateNodes() throws MalformedURLException, CommandException {
+    protected void reinstallNodes() throws MalformedURLException, CommandException {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
@@ -129,12 +129,12 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
 
             URL domainURL = domainXMLFile.toURI().toURL();
             DomDocument doc = parser.parse(domainURL);
-            LOGGER.log(Level.INFO, "Updating nodes for domain " + domaindir.getName());
+            LOGGER.log(Level.INFO, "Reinstalling nodes for domain " + domaindir.getName());
             boolean throwException = false;
             List<String> failingNodes = new ArrayList<>();
             for (Node node : doc.getRoot().createProxy(Domain.class).getNodes().getNode()) {
                 if (node.getType().equals("SSH")) {
-                    boolean commandSuccess = updateSSHNode(node);
+                    boolean commandSuccess = reinstallSSHNode(node);
                     if (!commandSuccess) {
                         throwException = true;
                         failingNodes.add(node.getName());
@@ -143,13 +143,13 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             }
 
             if (throwException) {
-                throw new CommandException("Error upgrading nodes: " + String.join(", ", failingNodes));
+                throw new CommandException("Error reinstalling nodes: " + String.join(", ", failingNodes));
             }
         }
     }
 
-    protected boolean updateSSHNode(Node node) {
-        LOGGER.log(Level.INFO, "Updating ssh node {0}", new Object[]{node.getName()});
+    protected boolean reinstallSSHNode(Node node) {
+        LOGGER.log(Level.INFO, "Reinstalling SSH node {0}", new Object[]{node.getName()});
         ArrayList<String> command = new ArrayList<>();
         command.add(SystemPropertyConstants.getAdminScriptLocation(glassfishDir));
         command.add("--interactive=false");

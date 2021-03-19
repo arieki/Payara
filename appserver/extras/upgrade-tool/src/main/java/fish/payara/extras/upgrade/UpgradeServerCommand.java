@@ -41,7 +41,6 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.universal.i18n.LocalStringsImpl;
-import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.ExecutionContext;
@@ -378,10 +377,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             return ERROR;
         }
 
-        // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
+        // Don't reinstall the nodes if we're staging, since we'll just be reinstalling them with the "current" version
         if (!stage) {
             try {
-                updateNodes();
+                reinstallNodes();
             } catch (IOException ex) {
                 // The IOException should be a MalformedURLException, which occurs before an attempt to update the nodes
                 // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
@@ -407,7 +406,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                                 "the reasons. You can rollback the server upgrade and all of its nodes using the " +
                                 "rollback-server command, upgrade the node installs individually using the " +
                                 "upgrade-server command on each node, or attempt to upgrade them all again using the " +
-                                "upgrade-nodes command. \n{0}",
+                                "reinstall-nodes command. \n{0}",
                         ce.getMessage());
                 return WARNING;
             }

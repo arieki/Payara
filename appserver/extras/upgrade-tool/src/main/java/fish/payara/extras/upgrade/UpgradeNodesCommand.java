@@ -39,79 +39,26 @@
  */
 package fish.payara.extras.upgrade;
 
-import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.util.OS;
-import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.Param;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
-import java.io.IOException;
-import java.util.logging.Level;
-
 /**
- * Helper command used in conjunction with the upgrade/rollback scripts to update nodes.
+ * The {@link ReinstallNodesCommand} used to be hidden, with the name of "_upgrade-nodes". It was renamed and made
+ * visible (dropping the '_' prefix) and so this exists as an alias.
  */
-@Service(name = "upgrade-nodes")
+@Deprecated
+@Service(name = "_upgrade-nodes")
 @PerLookup
-public class UpgradeNodesCommand extends BaseUpgradeCommand {
+public class UpgradeNodesCommand extends ReinstallNodesCommand {
 
+    // This parameter was dropped from the reinstall-nodes command, so keep it here for backwards compat
     @Param(name = "rollback", defaultValue = "false")
-    protected boolean rollback;
+    private boolean rollback;
 
     @Override
     protected int executeCommand() throws CommandException {
-        try {
-            updateNodes();
-        } catch (IOException ioe) {
-            // The IOException should be a MalformedURLException, which occurs before an attempt to update the nodes
-            // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
-            LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes: {0}", ioe.toString());
-
-            // If we were using this command to roll back, don't rollback again if we've failed
-            if (rollback) {
-                return ERROR;
-            }
-
-            // If we're on Linux, we can use the rollback-upgrade command
-            if (!OS.isWindows()) {
-                LOGGER.log(Level.INFO, "Attempting to rollback changes", ioe);
-                CLICommand rollbackCommand = CLICommand.getCommand(habitat, "rollback-upgrade");
-                if (StringUtils.ok(domainDirParam)) {
-                    rollbackCommand.execute("rollback-upgrade", "--domaindir", domainDirParam);
-                } else {
-                    rollbackCommand.execute("rollback-upgrade");
-                }
-            } else {
-                // If we're on Windows, instruct the user to use the script.
-                LOGGER.log(Level.SEVERE, "rollback-upgrade command not supported on Windows, " +
-                        "please use the rollbackUpgrade script to undo the changes", ioe);
-            }
-
-            return ERROR;
-        } catch (CommandException ce) {
-            // CommandException gets thrown once all nodes have been attempted to be upgraded and if at
-            // least one upgrade hit an error. We don't want to roll back since the failure might be valid
-            if (!rollback) {
-                LOGGER.log(Level.WARNING, "Failed to upgrade all nodes: inspect the logs from this command for " +
-                                "the reasons. You can rollback the server upgrade and all of its nodes using the " +
-                                "rollback-server command, upgrade the node installs individually using the " +
-                                "upgrade-server command on each node, or attempt to upgrade them all again using the " +
-                                "upgrade-nodes command. \n{0}",
-                        ce.getMessage());
-            } else {
-                LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
-                                "the reasons. You can roll back the node installs individually using the " +
-                                "rollback-server command on each node, or attempt to roll them all back again using the " +
-                                "upgrade-nodes command. \n{0}",
-                        ce.getMessage());
-            }
-
-            return WARNING;
-        }
-
-        return SUCCESS;
+        return super.executeCommand();
     }
-
 }

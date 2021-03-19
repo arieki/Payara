@@ -40,7 +40,6 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.admin.CommandException;
@@ -174,7 +173,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         // Fourth step, roll back the nodes for all domains
         try {
             LOGGER.log(Level.INFO, "Rolling back nodes");
-            updateNodes();
+            reinstallNodes();
             LOGGER.log(Level.INFO, "Rolled back nodes");
         } catch (IOException ioe) {
             // The IOException *should* be a MalformedURLException, which occurs before an attempt to update the nodes
@@ -208,7 +207,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
                             "the reasons. You can roll back the node installs individually using the " +
                             "rollback-server command on each node, or attempt to roll them all back again using the " +
-                            "upgrade-nodes command. \n{0}",
+                            "reinstall-nodes command. \n{0}",
                     ce.getMessage());
             return WARNING;
 
