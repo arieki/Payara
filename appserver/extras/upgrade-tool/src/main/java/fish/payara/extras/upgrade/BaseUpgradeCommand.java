@@ -46,11 +46,15 @@ import com.sun.enterprise.config.serverbeans.Domain;
 import com.sun.enterprise.config.serverbeans.Node;
 import com.sun.enterprise.config.serverbeans.SshAuth;
 import com.sun.enterprise.config.serverbeans.SshConnector;
+import com.sun.enterprise.module.ModulesRegistry;
+import com.sun.enterprise.module.single.StaticModulesRegistry;
 import com.sun.enterprise.universal.process.ProcessManager;
 import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.SystemPropertyConstants;
 import org.glassfish.api.admin.CommandException;
+import org.glassfish.hk2.api.MultiException;
 import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.internal.api.Globals;
 import org.jvnet.hk2.config.ConfigParser;
 import org.jvnet.hk2.config.ConfigurationException;
 import org.jvnet.hk2.config.DomDocument;
@@ -58,7 +62,9 @@ import org.jvnet.hk2.config.DomDocument;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -67,6 +73,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -118,7 +126,11 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();
-            ConfigParser parser = new ConfigParser(habitat);
+
+            // Don't use default habitat - since we're a CLI command it doesn't have a view of all the services
+            // added via the modules directory
+            ServiceLocator serviceLocator = createServiceLocator();
+            ConfigParser parser = new ConfigParser(serviceLocator);
             try {
                 parser.logUnrecognisedElements(false);
             } catch (NoSuchMethodError noSuchMethodError) {
@@ -146,6 +158,40 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
                 throw new CommandException("Error reinstalling nodes: " + String.join(", ", failingNodes));
             }
         }
+    }
+
+    private ServiceLocator createServiceLocator() throws CommandException {
+        // Get the list of JAR files from the modules directory
+        ArrayList<URL> urls = new ArrayList<>();
+        for (File file : Paths.get(glassfishDir, "modules").toFile().listFiles()) {
+            if (file.toString().endsWith(".jar")) {
+                try {
+                    urls.add(file.toURI().toURL());
+                } catch (MalformedURLException malformedURLException) {
+                    LOGGER.log(Level.SEVERE, "Error reading from modules directory "
+                            + Paths.get(glassfishDir, "modules"));
+                    throw new CommandException(malformedURLException);
+                }
+            }
+        }
+
+        ClassLoader cl = (ClassLoader) AccessController.doPrivileged(
+                (PrivilegedAction) () -> new URLClassLoader(
+                        urls.toArray(new URL[urls.size()]),
+                        Globals.class.getClassLoader())
+        );
+
+        ModulesRegistry registry = new StaticModulesRegistry(cl);
+        ServiceLocator serviceLocator;
+        try {
+            serviceLocator = registry.createServiceLocator("default");
+        } catch (MultiException multiException) {
+            LOGGER.log(Level.SEVERE, "Error creating service locator - something went wrong initialising " +
+                    "service locator using modules directory " + Paths.get(glassfishDir, "modules"));
+            throw new CommandException(multiException);
+        }
+
+        return serviceLocator;
     }
 
     protected boolean reinstallSSHNode(Node node) {
