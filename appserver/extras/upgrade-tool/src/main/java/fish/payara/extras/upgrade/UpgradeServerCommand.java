@@ -51,6 +51,7 @@ import org.glassfish.api.admin.CommandModel;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigurationException;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -381,9 +382,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         if (!stage) {
             try {
                 reinstallNodes();
-            } catch (IOException ex) {
-                // The IOException should be a MalformedURLException, which occurs before an attempt to update the nodes
-                // It gets thrown if the domain.xml couldn't be found, which implies something has gone wrong - rollback
+            } catch (IOException | ConfigurationException ex) {
+                // IOException or ConfigurationException occurs when parsing the domain.xml, before any attempt to
+                // update the nodes. It gets thrown if the domain.xml couldn't be found, or if the domain.xml is
+                // somehow incorrect, which implies something has gone wrong - rollback
                 LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back: {0}", ex.toString());
                 try {
                     if (stage) {
@@ -397,7 +399,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     return ERROR;
                 }
 
-                // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
+                // Exception gets thrown before any command is run, so we don't need to reinstall the nodes
                 return ERROR;
             } catch (CommandException ce) {
                 // CommandException gets thrown once all nodes have been attempted to be upgraded and if at

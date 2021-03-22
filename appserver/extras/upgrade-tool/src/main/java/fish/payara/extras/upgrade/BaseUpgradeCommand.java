@@ -52,12 +52,12 @@ import com.sun.enterprise.util.SystemPropertyConstants;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.jvnet.hk2.config.ConfigParser;
+import org.jvnet.hk2.config.ConfigurationException;
 import org.jvnet.hk2.config.DomDocument;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -114,7 +114,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         glassfishDir = getInstallRootPath();
     }
 
-    protected void reinstallNodes() throws MalformedURLException, CommandException {
+    protected void reinstallNodes() throws IOException, CommandException, ConfigurationException {
         File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
         for (File domaindir : domaindirs) {
             File domainXMLFile = Paths.get(domaindir.getAbsolutePath(), "config", "domain.xml").toFile();

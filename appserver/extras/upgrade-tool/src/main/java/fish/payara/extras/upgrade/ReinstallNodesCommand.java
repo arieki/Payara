@@ -58,9 +58,10 @@ public class ReinstallNodesCommand extends BaseUpgradeCommand {
             reinstallNodes();
         } catch (Exception exception) {
             /**
-             * MalformedURLException should occur before an attempt to update the nodes. It gets thrown if the
-             * domain.xml couldn't be found, which implies something has gone wrong during upgrade/rollback. Since we
-             * don't know if we're rolling back or not, take no action and log error.
+             * IOException or ConfigurationException should occur before an attempt to update the nodes. They get thrown
+             * if the domain.xml couldn't be parsed, which implies something has gone wrong during upgrade/rollback.
+             * Since we don't know if we're rolling back or not, take no action and log error.
+             *
              * CommandException gets thrown once all nodes have been attempted to be upgraded and if at
              * least one upgrade hit an error. Since we don't know if this was all nodes or just a subset,
              * pessimistically log a full error rather than a warning.
