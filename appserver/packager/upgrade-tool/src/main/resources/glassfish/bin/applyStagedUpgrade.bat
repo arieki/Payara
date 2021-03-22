@@ -48,7 +48,31 @@ exit /B 1
 :ok
 call "%~dp0..\config\upgrade-tool.bat"
 
+:checkCurrentPresent
+if exist %~dp0..\modules (
+    goto checkStagedPresent
+) else (
+    echo "No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install"
+    exit /B 1
+)
 
+:checkStagedPresent
+if exist %~dp0..\modules.new (
+    goto checkOldPresent
+) else (
+    echo "No staged install present! This is unexpected: Exiting since there's nothing to apply"
+    exit /B 1
+)
+
+:checkOldPresent
+if exist %~dp0..\modules.old (
+    echo "Old install present! This is unexpected: Exiting since this script would overwrite the old install"
+    exit /B 1
+) else (
+    goto moveFiles
+)
+
+:moveFiles
 for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     echo Moving %%a to old
     move %~dp0..\%%a %~dp0..\%%a.old > nul
