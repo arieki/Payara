@@ -73,11 +73,20 @@ fi
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to old"
-    mkdir ${AS_INSTALL}/${i}.old
-    mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
+    if [ -d "${AS_INSTALL}/${i}" ]; then
+        mkdir ${AS_INSTALL}/${i}.old
+        mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
+    else
+        mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.old
+    fi
 
     echo "Moving staged ${i} to expected location"
-    mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
+    if [ -d "${AS_INSTALL}/${i}.new" ]; then
+        mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
+    else
+        mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
+    fi
+  
     rm -rf ${AS_INSTALL}/${i}.new
 done
 
