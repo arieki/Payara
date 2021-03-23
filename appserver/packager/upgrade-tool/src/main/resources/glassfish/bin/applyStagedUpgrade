@@ -45,7 +45,30 @@ case "`uname`" in
   CYGWIN*) AS_INSTALL=`cygpath --windows $AS_INSTALL`
 esac
 
-. "${AS_INSTALL}/config/upgrade-tool.properties"
+if [ -f "${AS_INSTALL}/config/upgrade-tool.properties" ]; then
+    . "${AS_INSTALL}/config/upgrade-tool.properties"
+else
+    echo "${AS_INSTALL}/config/upgrade-tool.properties not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it"
+    exit 1
+fi
+
+# Check current present
+if [ ! -d "${AS_INSTALL}/modules" ]; then
+    echo "No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install"
+    exit 1
+fi
+
+# Check staged present
+if [ ! -d "${AS_INSTALL}/modules.new" ]; then
+    echo "No staged install present! This is unexpected: Exiting since there's nothing to apply"
+    exit 1
+fi
+
+# Check no old present
+if [ -d "${AS_INSTALL}/modules.old" ]; then
+    echo "Old install present! This is unexpected: Exiting since this script would overwrite the old install"
+    exit 1
+fi
 
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
