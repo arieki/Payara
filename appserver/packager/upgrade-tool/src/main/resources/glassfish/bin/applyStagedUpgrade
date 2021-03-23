@@ -74,7 +74,6 @@ for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to old"
     if [ -d "${AS_INSTALL}/${i}" ]; then
-        echo "directory exists"
         mkdir ${AS_INSTALL}/${i}.old
         if [ ! $? -eq 0 ]; then
             WARN=true
@@ -95,13 +94,15 @@ do
     fi
 
     echo "Moving staged ${i} to expected location"
-    echo "${AS_INSTALL}/${i}.new"
-    ls ${AS_INSTALL}
     if [ -d "${AS_INSTALL}/${i}.new" ]; then
-        echo "directory exists"
         mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
         if [ ! $? -eq 0 ]; then
-            WARN=true
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
+            fi
         fi
     else
         mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
@@ -109,6 +110,8 @@ do
             # Check if the warning was a missing MQ directory
             if [[ ! "${i}" == *"mq"* ]]; then
                 WARN=true
+            else
+                echo "Ignoring error moving staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
             fi
         fi
     fi
