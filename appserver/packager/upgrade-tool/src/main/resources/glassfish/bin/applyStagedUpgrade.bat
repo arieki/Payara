@@ -41,18 +41,24 @@ REM
 
 VERIFY OTHER 2>nul
 setlocal ENABLEEXTENSIONS
-if ERRORLEVEL 0 goto ok
+if ERRORLEVEL 0 goto sourceProperties
 echo "Unable to enable extensions"
 exit /B 1
 
-:ok
-call "%~dp0..\config\upgrade-tool.bat"
+:sourceProperties
+if exist %~dp0..\config\upgrade-tool.bat (
+    call "%~dp0..\config\upgrade-tool.bat"
+    goto checkCurrentPresent
+) else (
+    echo %~dp0..\config\upgrade-tool.bat not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it
+    exit /B 1
+)
 
 :checkCurrentPresent
 if exist %~dp0..\modules (
     goto checkStagedPresent
 ) else (
-    echo "No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install"
+    echo No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install
     exit /B 1
 )
 
@@ -60,13 +66,13 @@ if exist %~dp0..\modules (
 if exist %~dp0..\modules.new (
     goto checkOldPresent
 ) else (
-    echo "No staged install present! This is unexpected: Exiting since there's nothing to apply"
+    echo No staged install present! This is unexpected: Exiting since there's nothing to apply
     exit /B 1
 )
 
 :checkOldPresent
 if exist %~dp0..\modules.old (
-    echo "Old install present! This is unexpected: Exiting since this script would overwrite the old install"
+    echo Old install present! This is unexpected: Exiting since this script would overwrite the old install
     exit /B 1
 ) else (
     goto moveFiles
