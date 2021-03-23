@@ -81,7 +81,12 @@ do
 
         mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
         if [ ! $? -eq 0 ]; then
-            WARN=true
+            # Check if the warning was an empty MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving empty MQ directory to old, assuming this is a leftover empty directory from a previous payara distribution"
+            fi
         fi
     else
         mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.old
@@ -89,6 +94,8 @@ do
             # Check if the warning was a missing MQ directory
             if [[ ! "${i}" == *"mq"* ]]; then
                 WARN=true
+            else
+                echo "Ignoring error moving missing MQ directory to old, assuming you're upgrading a payara-web distribution"
             fi
         fi
     fi
@@ -97,11 +104,11 @@ do
     if [ -d "${AS_INSTALL}/${i}.new" ]; then
         mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
         if [ ! $? -eq 0 ]; then
-            # Check if the warning was a missing MQ directory
+            # Check if the warning was an empty MQ directory
             if [[ ! "${i}" == *"mq"* ]]; then
                 WARN=true
             else
-                echo "Ignoring error moving staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
+                echo "Ignoring error moving empty staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
             fi
         fi
     else
@@ -111,7 +118,7 @@ do
             if [[ ! "${i}" == *"mq"* ]]; then
                 WARN=true
             else
-                echo "Ignoring error moving staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
+                echo "Ignoring error moving missing staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
             fi
         fi
     fi

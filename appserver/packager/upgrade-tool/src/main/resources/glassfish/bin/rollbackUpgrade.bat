@@ -81,11 +81,47 @@ if exist %~dp0..\modules.old (
 :moveFiles
 for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     echo Moving %%a to new
-    move %~dp0..\%%a %~dp0..\%%a.new > nul
+    move %~dp0..\%%a %~dp0..\%%a.new
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving MQ directory to staged location, assuming you're rolling back a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving MQ directory to staged location, assuming you're rolling back a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
+
     echo Moving old %%a to expected location
-    move %~dp0..\%%a.old %~dp0..\%%a > nul
+    move %~dp0..\%%a.old %~dp0..\%%a
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving old MQ directory to expected location, assuming you're rolling back to a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving old MQ directory to expected location, assuming you're rolling back to a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
 )
 
-call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+if %WARN% == true (
+    echo A command didn't complete successfully! Check the logs and your current install. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect.
+) else (
+    call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+    if ERRORLEVEL 1 (
+        set WARN=true
+    )
+)
 
-echo Please use the restore-domain ASadmin command to restore your desired domains.
+if %WARN% == true (
+    echo A command didn't complete successfully! Check the logs and your current install. Please use the restore-domain ASadmin command to restore your desired domains if everything appears fine.
+) else (
+    echo Please use the restore-domain ASadmin command to restore your desired domains.
+)
+
+
