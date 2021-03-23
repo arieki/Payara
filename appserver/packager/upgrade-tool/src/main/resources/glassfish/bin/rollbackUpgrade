@@ -74,6 +74,7 @@ for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to new"
     if [ -d "${AS_INSTALL}/${i}" ]; then
+        echo "directory exists"
         mkdir ${AS_INSTALL}/${i}.new
         if [ ! $? -eq 0 ]; then
             WARN=true
@@ -95,6 +96,7 @@ do
 
     echo "Moving old ${i} to expected location"
     if [ -d "${AS_INSTALL}/${i}.old" ]; then
+        echo "directory exists"
         mv ${AS_INSTALL}/${i}.old/* ${AS_INSTALL}/${i}/
         if [ ! $? -eq 0 ]; then
             WARN=true
@@ -118,7 +120,8 @@ if [ ! $? -eq 0 ]; then
 fi
 
 if [ ! -z "$WARN" ]; then
-    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired"
+    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired, otherwise please use the restore-domain ASadmin command to restore your desired domains."
+else
+    echo "Please use the restore-domain ASadmin command to restore your desired domains."
 fi
 
-echo "Please use the restore-domain ASadmin command to restore your desired domains."

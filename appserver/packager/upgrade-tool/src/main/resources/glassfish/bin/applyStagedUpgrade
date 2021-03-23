@@ -74,6 +74,7 @@ for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to old"
     if [ -d "${AS_INSTALL}/${i}" ]; then
+        echo "directory exists"
         mkdir ${AS_INSTALL}/${i}.old
         if [ ! $? -eq 0 ]; then
             WARN=true
@@ -94,7 +95,10 @@ do
     fi
 
     echo "Moving staged ${i} to expected location"
+    echo "${AS_INSTALL}/${i}.new"
+    ls ${AS_INSTALL}
     if [ -d "${AS_INSTALL}/${i}.new" ]; then
+        echo "directory exists"
         mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
         if [ ! $? -eq 0 ]; then
             WARN=true
@@ -113,7 +117,8 @@ do
 done
 
 if [ ! -z "$WARN" ]; then
-    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired"
+    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect."
+else
+    exec ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
 fi
 
-exec ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
