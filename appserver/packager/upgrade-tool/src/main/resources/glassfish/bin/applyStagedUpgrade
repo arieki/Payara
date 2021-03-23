@@ -86,7 +86,10 @@ do
     else
         mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.old
         if [ ! $? -eq 0 ]; then
-            WARN=true
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            fi
         fi
     fi
 
@@ -99,7 +102,10 @@ do
     else
         mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
         if [ ! $? -eq 0 ]; then
-            WARN=true
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            fi
         fi
     fi
   
