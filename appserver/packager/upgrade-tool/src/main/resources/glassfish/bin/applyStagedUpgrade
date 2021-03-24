@@ -128,7 +128,15 @@ done
 
 if [ ! -z "$WARN" ]; then
     echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect."
+    exit 1
 else
     exec ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
+    if [ ! $? -eq 0 ]; then
+        WARN=true
+    fi
+fi
+
+if [ ! -z "$WARN" ]; then
+    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired."
 fi
 

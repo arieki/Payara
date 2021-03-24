@@ -109,8 +109,9 @@ for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     )
 )
 
-if %WARN% == true (
+if "%WARN%"=="true" (
     echo A command didn't complete successfully! Check the logs and your current install. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect.
+    exit /B 1
 ) else (
     call %~dp0..\bin\asadmin.bat reinstall-nodes %*
     if ERRORLEVEL 1 (
@@ -118,7 +119,7 @@ if %WARN% == true (
     )
 )
 
-if %WARN% == true (
+if "%WARN%"==true (
     echo A command didn't complete successfully! Check the logs and your current install. Please use the restore-domain ASadmin command to restore your desired domains if everything appears fine.
 ) else (
     echo Please use the restore-domain ASadmin command to restore your desired domains.

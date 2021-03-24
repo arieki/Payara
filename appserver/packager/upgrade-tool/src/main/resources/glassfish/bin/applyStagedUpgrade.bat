@@ -109,8 +109,16 @@ for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     )
 )
 
-if %WARN% == true (
+if "%WARN%"=="true" (
     echo A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect.
+    exit /B 1
 ) else (
     call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+    if ERRORLEVEL 1 (
+        set WARN=true
+    )
+)
+
+if "%WARN%"=="true" (
+    echo A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired.
 )
