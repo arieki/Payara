@@ -140,6 +140,7 @@ fi
 
 if [ ! -z "$WARN" ]; then
     echo "A command didn't complete successfully! Check the logs and your current install, please use the restore-domain ASadmin command to restore your desired domains if everything appears fine."
+    exit 1
 else
     echo "Please use the restore-domain ASadmin command to restore your desired domains."
 fi

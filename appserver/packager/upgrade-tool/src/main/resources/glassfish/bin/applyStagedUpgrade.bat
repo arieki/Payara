@@ -121,4 +121,5 @@ if "%WARN%"=="true" (
 
 if "%WARN%"=="true" (
     echo A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired.
+    exit /B 1
 )
