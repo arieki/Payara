@@ -119,7 +119,7 @@ if "%WARN%"=="true" (
     )
 )
 
-if "%WARN%"==true (
+if "%WARN%"=="true" (
     echo A command didn't complete successfully! Check the logs and your current install. Please use the restore-domain ASadmin command to restore your desired domains if everything appears fine.
     exit /B 1
 ) else (
