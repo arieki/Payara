@@ -41,19 +41,85 @@ REM
 
 VERIFY OTHER 2>nul
 setlocal ENABLEEXTENSIONS
-if ERRORLEVEL 0 goto ok
+if ERRORLEVEL 0 goto sourceProperties
 echo "Unable to enable extensions"
 exit /B 1
 
-:ok
-call "%~dp0..\config\upgrade-tool.bat"
-
-
-for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
-    echo Moving %%a to old
-    move %~dp0..\%%a %~dp0..\%%a.old > nul
-    echo Moving staged %%a to expected location
-    move %~dp0..\%%a.new %~dp0..\%%a > nul
+:sourceProperties
+if exist %~dp0..\config\upgrade-tool.bat (
+    call "%~dp0..\config\upgrade-tool.bat"
+    goto checkCurrentPresent
+) else (
+    echo %~dp0..\config\upgrade-tool.bat not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it
+    exit /B 1
 )
 
-call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+:checkCurrentPresent
+if exist %~dp0..\modules (
+    goto checkStagedPresent
+) else (
+    echo No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install
+    exit /B 1
+)
+
+:checkStagedPresent
+if exist %~dp0..\modules.new (
+    goto checkOldPresent
+) else (
+    echo No staged install present! This is unexpected: Exiting since there's nothing to apply
+    exit /B 1
+)
+
+:checkOldPresent
+if exist %~dp0..\modules.old (
+    echo Old install present! This is unexpected: Exiting since this script would overwrite the old install
+    exit /B 1
+) else (
+    goto moveFiles
+)
+
+:moveFiles
+for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
+    echo Moving %%a to old
+    move %~dp0..\%%a %~dp0..\%%a.old
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving missing MQ directory to old, assuming you're upgrading a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving missing MQ directory to old, assuming you're upgrading a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
+
+    echo Moving staged %%a to expected location
+    move %~dp0..\%%a.new %~dp0..\%%a
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving missing staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving missing staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
+)
+
+if "%WARN%"=="true" (
+    echo A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect.
+    exit /B 1
+) else (
+    call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+    if ERRORLEVEL 1 (
+        set WARN=true
+    )
+)
+
+if "%WARN%"=="true" (
+    echo A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired.
+    exit /B 1
+)

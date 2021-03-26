@@ -416,7 +416,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         if (stage) {
             LOGGER.log(Level.INFO,
-                    "Upgrade successfully staged, please run the applyStagedUpgrade script to apply the upgrade.");
+                    "Upgrade successfully staged, please run the applyStagedUpgrade script to apply the upgrade. " +
+                            "It can be found under payara5/glassfish/bin.");
         }
 
         return SUCCESS;

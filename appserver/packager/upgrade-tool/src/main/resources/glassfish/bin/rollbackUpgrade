@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
@@ -45,19 +45,103 @@ case "`uname`" in
   CYGWIN*) AS_INSTALL=`cygpath --windows $AS_INSTALL`
 esac
 
-. "${AS_INSTALL}/config/upgrade-tool.properties"
+if [ -f "${AS_INSTALL}/config/upgrade-tool.properties" ]; then
+    . "${AS_INSTALL}/config/upgrade-tool.properties"
+else
+    echo "${AS_INSTALL}/config/upgrade-tool.properties not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it"
+    exit 1
+fi
+
+# Check current present
+if [ ! -d "${AS_INSTALL}/modules" ]; then
+    echo "No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install"
+    exit 1
+fi
+
+# Check no staged present
+if [ -d "${AS_INSTALL}/modules.new" ]; then
+    echo "Staged install present! This is unexpected: Exiting since this script would overwrite the staged install"
+    exit 1
+fi
+
+# Check old present
+if [ ! -d "${AS_INSTALL}/modules.old" ]; then
+    echo "No old install present! This is unexpected: Exiting since there's nothing to roll back"
+    exit 1
+fi
 
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to new"
-    mkdir ${AS_INSTALL}/${i}.new
-    mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.new/
+    if [ -d "${AS_INSTALL}/${i}" ]; then
+        mkdir ${AS_INSTALL}/${i}.new
+        if [ ! $? -eq 0 ]; then
+            WARN=true
+        fi
+
+        mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.new/
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was an empty MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving empty MQ directory to staged location, assuming this is a leftover empty directory from a previous payara distribution"
+            fi
+        fi
+
+    else
+        mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.new
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving missing MQ directory to staged location, assuming you're rolling back a payara-web distribution"
+            fi
+        fi
+    fi
 
     echo "Moving old ${i} to expected location"
-    mv ${AS_INSTALL}/${i}.old/* ${AS_INSTALL}/${i}/
+    if [ -d "${AS_INSTALL}/${i}.old" ]; then
+        mv ${AS_INSTALL}/${i}.old/* ${AS_INSTALL}/${i}/
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was an empty MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving empty old MQ directory to expected location, assuming this is a leftover empty directory from a previous payara distribution"
+            fi
+        fi
+    else
+        mv ${AS_INSTALL}/${i}.old ${AS_INSTALL}/${i}
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving missing old MQ directory to expected location, assuming you're rolling back to a payara-web distribution"
+            fi
+        fi
+    fi
+
     rm -rf ${AS_INSTALL}/${i}.old
 done
 
-${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
 
-echo "Please use the restore-domain ASadmin command to restore your desired domains."
+if [ ! -z "$WARN" ]; then
+    echo "A command didn't complete successfully! Check the logs and your current install. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect."
+    exit 1
+else
+    ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
+    if [ ! $? -eq 0 ]; then
+        WARN=true
+    fi
+fi
+
+if [ ! -z "$WARN" ]; then
+    echo "A command didn't complete successfully! Check the logs and your current install, please use the restore-domain ASadmin command to restore your desired domains if everything appears fine."
+    exit 1
+else
+    echo "Please use the restore-domain ASadmin command to restore your desired domains."
+fi
+

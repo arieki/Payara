@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
@@ -45,7 +45,12 @@ case "`uname`" in
   CYGWIN*) AS_INSTALL=`cygpath --windows $AS_INSTALL`
 esac
 
-. "${AS_INSTALL}/config/upgrade-tool.properties"
+if [ -f "${AS_INSTALL}/config/upgrade-tool.properties" ]; then
+    . "${AS_INSTALL}/config/upgrade-tool.properties"
+else
+    echo "${AS_INSTALL}/config/upgrade-tool.properties not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it"
+    exit 1
+fi
 
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do

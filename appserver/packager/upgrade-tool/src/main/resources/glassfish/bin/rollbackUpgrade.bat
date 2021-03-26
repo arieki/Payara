@@ -41,21 +41,89 @@ REM
 
 VERIFY OTHER 2>nul
 setlocal ENABLEEXTENSIONS
-if ERRORLEVEL 0 goto ok
+if ERRORLEVEL 0 goto sourceProperties
 echo "Unable to enable extensions"
 exit /B 1
 
-:ok
-call "%~dp0..\config\upgrade-tool.bat"
-
-
-for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
-    echo Moving %%a to new
-    move %~dp0..\%%a %~dp0..\%%a.new > nul
-    echo Moving old %%a to expected location
-    move %~dp0..\%%a.old %~dp0..\%%a > nul
+:sourceProperties
+if exist %~dp0..\config\upgrade-tool.bat (
+    call "%~dp0..\config\upgrade-tool.bat"
+    goto checkCurrentPresent
+) else (
+    echo %~dp0..\config\upgrade-tool.bat not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it
+    exit /B 1
 )
 
-call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+:checkCurrentPresent
+if exist %~dp0..\modules (
+    goto checkStagedPresent
+) else (
+    echo No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install
+    exit /B 1
+)
 
-echo Please use the restore-domain ASadmin command to restore your desired domains.
+:checkStagedPresent
+if exist %~dp0..\modules.new (
+    echo Staged install present! This is unexpected: Exiting since this script would overwrite the staged install
+    exit /B 1
+) else (
+    goto checkOldPresent
+)
+
+:checkOldPresent
+if exist %~dp0..\modules.old (
+    goto moveFiles
+) else (
+    echo No old install present! This is unexpected: Exiting since there's nothing to roll back
+    exit /B 1
+)
+
+:moveFiles
+for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
+    echo Moving %%a to new
+    move %~dp0..\%%a %~dp0..\%%a.new
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving MQ directory to staged location, assuming you're rolling back a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving MQ directory to staged location, assuming you're rolling back a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
+
+    echo Moving old %%a to expected location
+    move %~dp0..\%%a.old %~dp0..\%%a
+    if ERRORLEVEL 1 (
+        if %%a=="mq" (
+            echo Ignoring error moving old MQ directory to expected location, assuming you're rolling back to a payara-web distribution
+        ) else (
+            if %%a=="..\mq" (
+                echo Ignoring error moving old MQ directory to expected location, assuming you're rolling back to a payara-web distribution
+            ) else (
+                set WARN=true
+            )
+        )
+    )
+)
+
+if "%WARN%"=="true" (
+    echo A command didn't complete successfully! Check the logs and your current install. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect.
+    exit /B 1
+) else (
+    call %~dp0..\bin\asadmin.bat reinstall-nodes %*
+    if ERRORLEVEL 1 (
+        set WARN=true
+    )
+)
+
+if "%WARN%"=="true" (
+    echo A command didn't complete successfully! Check the logs and your current install. Please use the restore-domain ASadmin command to restore your desired domains if everything appears fine.
+    exit /B 1
+) else (
+    echo Please use the restore-domain ASadmin command to restore your desired domains.
+)
+
+

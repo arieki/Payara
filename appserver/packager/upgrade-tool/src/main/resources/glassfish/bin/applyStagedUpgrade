@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 #
@@ -45,17 +45,99 @@ case "`uname`" in
   CYGWIN*) AS_INSTALL=`cygpath --windows $AS_INSTALL`
 esac
 
-. "${AS_INSTALL}/config/upgrade-tool.properties"
+if [ -f "${AS_INSTALL}/config/upgrade-tool.properties" ]; then
+    . "${AS_INSTALL}/config/upgrade-tool.properties"
+else
+    echo "${AS_INSTALL}/config/upgrade-tool.properties not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it"
+    exit 1
+fi
+
+# Check current present
+if [ ! -d "${AS_INSTALL}/modules" ]; then
+    echo "No current install present! This is unexpected: Exiting since this implies you're running this script from a staged or old install"
+    exit 1
+fi
+
+# Check staged present
+if [ ! -d "${AS_INSTALL}/modules.new" ]; then
+    echo "No staged install present! This is unexpected: Exiting since there's nothing to apply"
+    exit 1
+fi
+
+# Check no old present
+if [ -d "${AS_INSTALL}/modules.old" ]; then
+    echo "Old install present! This is unexpected: Exiting since this script would overwrite the old install"
+    exit 1
+fi
 
 for i in $(echo ${PAYARA_UPGRADE_DIRS} | sed "s/,/ /g")
 do
     echo "Moving ${i} to old"
-    mkdir ${AS_INSTALL}/${i}.old
-    mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
+    if [ -d "${AS_INSTALL}/${i}" ]; then
+        mkdir ${AS_INSTALL}/${i}.old
+        if [ ! $? -eq 0 ]; then
+            WARN=true
+        fi
+
+        mv ${AS_INSTALL}/${i}/* ${AS_INSTALL}/${i}.old/
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was an empty MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving empty MQ directory to old, assuming this is a leftover empty directory from a previous payara distribution"
+            fi
+        fi
+    else
+        mv ${AS_INSTALL}/${i} ${AS_INSTALL}/${i}.old
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving missing MQ directory to old, assuming you're upgrading a payara-web distribution"
+            fi
+        fi
+    fi
 
     echo "Moving staged ${i} to expected location"
-    mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
+    if [ -d "${AS_INSTALL}/${i}.new" ]; then
+        mv ${AS_INSTALL}/${i}.new/* ${AS_INSTALL}/${i}/
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was an empty MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving empty staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
+            fi
+        fi
+    else
+        mv ${AS_INSTALL}/${i}.new ${AS_INSTALL}/${i}
+        if [ ! $? -eq 0 ]; then
+            # Check if the warning was a missing MQ directory
+            if [[ ! "${i}" == *"mq"* ]]; then
+                WARN=true
+            else
+                echo "Ignoring error moving missing staged MQ directory to expected location, assuming you're upgrading to a payara-web distribution"
+            fi
+        fi
+    fi
+  
     rm -rf ${AS_INSTALL}/${i}.new
 done
 
-exec ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
+if [ ! -z "$WARN" ]; then
+    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired. Skipping reinstallation of nodes, please run the reinstall-nodes ASadmin command if this is incorrect."
+    exit 1
+else
+    exec ${AS_INSTALL}/bin/asadmin reinstall-nodes "$@"
+    if [ ! $? -eq 0 ]; then
+        WARN=true
+    fi
+fi
+
+if [ ! -z "$WARN" ]; then
+    echo "A command didn't complete successfully! Check the logs and run the rollbackUpgrade script if desired."
+    exit 1
+fi
+
