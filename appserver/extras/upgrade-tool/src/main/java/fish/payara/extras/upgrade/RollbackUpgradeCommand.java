@@ -40,13 +40,13 @@
 package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
-import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigurationException;
 
 import java.io.File;
 import java.io.IOException;
@@ -174,11 +174,13 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         // Fourth step, roll back the nodes for all domains
         try {
             LOGGER.log(Level.INFO, "Rolling back nodes");
-            updateNodes();
+            reinstallNodes();
             LOGGER.log(Level.INFO, "Rolled back nodes");
-        } catch (IOException ioe) {
-            // The IOException *should* be a MalformedURLException, since that's all updateNodes() currently throws
-            LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", ioe.toString());
+        } catch (IOException | ConfigurationException ex) {
+            // IOException or ConfigurationException occurs when parsing the domain.xml, before any attempt to
+            // update the nodes. It gets thrown if the domain.xml couldn't be found, or if the domain.xml is
+            // somehow incorrect, which implies something has gone wrong - rollback
+            LOGGER.log(Level.SEVERE, "Error rolling back nodes: {0}", ex.toString());
 
             // Attempt to undo the rollback
             LOGGER.log(Level.INFO, "Attempting to undo rollback");
@@ -186,21 +188,32 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
             // First up, move "current" back to "old"
             try {
                 moveCurrentToOld();
-            } catch (IOException ioe1) {
-                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+            } catch (IOException ioe) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
                 return ERROR;
             }
 
             // After moving "current" back to "old", move "staged" back to "current"
             try {
                 moveStagedToCurrent();
-            } catch (IOException ioe1) {
-                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe1.toString());
+            } catch (IOException ioe) {
+                LOGGER.log(Level.SEVERE, "Error undoing rollback: {0}", ioe.toString());
                 return ERROR;
             }
 
-            // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
+            // Exception gets thrown before any command is run, so we don't need to reinstall the nodes
             return ERROR;
+        } catch (CommandException ce) {
+            // CommandException gets thrown once all nodes have been attempted to be rolled back and if at
+            // least one roll back hit an error. We don't want to undo the roll back since the failure might be valid
+            LOGGER.log(Level.WARNING, "Failed to roll back all nodes: inspect the logs from this command for " +
+                            "the reasons. You can roll back the node installs individually using the " +
+                            "rollback-server command on each node, or attempt to roll them all back again using the " +
+                            "reinstall-nodes command. \n{0}",
+                    ce.getMessage());
+            return WARNING;
+
+
         }
 
         // Fifth step, remove "staged" again - if we've reached this point the install should have been successfully

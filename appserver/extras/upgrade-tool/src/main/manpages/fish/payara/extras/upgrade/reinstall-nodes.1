@@ -1,0 +1,51 @@
+reinstall-nodes(1)    asadmin Utility Subcommands   reinstall-nodes(1)
+
+NAME
+       reinstall-nodes - Reinstalls Payara Sever Nodes using the current install
+
+SYNOPSIS
+           reinstall-nodes [--help]
+           [--domaindir domain-dir]
+
+
+DESCRIPTION
+       The reinstall-nodes subcommand reinstalls the Payara Server SSH
+       nodes of all domains in the domain directory with the current
+       local distribution. It is intended to be used as a part of the
+       applyStagedUpgrade and rollbackUpgrade scripts, or if an issue
+       was encountered upgrading/rolling back nodes when using the
+       upgrade-server or rollback-server commands.
+
+OPTIONS
+       --help, -?
+           Displays the help text for the subcommand.
+
+       --domaindir
+           Specifies the domain root directory, the parent directory of the
+           domain upon which the command will operate.
+
+           The default value is as-install/domains.
+
+
+EXAMPLES
+       Example 1, Reinstalling Payara Server Nodes
+           In this example, the SSH nodes of all Payara Server domains
+           are reinstalled with the current installation distribution
+
+               asadmin> reinstall-nodes
+               Command reinstall-nodes executed successfully
+
+EXIT STATUS
+       0
+           subcommand executed successfully
+
+       1
+           error in executing the subcommand
+
+SEE ALSO
+       upgrade-server(1)
+       rollback-server(1)
+
+       asadmin(1M)
+
+Jakarta EE 8                         19 Mar 2021           reinstall-nodes(1)

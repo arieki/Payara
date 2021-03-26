@@ -56,4 +56,4 @@ for %%a in ("%PAYARA_UPGRADE_DIRS:,=" "%") do (
     move %~dp0..\%%a.new %~dp0..\%%a > nul
 )
 
-call %~dp0..\bin\asadmin.bat _upgrade-nodes %*
+call %~dp0..\bin\asadmin.bat reinstall-nodes %*

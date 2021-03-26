@@ -39,26 +39,43 @@
  */
 package fish.payara.extras.upgrade;
 
-import org.glassfish.api.Param;
 import org.glassfish.api.admin.CommandException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
 
-/**
- * The {@link ReinstallNodesCommand} used to be hidden, with the name of "_upgrade-nodes". It was renamed and made
- * visible (dropping the '_' prefix) and so this exists as an alias.
- */
-@Deprecated
-@Service(name = "_upgrade-nodes")
-@PerLookup
-public class UpgradeNodesCommand extends ReinstallNodesCommand {
+import java.util.logging.Level;
 
-    // This parameter was dropped from the reinstall-nodes command, so keep it here for backwards compat
-    @Param(name = "rollback", defaultValue = "false")
-    private boolean rollback;
+/**
+ * Helper command used in conjunction with the upgrade/rollback scripts to reinstall nodes.
+ */
+@Service(name = "reinstall-nodes")
+@PerLookup
+public class ReinstallNodesCommand extends BaseUpgradeCommand {
 
     @Override
     protected int executeCommand() throws CommandException {
-        return super.executeCommand();
+        try {
+            reinstallNodes();
+        } catch (Exception exception) {
+            /**
+             * IOException or ConfigurationException should occur before an attempt to update the nodes. They get thrown
+             * if the domain.xml couldn't be parsed, which implies something has gone wrong during upgrade/rollback.
+             * Since we don't know if we're rolling back or not, take no action and log error.
+             *
+             * CommandException gets thrown once all nodes have been attempted to be upgraded and if at
+             * least one upgrade hit an error. Since we don't know if this was all nodes or just a subset,
+             * pessimistically log a full error rather than a warning.
+             */
+            LOGGER.log(Level.SEVERE, "Failed to reinstall all nodes: inspect the logs from this command for " +
+                            "the reasons. You can roll back or upgrade the node installs individually using the " +
+                            "rollback-server or upgrade-server commands on each node respectively, or attempt to " +
+                            "reinstall them again by re-running this command \n{0}",
+                    exception.getMessage());
+
+            return ERROR;
+        }
+
+        return SUCCESS;
     }
+
 }

@@ -41,7 +41,6 @@ package fish.payara.extras.upgrade;
 
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.universal.i18n.LocalStringsImpl;
-import com.sun.enterprise.universal.process.ProcessManagerException;
 import com.sun.enterprise.util.OS;
 import com.sun.enterprise.util.StringUtils;
 import org.glassfish.api.ExecutionContext;
@@ -52,6 +51,7 @@ import org.glassfish.api.admin.CommandModel;
 import org.glassfish.api.admin.CommandValidationException;
 import org.glassfish.hk2.api.PerLookup;
 import org.jvnet.hk2.annotations.Service;
+import org.jvnet.hk2.config.ConfigurationException;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -378,13 +378,15 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             return ERROR;
         }
 
-        // Don't update the nodes if we're staging, since we'll just be updating them with the "current" version
+        // Don't reinstall the nodes if we're staging, since we'll just be reinstalling them with the "current" version
         if (!stage) {
             try {
-                updateNodes();
-            } catch (IOException ex) {
-                // The IOException *should* be a MalformedURLException, since that's all updateNodes() currently throws
-                LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back upgrade: {0}", ex.toString());
+                reinstallNodes();
+            } catch (IOException | ConfigurationException ex) {
+                // IOException or ConfigurationException occurs when parsing the domain.xml, before any attempt to
+                // update the nodes. It gets thrown if the domain.xml couldn't be found, or if the domain.xml is
+                // somehow incorrect, which implies something has gone wrong - rollback
+                LOGGER.log(Level.SEVERE, "Error upgrading Payara Server nodes, rolling back: {0}", ex.toString());
                 try {
                     if (stage) {
                         deleteStagedInstall();
@@ -397,8 +399,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     return ERROR;
                 }
 
-                // MalformedURLException gets thrown before any command is run, so we don't need to reinstall the nodes
+                // Exception gets thrown before any command is run, so we don't need to reinstall the nodes
                 return ERROR;
+            } catch (CommandException ce) {
+                // CommandException gets thrown once all nodes have been attempted to be upgraded and if at
+                // least one upgrade hit an error. We don't want to roll back now since the failure might be valid
+                LOGGER.log(Level.WARNING, "Failed to upgrade all nodes: inspect the logs from this command for " +
+                                "the reasons. You can rollback the server upgrade and all of its nodes using the " +
+                                "rollback-server command, upgrade the node installs individually using the " +
+                                "upgrade-server command on each node, or attempt to upgrade them all again using the " +
+                                "reinstall-nodes command. \n{0}",
+                        ce.getMessage());
+                return WARNING;
             }
         }
 
