@@ -111,7 +111,6 @@ import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 import org.glassfish.api.deployment.GeneratedResourceEntry;
 import org.glassfish.api.deployment.ResourceEntry;
@@ -190,6 +189,7 @@ public class WebappClassLoader
     private static final Permission ALL_PERMISSION = new AllPermission();
 
     private static final String META_INF_SERVICES = "META-INF/services/";
+
 
     // ----------------------------------------------------- Instance Variables
 
@@ -1283,7 +1283,7 @@ public class WebappClassLoader
                 logger.log(Level.FINER, "    --> Resource not found, returning null");
             }
         }
-        return NonCachedJarStreamHandler.forceNonCachedJarURL(url);
+        return url;
     }
 
 
@@ -1336,9 +1336,8 @@ public class WebappClassLoader
             result.add(otherResourcePaths.nextElement());
         }
 
-        return Collections.enumeration(result.stream()
-                .map(NonCachedJarStreamHandler::forceNonCachedJarURL)
-                .collect(Collectors.toList()));
+        return Collections.enumeration(result);
+
     }
 
 
