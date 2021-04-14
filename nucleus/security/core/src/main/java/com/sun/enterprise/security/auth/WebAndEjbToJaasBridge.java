@@ -37,7 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2019] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2019-2021] [Payara Foundation and/or its affiliates]
 package com.sun.enterprise.security.auth;
 
 import static com.sun.enterprise.security.SecurityLoggerInfo.auditAtnRefusedError;
@@ -120,7 +120,7 @@ import com.sun.enterprise.security.auth.realm.file.FileRealm;
  */
 public final class WebAndEjbToJaasBridge {
 
-    private static final Logger _logger = SecurityLoggerInfo.getLogger();
+    private static final Logger LOGGER = SecurityLoggerInfo.getLogger();
 
     private WebAndEjbToJaasBridge() {
         // No instances of this class
@@ -177,7 +177,7 @@ public final class WebAndEjbToJaasBridge {
      * @throws LoginException when login fails
      */
     public static void login(Subject subject, Class<?> credentialClass) {
-        _logger.finest(() -> "Processing login with credentials of type: " + credentialClass);
+        LOGGER.finest(() -> "Processing login with credentials of type: " + credentialClass);
 
         if (credentialClass.equals(PasswordCredential.class)) {
             doPasswordLogin(subject);
@@ -195,7 +195,7 @@ public final class WebAndEjbToJaasBridge {
             doX500Login(subject, null);
 
         } else {
-            _logger.log(INFO, unknownCredentialError, credentialClass.toString());
+            LOGGER.log(INFO, unknownCredentialError, credentialClass.toString());
             throw new LoginException("Unknown credential type, cannot login.");
         }
     }
@@ -216,7 +216,7 @@ public final class WebAndEjbToJaasBridge {
      *
      */
     public static void doX500Login(Subject subject, String realmName, String appModuleID) {
-        _logger.fine("Processing X.500 name login.");
+        LOGGER.fine("Processing X.500 name login.");
 
         String user = null;
         try {
@@ -259,12 +259,12 @@ public final class WebAndEjbToJaasBridge {
                 auditAuthenticate(user, realmName, true);
             } else {
                 // Should never come here
-                _logger.warning(certLoginBadRealmError);
+                LOGGER.warning(certLoginBadRealmError);
                 setSecurityContext(user, subject, realmName);
             }
 
-            if (_logger.isLoggable(FINE)) {
-                _logger.fine("X.500 name login succeeded for : " + user);
+            if (LOGGER.isLoggable(FINE)) {
+                LOGGER.log(FINE, "X.500 name login succeeded for : {0}", user);
             }
         } catch (LoginException le) {
             auditAuthenticate(user, realmName, false);
@@ -286,8 +286,8 @@ public final class WebAndEjbToJaasBridge {
         try {
             tryJaasLogin(getJaasContext(digestCred.getRealmName()), subject);
         } catch (Exception e) {
-            _logger.log(INFO, auditAtnRefusedError, digestCred.getUserName());
-            _logger.log(FINEST, "doPasswordLogin fails", e);
+            LOGGER.log(INFO, auditAtnRefusedError, digestCred.getUserName());
+            LOGGER.log(FINEST, "doPasswordLogin fails", e);
 
             auditAuthenticate(digestCred.getUserName(), digestCred.getRealmName(), false);
 
@@ -328,9 +328,9 @@ public final class WebAndEjbToJaasBridge {
             }
 
         } catch (InvalidOperationException ex) {
-            _logger.log(WARNING, invalidOperationForRealmError, new Object[] { username, realmName, ex.toString() });
+            LOGGER.log(WARNING, invalidOperationForRealmError, new Object[] { username, realmName, ex.toString() });
         } catch (NoSuchUserException ex) {
-            _logger.log(WARNING, noSuchUserInRealmError, new Object[] { username, realmName, ex.toString() });
+            LOGGER.log(WARNING, noSuchUserInRealmError, new Object[] { username, realmName, ex.toString() });
         } catch (NoSuchRealmException ex) {
             throw (LoginException) new LoginException(ex.toString()).initCause(ex);
         }
@@ -379,14 +379,14 @@ public final class WebAndEjbToJaasBridge {
         String realm = passwordCredential.getRealm();
         String jaasCtx = getJaasContext(realm);
 
-        if (_logger.isLoggable(FINE)) {
-            _logger.fine("Logging in user [" + user + "] into realm: " + realm + " using JAAS module: " + jaasCtx);
+        if (LOGGER.isLoggable(FINE)) {
+            LOGGER.log(FINE, "Logging in user [{0}] into realm: {1} using JAAS module: {2}", new Object[]{user, realm, jaasCtx});
         }
 
         try {
             tryJaasLogin(jaasCtx, subject);
         } catch (Exception e) {
-            _logger.log(FINEST, "doPasswordLogin fails", e);
+            LOGGER.log(FINEST, "doPasswordLogin fails", e);
 
             auditAuthenticate(user, realm, false);
             throwLoginException(e);
@@ -394,14 +394,14 @@ public final class WebAndEjbToJaasBridge {
 
         auditAuthenticate(user, realm, true);
 
-        if (_logger.isLoggable(FINE)) {
-            _logger.fine("Password login succeeded for : " + user);
+        if (LOGGER.isLoggable(FINE)) {
+            LOGGER.log(FINE, "Password login succeeded for : {0}", user);
         }
 
         setSecurityContext(user, subject, realm);
 
-        if (_logger.isLoggable(FINE)) {
-            _logger.log(FINE, "Set security context as user: " + user);
+        if (LOGGER.isLoggable(FINE)) {
+            LOGGER.log(FINE, "Set security context as user: {0}", user);
         }
     }
 
@@ -413,7 +413,7 @@ public final class WebAndEjbToJaasBridge {
      *
      */
     private static void doX509CertificateLogin(Subject subject) {
-        _logger.log(FINE, "Processing X509 certificate login.");
+        LOGGER.log(FINE, "Processing X509 certificate login.");
 
         String user = null;
         String realm = CertificateRealm.AUTH_TYPE;
@@ -421,8 +421,8 @@ public final class WebAndEjbToJaasBridge {
         try {
             user = getPublicCredentials(subject, X509CertificateCredential.class).getAlias();
 
-            if (_logger.isLoggable(FINE)) {
-                _logger.log(FINE, "Set security context as user: " + user);
+            if (LOGGER.isLoggable(FINE)) {
+                LOGGER.log(FINE, "Set security context as user: {0}", user);
             }
 
             setSecurityContext(user, subject, realm);
@@ -443,7 +443,7 @@ public final class WebAndEjbToJaasBridge {
     private static void doAnonymousLogin() {
         // Instance of anonymous credential login with guest
         SecurityContext.setUnauthenticatedContext();
-        _logger.log(FINE, "Set anonymous security context.");
+        LOGGER.log(FINE, "Set anonymous security context.");
     }
 
     /**
@@ -452,7 +452,7 @@ public final class WebAndEjbToJaasBridge {
      * @throws LoginException Thrown if the login fails.
      */
     private static void doGSSUPLogin(Subject s) {
-        _logger.fine("Processing GSSUP login.");
+        LOGGER.fine("Processing GSSUP login.");
 
         String user = null;
         String realm = Realm.getDefaultRealm();
@@ -463,8 +463,8 @@ public final class WebAndEjbToJaasBridge {
             setSecurityContext(user, s, realm);
             auditAuthenticate(user, realm, true);
 
-            if (_logger.isLoggable(FINE)) {
-                _logger.fine("GSSUP login succeeded for : " + user);
+            if (LOGGER.isLoggable(FINE)) {
+                LOGGER.log(FINE, "GSSUP login succeeded for : {0}", user);
             }
         } catch (LoginException le) {
             auditAuthenticate(user, realm, false);
@@ -487,7 +487,7 @@ public final class WebAndEjbToJaasBridge {
 
         if (!iter.hasNext()) {
             String credentialType = cls.toString();
-            _logger.log(FINER, () -> "Expected public credentials of type : " + credentialType + " but none found.");
+            LOGGER.log(FINER, () -> "Expected public credentials of type : " + credentialType + " but none found.");
             throw new LoginException("Expected public credential of type: " + credentialType + " but none found.");
         }
 
@@ -514,8 +514,8 @@ public final class WebAndEjbToJaasBridge {
 
         if (!iter.hasNext()) {
             String credmsg = cls.toString();
-            if (_logger.isLoggable(FINER)) {
-                _logger.finer("Expected private credential of type: " + credmsg + " but none found.");
+            if (LOGGER.isLoggable(FINER)) {
+                LOGGER.log(FINER, "Expected private credential of type: {0} but none found.", credmsg);
             }
             throw new LoginException("Expected private credential of type: " + credmsg + " but none found.");
         }
