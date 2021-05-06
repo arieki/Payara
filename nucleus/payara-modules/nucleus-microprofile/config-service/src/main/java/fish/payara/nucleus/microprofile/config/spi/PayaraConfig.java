@@ -148,7 +148,7 @@ public class PayaraConfig implements Config {
     public Iterable<String> getPropertyNames() {
         List<String> result = new ArrayList<>();
         for (ConfigSource configSource : sources) {
-            result.addAll(configSource.getProperties().keySet());
+            result.addAll(configSource.getPropertyNames());
         }
         return result;
     }
