@@ -52,9 +52,11 @@ import javax.enterprise.inject.spi.CDI;
 import javax.inject.Inject;
 import org.glassfish.api.invocation.ComponentInvocation;
 import org.glassfish.api.invocation.InvocationManager;
+import org.glassfish.deployment.versioning.VersioningUtils;
 import org.glassfish.internal.api.Globals;
 import org.glassfish.internal.data.ApplicationInfo;
 import org.glassfish.internal.data.ApplicationRegistry;
+import org.glassfish.internal.data.ModuleInfo;
 import org.jboss.weld.context.bound.BoundRequestContext;
 import org.jvnet.hk2.annotations.Service;
 
@@ -115,6 +117,11 @@ public class JavaEEContextUtilImpl implements JavaEEContextUtil, Serializable {
         return inv != null ? isLoaded(inv.getComponentId(), inv) : false;
     }
 
+    @Override
+    public boolean moduleMatches(ModuleInfo moduleInfo, String modulNameToMatch) {
+        return VersioningUtils.getUntaggedName(moduleInfo.getName()).equals(modulNameToMatch);
+    }
+
     private static ClassLoader getClassLoaderForEnvironment(JndiNameEnvironment componentEnv) {
         if (componentEnv instanceof BundleDescriptor) {
             BundleDescriptor bd = (BundleDescriptor) componentEnv;
@@ -136,7 +143,7 @@ public class JavaEEContextUtilImpl implements JavaEEContextUtil, Serializable {
 
     private boolean isLoaded(String componentId, ComponentInvocation invocation) {
         if (componentId == null) {
-            // empty component are always loaded
+            // empty components are always loaded
             return true;
         }
         JndiNameEnvironment env = invocation != null ? ((JndiNameEnvironment) invocation.getJNDIEnvironment())
@@ -201,9 +208,11 @@ public class JavaEEContextUtilImpl implements JavaEEContextUtil, Serializable {
         private InstanceImpl(ComponentInvocation currentInvocation) {
             boolean isApplicationComponent = false;
             if (currentInvocation.getComponentId() != null) {
-                componentId = currentInvocation.getComponentId();
+                componentId = VersioningUtils.getUntaggedName(currentInvocation.getComponentId());
             } else if (currentInvocation.getJNDIEnvironment() instanceof JndiNameEnvironment) {
-                componentId = DOLUtils.getApplicationName((JndiNameEnvironment)currentInvocation.jndiEnvironment);
+                componentId = DOLUtils.toEarComponentId(
+                        DOLUtils.getApplicationName((JndiNameEnvironment)
+                                currentInvocation.jndiEnvironment));
                 isApplicationComponent = true;
             } else {
                 // checkState() later should error out due to this condition
