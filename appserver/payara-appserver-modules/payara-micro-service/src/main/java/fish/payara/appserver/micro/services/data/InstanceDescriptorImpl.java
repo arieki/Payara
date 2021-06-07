@@ -17,39 +17,40 @@
  */
 package fish.payara.appserver.micro.services.data;
 
-import static java.lang.Boolean.TRUE;
-import static javax.json.stream.JsonGenerator.PRETTY_PRINTING;
-
-import java.io.StringWriter;
-import java.net.InetAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import fish.payara.micro.data.ApplicationDescriptor;
+import fish.payara.micro.data.InstanceDescriptor;
+import fish.payara.micro.data.ModuleDescriptor;
+import org.glassfish.internal.data.ApplicationInfo;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonWriter;
-
+import java.io.StringWriter;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.glassfish.internal.data.ApplicationInfo;
-
 import fish.payara.micro.data.ApplicationDescriptor;
 import fish.payara.micro.data.InstanceDescriptor;
 import fish.payara.micro.data.ModuleDescriptor;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Set;
+
+import static java.lang.Boolean.TRUE;
+import static javax.json.stream.JsonGenerator.PRETTY_PRINTING;
 
 /**
  *
@@ -82,7 +83,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
 
     public void addApplication(ApplicationInfo info) {
         if (deployedApplications == null) {
-            deployedApplications = new HashMap<>(3);
+            deployedApplications = new LinkedHashMap<>();
         }
 
         ApplicationDescriptorImpl ad = new ApplicationDescriptorImpl(info);
@@ -91,7 +92,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
 
     public void addApplication(ApplicationDescriptor descriptor) {
         if (deployedApplications == null) {
-            deployedApplications = new HashMap<>(3);
+            deployedApplications = new LinkedHashMap<>();
         }
 
         deployedApplications.put(descriptor.getName(), descriptor);
@@ -150,7 +151,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
     @Override
     public Collection<ApplicationDescriptor> getDeployedApplications() {
         if (deployedApplications == null) {
-            return new HashSet<>();
+            return new LinkedHashSet<>();
         }
         return deployedApplications.values();
     }
@@ -172,7 +173,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
 
     public void removeApplication(ApplicationDescriptor applicationInfo) {
         if (deployedApplications == null) {
-            deployedApplications = new HashMap<>(3);
+            deployedApplications = new LinkedHashMap<>();
         }
 
         deployedApplications.remove(applicationInfo.getName());
@@ -189,7 +190,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
     /**
      * Overrides hashcode based purely on the UUID hashcode
      *
-     * @return
+     * @return The UUID-based hash code.
      */
     @Override
     public int hashCode() {
@@ -340,9 +341,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
                 // List the module mappings if verbose is specified
                 if (verbose) {
                     JsonObjectBuilder servletMappings = Json.createObjectBuilder();
-                    module.getServletMappings().forEach((key, value) -> {
-                        servletMappings.add(key, value);
-                    });
+                    module.getServletMappings().forEach(servletMappings::add);
                     appBuilder.add("Mappings", servletMappings.build());
                 }
 
@@ -362,9 +361,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
                     // Create an object of mappings if verbose is specified
                     if (verbose) {
                         JsonObjectBuilder servletMappings = Json.createObjectBuilder();
-                        module.getServletMappings().forEach((key, value) -> {
-                            servletMappings.add(key, value);
-                        });
+                        module.getServletMappings().forEach(servletMappings::add);
                         moduleBuilder.add("Mappings", servletMappings.build());
                     }
 
