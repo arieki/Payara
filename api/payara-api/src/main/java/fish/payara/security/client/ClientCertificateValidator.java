@@ -43,7 +43,20 @@ import javax.security.auth.Subject;
 import javax.security.auth.x500.X500Principal;
 import java.security.cert.X509Certificate;
 
+/**
+ * The Client Certificate Validator API that can be used to perform additional checks on the presented
+ * Client certificate. When specified, this method is executed for each request so make sure the implementation
+ * considers some kind of caching for checks that take some considerable time.
+ */
+@FunctionalInterface
 public interface ClientCertificateValidator {
 
+    /**
+     * @param subject The Subject object for the authentication request.
+     * @param principal The Principal object from the user certificate.
+     * @param certificate The user certificate that was presented in the request.
+     * @return true when the Client Certificate Validation was successful and request can continue.
+     * In the case of false, a {@code LoginException} will be thrown.
+     */
     boolean isValid(Subject subject, X500Principal principal, X509Certificate certificate);
 }
