@@ -223,6 +223,11 @@
             <artifactId>healthcheck-checker</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>fish.payara.server.internal.payara-appserver-modules</groupId>
+            <artifactId>microprofile-healthcheck-backwards-compat</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- REST Client -->
         <dependency>
