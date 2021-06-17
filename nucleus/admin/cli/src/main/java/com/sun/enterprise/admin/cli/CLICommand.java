@@ -1447,8 +1447,8 @@ public abstract class CLICommand implements PostConstruct {
     }
     
     protected LineReaderBuilder newLineReaderBuilder() {
-        // In community this should be disabled by default
-        boolean disabled = true;
+        // In Enterprise this should be enabled by default
+        boolean disabled = false;
         Environment environment = this.env;
         if(environment.hasOption("DISABLE_EVENT_EXPANSION")) {
             disabled = environment.getBooleanOption("DISABLE_EVENT_EXPANSION");
