@@ -2,7 +2,7 @@
 <!--
   DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  
-  Copyright (c) [2016-2020] Payara Foundation and/or its affiliates. All rights reserved.
+  Copyright (c) [2016-2021] Payara Foundation and/or its affiliates. All rights reserved.
  
   The contents of this file are subject to the terms of either the GNU
   General Public License Version 2 only ("GPL") or the Common Development
@@ -96,6 +96,8 @@
                                     io.opentracing,
                                     javax.inject,
                                     javax.enterprise.util,
+                                    javax.security.auth,
+                                    javax.security.auth.x500,
                                     javax.security.enterprise.credential,
                                     javax.security.enterprise.identitystore,
                                     javax.security.enterprise.authentication.mechanism.http,
@@ -117,7 +119,8 @@
                                     fish.payara.security.annotations,
                                     fish.payara.security.api,
                                     fish.payara.security.oauth2.api,
-                                    fish.payara.security.openid.api
+                                    fish.payara.security.openid.api,
+                                    fish.payara.security.client
                                 </Export-Package>
                             </instructions>
                         </configuration>
