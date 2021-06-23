@@ -82,7 +82,7 @@ public interface MicroprofileConfigConfiguration extends ConfigExtension {
     
     @Attribute(defaultValue = "115", dataType = Integer.class)
     String getJndiOrdinality();
-    void setJndiOrdinality(String message);
+    void setJndiOrdinality(String ordinality);
 
     @Attribute(defaultValue = "120", dataType = Integer.class)
     String getConfigOrdinality();
