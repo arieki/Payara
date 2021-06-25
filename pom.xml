@@ -243,7 +243,7 @@
         <microprofile-openapi.version>2.0</microprofile-openapi.version>
         <opentracing.version>0.33.0</opentracing.version>
         <payara-arquillian-container.version>2.4.1</payara-arquillian-container.version>
-        <payara.security-connectors.version>2.0.0</payara.security-connectors.version>
+        <payara.security-connectors.version>2.1.0-SNAPSHOT</payara.security-connectors.version>
         <h2db.version>1.4.196</h2db.version>
         <websocket-api.version>1.1.2</websocket-api.version>
         <concurrent-api.version>1.1.2</concurrent-api.version>
