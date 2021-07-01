@@ -77,7 +77,7 @@ public class JNDIConfigSource extends PayaraConfigSource implements ConfigSource
 
     @Override
     public int getOrdinal() {
-        return Integer.parseInt(configService.getMPConfig().getJNDIOrdinality());
+        return Integer.parseInt(configService.getMPConfig().getJndiOrdinality());
     }
 
     @Override
