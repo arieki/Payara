@@ -83,12 +83,13 @@ public class RemoteEjbClientIT {
         contextProperties.setProperty("org.omg.CORBA.ORBInitialPort", "3700");
 
         Context context = new InitialContext(contextProperties);
-        EjbRemote ejb = (EjbRemote) context.lookup("java:global/remote-ejb-tracing-server/Ejb");
+        EjbRemote ejb = (EjbRemote) context.lookup(String.format("java:global%sEjb", uri.getPath()));
 
         Tracer tracer = GlobalTracer.get();
         Span span = null;
         try {
             span = tracer.buildSpan("ExecuteEjb").start();
+            tracer.activateSpan(span);
             span.setBaggageItem("Wibbles", "Wobbles");
             String baggageItems = ejb.annotatedMethod();
             Assert.assertTrue("Baggage items didn't match, received: " + baggageItems,
@@ -134,6 +135,7 @@ public class RemoteEjbClientIT {
         Span span = null;
         try {
             span = tracer.buildSpan("ExecuteEjb").start();
+            tracer.activateSpan(span);
             String baggageItems = ejb.annotatedMethod();
             Assert.assertTrue("Baggage items didn't contain transaction ID, received: " + baggageItems,
                     baggageItems.contains("TX-ID"));
