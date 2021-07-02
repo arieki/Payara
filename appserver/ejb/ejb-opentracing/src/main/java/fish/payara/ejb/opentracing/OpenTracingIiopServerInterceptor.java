@@ -41,6 +41,7 @@ package fish.payara.ejb.opentracing;
 
 import fish.payara.opentracing.OpenTracingService;
 import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
@@ -140,7 +141,10 @@ public class OpenTracingIiopServerInterceptor extends LocalObject implements Ser
 
         // Make sure active scope is closed - this is an entry point to the server so the currently active span
         // **should** be the one started in receive_request
-        tracer.scopeManager().activeSpan().finish();
+        Span activeSpan = tracer.scopeManager().activeSpan();
+        if (activeSpan != null) {
+            activeSpan.finish();
+        }
         if (tracer.scopeManager() instanceof ScopeManager) {
             ScopeManager manager = (ScopeManager) tracer.scopeManager();
             try (Scope activeScope = manager.activeScope()) {
