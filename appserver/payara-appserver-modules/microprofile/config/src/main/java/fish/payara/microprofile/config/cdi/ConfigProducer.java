@@ -39,8 +39,8 @@
  */
 package fish.payara.microprofile.config.cdi;
 
+import fish.payara.nucleus.microprofile.config.spi.ConfigValueResolver;
 import fish.payara.nucleus.microprofile.config.spi.InjectedPayaraConfig;
-import fish.payara.nucleus.microprofile.config.spi.PayaraConfig;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -48,6 +48,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
+
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Produces;
@@ -92,17 +94,20 @@ public class ConfigProducer {
     @ConfigProperty
     public <T> Set<T> getSetProperty(InjectionPoint ip) {
         ConfigProperty property = ip.getAnnotated().getAnnotation(ConfigProperty.class);
-        PayaraConfig config = (PayaraConfig) ConfigProvider.getConfig();
-        Set<T> result = new HashSet<>();
+        Config config = ConfigProvider.getConfig();
         Type type = ip.getType();
         if (type instanceof ParameterizedType) {
-            // it is an Optional
-            // get the class of the generic parameterized Optional
+         // it is an List, get the element type of the List
             @SuppressWarnings("unchecked")
-            Class<T> clazzValue = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
-            result = config.getSetValues(property.name(), property.defaultValue(), clazzValue);
+            Class<T> elementType = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
+            String defaultValue = property.defaultValue();
+            return config.getValue(property.name(), ConfigValueResolver.class)
+                    .throwOnMissingProperty(defaultValue == null)
+                    .throwOnFailedConversion()
+                    .withDefault(defaultValue)
+                    .asSet(elementType);
         }
-        return result;
+        return new HashSet<>();
     }
 
     /**
@@ -115,17 +120,20 @@ public class ConfigProducer {
     @ConfigProperty
     public <T> List<T> getListProperty(InjectionPoint ip) {
         ConfigProperty property = ip.getAnnotated().getAnnotation(ConfigProperty.class);
-        PayaraConfig config = (PayaraConfig) ConfigProvider.getConfig();
-        List<T> result = new ArrayList<>();
+        Config config = ConfigProvider.getConfig();
         Type type = ip.getType();
         if (type instanceof ParameterizedType) {
-            // it is an Optional
-            // get the class of the generic parameterized Optional
+            // it is an List, get the element type of the List
             @SuppressWarnings("unchecked")
-            Class<T> clazzValue = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
-            result = config.getListValues(property.name(),property.defaultValue(), clazzValue);
+            Class<T> elementType = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
+            String defaultValue = property.defaultValue();
+            return config.getValue(property.name(), ConfigValueResolver.class)
+                    .throwOnMissingProperty(defaultValue == null)
+                    .throwOnFailedConversion()
+                    .withDefault(defaultValue)
+                    .asList(elementType);
         }
-        return result;
+        return new ArrayList<>();
     }
 
     /**
@@ -138,25 +146,53 @@ public class ConfigProducer {
     @Produces
     @ConfigProperty
     public <T> Optional<T> getOptionalProperty(InjectionPoint ip) {
-
-        // gets the config property annotation
         ConfigProperty property = ip.getAnnotated().getAnnotation(ConfigProperty.class);
-        PayaraConfig config = (PayaraConfig) ConfigProvider.getConfig();
-        Optional<T> result = Optional.empty();
+        Config config = ConfigProvider.getConfig();
 
         Type type = ip.getType();
         if (type instanceof ParameterizedType) {
             // it is an Optional
             // get the class of the generic parameterized Optional
             @SuppressWarnings("unchecked")
-            Class<T> clazzValue = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
+            Class<T> valueType = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
 
-            // use the config to get a converted version of the property
-            T value = config.getValue(property.name(), property.defaultValue(),clazzValue);
-            if (value != null && !value.toString().equals(ConfigProperty.UNCONFIGURED_VALUE)) {
-                result = Optional.ofNullable(value);
-            }
+            String defaultValue = property.defaultValue();
+            return config.getValue(property.name(), ConfigValueResolver.class)
+                    .throwOnFailedConversion()
+                    .withDefault(defaultValue)
+                    .as(valueType);
         }
-        return result;
+        return Optional.empty();
+    }
+
+    /**
+     * Produces an Supplier for the property specified by the ConfigProperty
+     * and of the type specified
+     * @param <T>
+     * @param ip
+     * @return
+     */
+    @Produces
+    @ConfigProperty
+    public <T> Supplier<T> getPropertySupplier(InjectionPoint ip) {
+        ConfigProperty property = ip.getAnnotated().getAnnotation(ConfigProperty.class);
+        Config config = ConfigProvider.getConfig();
+
+        Type type = ip.getType();
+        if (type instanceof ParameterizedType) {
+            // it is an Optional
+            // get the class of the generic parameterized Optional
+            @SuppressWarnings("unchecked")
+            Class<T> valueType = (Class<T>) ((ParameterizedType) type).getActualTypeArguments()[0];
+
+            String defaultValue = property.defaultValue();
+            return config.getValue(property.name(), ConfigValueResolver.class)
+                    .throwOnFailedConversion()
+                    .withDefault(defaultValue)
+                    .asSupplier(valueType);
+        }
+
+        // Should never be called
+        return () -> null;
     }
 }

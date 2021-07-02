@@ -1,7 +1,7 @@
 /*
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- *  Copyright (c) [2019] Payara Foundation and/or its affiliates. All rights reserved.
+ *  Copyright (c) [2018-2020] Payara Foundation and/or its affiliates. All rights reserved.
  * 
  *  The contents of this file are subject to the terms of either the GNU
  *  General Public License Version 2 only ("GPL") or the Common Development
@@ -40,31 +40,61 @@
  *  only if the new code is made subject to such option by the copyright
  *  holder.
  */
-package fish.payara.microprofile.metrics;
+package fish.payara.microprofile.healthcheck.config;
 
-import org.eclipse.microprofile.metrics.MetricRegistry;
-import org.junit.Assert;
-import org.junit.Test;
+import static fish.payara.microprofile.Constants.DEFAULT_GROUP_NAME;
+import java.beans.PropertyVetoException;
+import org.glassfish.api.admin.config.ConfigExtension;
+import org.jvnet.hk2.config.Attribute;
+import org.jvnet.hk2.config.Configured;
 
 /**
- * Test class for MetricsService
+ *
  * @author jonathan coustick
+ * @since 4.1.2.182
  */
-public class MetricsServiceTest {
+@Configured(name = "microprofile-healthcheck-configuration")
+public interface MicroprofileHealthCheckConfiguration extends ConfigExtension {
     
-    private static final String TEST = "TEST";
+    /**
+     * @return a Boolean value determining if the service is enabled or
+     * disabled.
+     */
+    @Attribute(dataType = Boolean.class, defaultValue = "true")
+    String getEnabled();
+
+    void setEnabled(String value) throws PropertyVetoException;
+
+    /**
+     * @return a String value defines the endpoint of health service.
+     */
+    @Attribute(defaultValue = "health")
+    String getEndpoint();
     
-    @Test
-    public void registrationTest() {
-        MetricsService service = new MetricsService();
-        
-        Assert.assertTrue(service.getAllRegistryNames().isEmpty());
-        MetricRegistry registry = service.getOrAddRegistry(TEST) ;
-        Assert.assertNotNull(registry);
-        Assert.assertTrue(service.getAllRegistryNames().size() == 1);
-        MetricRegistry removed = service.removeRegistry(TEST);
-        Assert.assertEquals(registry, removed);
-        Assert.assertTrue(service.getAllRegistryNames().isEmpty());
-    }
+    void setEndpoint(String value) throws PropertyVetoException;
+
+    /**
+     * @return a String value defines the attached virtual servers.
+     */
+    @Attribute(defaultValue = "", dataType = String.class)
+    String getVirtualServers();
+
+    void setVirtualServers(String value) throws PropertyVetoException;
     
+    /**
+     * @return a Boolean value determining if the security is enabled or not.
+     */
+    @Attribute(defaultValue = "false", dataType = Boolean.class)
+    String getSecurityEnabled();
+
+    void setSecurityEnabled(String value) throws PropertyVetoException;
+
+    /**
+     * @return a String value defines the roles.
+     */
+    @Attribute(defaultValue = DEFAULT_GROUP_NAME, dataType = String.class)
+    String getRoles();
+
+    void setRoles(String value) throws PropertyVetoException;
+
 }
