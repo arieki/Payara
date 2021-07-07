@@ -88,7 +88,6 @@ import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.joining;
 import javax.inject.Inject;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
@@ -106,11 +105,15 @@ public class OidcProvider {
     public static final String CLIENT_ID_VALUE = "sample_client_id";
     public static final String CLIENT_SECRET_VALUE = "sample_client_secret";
     
-    public static final String ROLES_IN_USERINFO_KEY = "test.openid.rolesInUserInfoEndpoint";
+    public static final String ROLES_IN_USERINFO_KEY = "fish.payara.test.openid.rolesInUserInfoEndpoint";
+    public static final String EXPIRES_IN_SECONDS_KEY = "fish.payara.test.openid.expiresInSeconds";
     
     @Inject @ConfigProperty(name = ROLES_IN_USERINFO_KEY, defaultValue = "false")
     boolean rolesInUserInfoEndpoint;
     
+    @Inject @ConfigProperty(name = EXPIRES_IN_SECONDS_KEY, defaultValue = "3600")
+    Integer expiresInSeconds;
+
     @PathParam("subject")
     String subject;
     
@@ -217,7 +220,7 @@ public class OidcProvider {
             jsonBuilder.add(IDENTITY_TOKEN, idToken.serialize());
             jsonBuilder.add(ACCESS_TOKEN, ACCESS_TOKEN_VALUE);
             jsonBuilder.add(TOKEN_TYPE, BEARER_TYPE);
-            jsonBuilder.add(EXPIRES_IN, 1000);
+            jsonBuilder.add(EXPIRES_IN, expiresInSeconds);
             builder = Response.ok();
         }
 
