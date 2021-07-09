@@ -42,7 +42,6 @@ package fish.payara.security.oidc.test;
 import com.gargoylesoftware.htmlunit.WebClient;
 import fish.payara.samples.NotMicroCompatible;
 import fish.payara.samples.PayaraArquillianTestRunner;
-import fish.payara.security.oidc.client.defaulttests.SecuredPage;
 import java.io.IOException;
 import java.net.URL;
 import org.jboss.arquillian.container.test.api.Deployment;

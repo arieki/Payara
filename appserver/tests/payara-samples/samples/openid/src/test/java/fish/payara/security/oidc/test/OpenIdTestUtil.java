@@ -39,32 +39,21 @@
  */
 package fish.payara.security.oidc.test;
 
-import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.TextPage;
 import com.gargoylesoftware.htmlunit.WebClient;
 import fish.payara.security.oidc.client.Callback;
 import fish.payara.security.oidc.client.GetUserName;
 import fish.payara.security.oidc.client.UnsecuredPage;
 import fish.payara.security.oidc.client.defaulttests.SecuredPage;
-import fish.payara.security.oidc.client.ear.SomeEJB;
 import fish.payara.security.oidc.server.ApplicationConfig;
 import fish.payara.security.oidc.server.OidcProvider;
 import java.io.IOException;
 import java.net.URL;
 import javax.ws.rs.core.Response;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.lessThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.both;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.EmptyAsset;
-import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
-import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.fail;
 
 /**
  *

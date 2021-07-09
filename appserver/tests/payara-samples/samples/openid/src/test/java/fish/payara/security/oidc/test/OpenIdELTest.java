@@ -39,7 +39,6 @@
  */
 package fish.payara.security.oidc.test;
 
-import com.gargoylesoftware.htmlunit.TextPage;
 import com.gargoylesoftware.htmlunit.WebClient;
 import fish.payara.samples.NotMicroCompatible;
 import fish.payara.samples.PayaraArquillianTestRunner;
@@ -51,7 +50,6 @@ import org.jboss.arquillian.container.test.api.OperateOnDeployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
