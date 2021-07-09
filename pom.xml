@@ -232,7 +232,7 @@
         <jsonp.version>1.1.6</jsonp.version>
         <jbi.version>1.0</jbi.version>
         <jakarta-platform.version>8.0.0</jakarta-platform.version>
-        <microprofile-release.version>4.0</microprofile-release.version>
+        <microprofile-release.version>4.0.1</microprofile-release.version>
         <microprofile-opentracing.version>2.0</microprofile-opentracing.version>
         <microprofile-config.version>2.0</microprofile-config.version>
         <microprofile-fault-tolerance.version>3.0</microprofile-fault-tolerance.version>
@@ -243,6 +243,7 @@
         <microprofile-openapi.version>2.0</microprofile-openapi.version>
         <opentracing.version>0.33.0</opentracing.version>
         <payara-arquillian-container.version>2.4.1</payara-arquillian-container.version>
+        <payara.security-connectors.version>2.1.0</payara.security-connectors.version>
         <h2db.version>1.4.196</h2db.version>
         <websocket-api.version>1.1.2</websocket-api.version>
         <concurrent-api.version>1.1.2</concurrent-api.version>
