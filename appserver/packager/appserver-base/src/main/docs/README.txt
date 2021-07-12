@@ -56,7 +56,7 @@ Make sure to also check the Payara Server 5.29.1 Release Notes as they contain i
 5. Documentation
 ================
 
-Payara Server 5.29.1 Release Notes: https://docs.payara.fish/enterprise/docs/5.29.1/release-notes/release-notes-27-0.html
+Payara Server 5.29.1 Release Notes: https://docs.payara.fish/enterprise/docs/5.29.1/release-notes/release-notes-29-1.html
 
 Payara Server Documentation: https://docs.payara.fish/
 
