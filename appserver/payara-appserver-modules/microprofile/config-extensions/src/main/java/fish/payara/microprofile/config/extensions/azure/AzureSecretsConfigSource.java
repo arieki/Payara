@@ -68,7 +68,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -172,11 +171,6 @@ public class AzureSecretsConfigSource extends ConfiguredExtensionConfigSource<Az
             results.put(secretName, getValue(secretName));
         }
         return results;
-    }
-
-    @Override
-    public Set<String> getPropertyNames() {
-        return getProperties().keySet();
     }
 
     @Override

@@ -67,14 +67,17 @@ import io.opentracing.Span;
  */
 public class OpenTracingScope implements io.opentracing.Scope {
 
-    private final Span currentSpan;
-    private final OpenTracingScope previouslyActiveScope;
-    private final ScopeManager scopeManager;
+    private Span currentSpan;
+    private boolean finishOnClose;
 
-    OpenTracingScope(ScopeManager scopeManager, Span spanToActivate) {
+    private OpenTracingScope previouslyActiveScope;
+    private ScopeManager scopeManager;
+
+    OpenTracingScope(ScopeManager scopeManager, Span spanToActivate, boolean finishOnClose) {
         this.scopeManager = scopeManager;
         this.currentSpan = spanToActivate;
-        previouslyActiveScope = (OpenTracingScope) scopeManager.activeScope();
+        this.finishOnClose = finishOnClose;
+        previouslyActiveScope = (OpenTracingScope) scopeManager.active();
         scopeManager.activeScope.set(this);
     }
 
@@ -85,10 +88,15 @@ public class OpenTracingScope implements io.opentracing.Scope {
             return;
         }
 
+        if (finishOnClose) {
+            currentSpan.finish();
+        }
+
         scopeManager.activeScope.set(previouslyActiveScope);
     }
 
-    Span span() {
+    @Override
+    public Span span() {
         return currentSpan;
     }
 }

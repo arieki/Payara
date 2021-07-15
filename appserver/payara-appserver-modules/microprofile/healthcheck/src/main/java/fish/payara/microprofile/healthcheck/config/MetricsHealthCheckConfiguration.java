@@ -1,7 +1,7 @@
 /*
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  * 
- *  Copyright (c) [2018-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ *  Copyright (c) [2018-2019] Payara Foundation and/or its affiliates. All rights reserved.
  * 
  *  The contents of this file are subject to the terms of either the GNU
  *  General Public License Version 2 only ("GPL") or the Common Development
@@ -40,12 +40,13 @@
  *  only if the new code is made subject to such option by the copyright
  *  holder.
  */
-package fish.payara.microprofile.healthcheck.compat;
+package fish.payara.microprofile.healthcheck.config;
 
 import static fish.payara.microprofile.Constants.DEFAULT_GROUP_NAME;
 import java.beans.PropertyVetoException;
 import org.glassfish.api.admin.config.ConfigExtension;
 import org.jvnet.hk2.config.Attribute;
+import org.jvnet.hk2.config.ConfigBeanProxy;
 import org.jvnet.hk2.config.Configured;
 
 /**
@@ -54,8 +55,7 @@ import org.jvnet.hk2.config.Configured;
  * @since 4.1.2.182
  */
 @Configured
-@Deprecated
-public interface MetricsHealthCheckConfiguration extends ConfigExtension {
+public interface MetricsHealthCheckConfiguration extends ConfigBeanProxy, ConfigExtension {
     
     /**
      * @return a Boolean value determining if the service is enabled or

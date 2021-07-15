@@ -39,7 +39,6 @@
  */
 package fish.payara.notification.requesttracing;
 
-import io.opentracing.tag.Tag;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -64,7 +63,7 @@ public class RequestTraceSpan implements Serializable, Comparable<RequestTraceSp
     private Instant endTime;
     private long spanDuration;
     private EventType eventType;
-    private final Map<Object, String> spanTags;
+    private final Map<String, String> spanTags;
     private final List<RequestTraceSpanLog> spanLogs;
     private String eventName;
     private final List<SpanReference> spanReferences;
@@ -178,26 +177,11 @@ public class RequestTraceSpan implements Serializable, Comparable<RequestTraceSp
         }
     }
     
-    /**
-     * Adds more information about a span
-     *
-     * @param tag
-     * @param value
-     */
-    public void addSpanTag(Tag tag, String value) {
-        if (value != null) {
-            // Escape any quotes
-            spanTags.put(tag, value.replaceAll("\"", "\\\\\""));
-        } else {
-            spanTags.put(tag, value);
-        }
-    }
-    
-    public String getSpanTag(Object tag) {
+    public String getSpanTag(String tag) {
         return spanTags.get(tag);
     }
     
-    public Map<Object, String> getSpanTags() {
+    public Map<String, String> getSpanTags() {
         return spanTags;
     }
     
@@ -261,7 +245,7 @@ public class RequestTraceSpan implements Serializable, Comparable<RequestTraceSp
         
         if (spanTags != null && !spanTags.isEmpty()) {
             result.append(",\"spanTags\":[");
-            for (Entry<Object, String> entry : spanTags.entrySet()) {
+            for (Entry<String, String> entry : spanTags.entrySet()) {
                 result.append("{\"").append(entry.getKey()).append("\": \"").append(entry.getValue()).append("\"},");
             }
             result.deleteCharAt(result.length() - 1);

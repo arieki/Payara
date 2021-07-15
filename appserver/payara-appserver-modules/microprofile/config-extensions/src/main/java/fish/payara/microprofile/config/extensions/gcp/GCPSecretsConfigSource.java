@@ -55,7 +55,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -219,11 +218,6 @@ public class GCPSecretsConfigSource extends ConfiguredExtensionConfigSource<GCPS
         }
 
         return results;
-    }
-
-    @Override
-    public Set<String> getPropertyNames() {
-        return getProperties().keySet();
     }
 
     @Override

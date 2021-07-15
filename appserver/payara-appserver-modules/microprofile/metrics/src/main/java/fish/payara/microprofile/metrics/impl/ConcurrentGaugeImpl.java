@@ -40,7 +40,12 @@
  */
 package fish.payara.microprofile.metrics.impl;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.enterprise.inject.Vetoed;
 
 import org.eclipse.microprofile.metrics.ConcurrentGauge;
@@ -52,19 +57,34 @@ import org.eclipse.microprofile.metrics.ConcurrentGauge;
  * @since 5.193
  */
 @Vetoed
-public class ConcurrentGaugeImpl extends CompleteMinuteMinMaxTracker implements ConcurrentGauge {
+public class ConcurrentGaugeImpl implements ConcurrentGauge {
 
     /**
      * The number of threads currently executing the annotated method.
      */
     private final AtomicInteger threads = new AtomicInteger();
 
+    /**
+     * Minimum and maximum of current minute
+     */
+    private AtomicReference<MinMax> openStats;
+
+    /**
+     * Minimum and maximum during previously completed minute
+     */
+    private volatile MinMax closedStats;
+
+    private final Clock clock;
+
     public ConcurrentGaugeImpl() {
         this(Clock.DEFAULT);
     }
 
     public ConcurrentGaugeImpl(Clock clock) {
-        super(clock);
+        this.clock = clock;
+        // must run with clock initialised:
+        this.openStats = new AtomicReference<>(new MinMax(0, getCurrentMinute()));
+        this.closedStats = new MinMax(0, getCurrentMinute());
     }
 
     /**
@@ -73,13 +93,13 @@ public class ConcurrentGaugeImpl extends CompleteMinuteMinMaxTracker implements 
     @Override
     public void inc() {
         threads.incrementAndGet();
-        updateMaxValue(threads.longValue());
+        currentStats().updateMax(threads.longValue());
     }
 
     @Override
     public void dec() {
         threads.decrementAndGet();
-        updateMinValue(threads.longValue());
+        currentStats().updateMin(threads.longValue());
     }
 
     /**
@@ -94,18 +114,66 @@ public class ConcurrentGaugeImpl extends CompleteMinuteMinMaxTracker implements 
 
     @Override
     public long getMax() {
-        Long max = getMaxValue();
-        return max == null ? 0L : max.longValue();
+        currentStats();
+        return closedStats.max.get();
     }
 
     @Override
     public long getMin() {
-        Long min = getMinValue();
-        return min == null ? 0L : min.longValue();
+        currentStats();
+        return closedStats.min.get();
     }
 
-    @Override
-    public String toString() {
-        return "ConcurrentGauge[" + getCount() + "]";
+    private Instant getCurrentMinute() {
+        return Instant.ofEpochMilli(clock.getTime()).truncatedTo(ChronoUnit.MINUTES);
+    }
+
+    private MinMax currentStats() {
+        Instant now = getCurrentMinute();
+        MinMax possiblyOutdated = openStats.getAndUpdate(
+                value -> value.markIfOld(now) ? new MinMax(threads.longValue(), now) : value);
+        if (possiblyOutdated.finished.get()) {
+            // we got previous MinMax instance, that has set finished=true just before it was replaced
+            closedStats = possiblyOutdated;
+            // if value was not updated for longer than one minute, this is still correct answer,
+            // as the gauge doesn't reset by itself.
+            return openStats.get();
+        }
+        return possiblyOutdated;
+    }
+
+    /**
+     * Stats captured by the gauge. Note that even if it is stored in
+     * AtomicReference, the class itself may be accessed concurrently.
+     */
+    private static class MinMax {
+
+        final AtomicLong min;
+        final AtomicLong max;
+        final Instant minute;
+        final AtomicBoolean finished = new AtomicBoolean(false);
+
+        MinMax(long initialValue, Instant minute) {
+            this.min = new AtomicLong(initialValue);
+            this.max = new AtomicLong(initialValue);
+            this.minute = minute;
+        }
+
+        /**
+         * Ensures each instance will only return true a single time even when called concurrently.
+         *
+         * @return true, if this {@link MinMax} was identified and marked as old, else false
+         */
+        boolean markIfOld(Instant now) {
+            return !now.equals(minute) && finished.compareAndSet(false, true);
+        }
+
+        void updateMin(long value) {
+            min.accumulateAndGet(value, Math::min);
+        }
+
+        void updateMax(long value) {
+            max.accumulateAndGet(value, Math::max);
+        }
     }
 }

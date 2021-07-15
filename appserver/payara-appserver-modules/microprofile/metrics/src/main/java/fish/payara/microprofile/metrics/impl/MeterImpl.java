@@ -171,9 +171,4 @@ public class MeterImpl implements Meter {
         tickIfNecessary();
         return m1Rate.getRate(TimeUnit.SECONDS);
     }
-
-    @Override
-    public String toString() {
-        return "Meter[" + getCount() + "]";
-    }
 }

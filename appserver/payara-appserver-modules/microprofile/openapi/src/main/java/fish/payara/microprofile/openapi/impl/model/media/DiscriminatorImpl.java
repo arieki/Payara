@@ -39,17 +39,14 @@
  */
 package fish.payara.microprofile.openapi.impl.model.media;
 
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
+import java.util.HashMap;
 import java.util.Map;
-
 import org.eclipse.microprofile.openapi.models.media.Discriminator;
 
 public class DiscriminatorImpl implements Discriminator {
 
     private String propertyName;
-    private Map<String, String> mapping = createMap();
+    private Map<String, String> mapping = new HashMap<>();
 
     @Override
     public String getPropertyName() {
@@ -63,20 +60,17 @@ public class DiscriminatorImpl implements Discriminator {
 
     @Override
     public Map<String, String> getMapping() {
-        return readOnlyView(mapping);
+        return mapping;
     }
 
     @Override
     public void setMapping(Map<String, String> mapping) {
-        this.mapping = createMap(mapping);
+        this.mapping = mapping;
     }
 
     @Override
     public Discriminator addMapping(String name, String value) {
         if (value != null) {
-            if (mapping == null) {
-                mapping = createMap();
-            }
             mapping.put(name, value);
         }
         return this;
@@ -84,8 +78,6 @@ public class DiscriminatorImpl implements Discriminator {
 
     @Override
     public void removeMapping(String name) {
-        if (mapping != null) {
-            mapping.remove(name);
-        }
+        mapping.remove(name);
     }
 }

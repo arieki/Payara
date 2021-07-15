@@ -39,8 +39,6 @@
  */
 package fish.payara.microprofile.openapi.impl.processor;
 
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.isVoid;
-
 import fish.payara.microprofile.openapi.api.processor.OASProcessor;
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.api.visitor.ApiVisitor;
@@ -66,26 +64,18 @@ import fish.payara.microprofile.openapi.impl.model.util.ModelUtils;
 import fish.payara.microprofile.openapi.impl.visitor.OpenApiWalker;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
-
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
-
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.FormParam;
-import javax.ws.rs.HttpMethod;
-import javax.ws.rs.core.Response.Status;
-
-import org.eclipse.microprofile.openapi.models.Components;
 import org.eclipse.microprofile.openapi.models.ExternalDocumentation;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
 import org.eclipse.microprofile.openapi.models.PathItem;
@@ -137,7 +127,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
 
     private final ClassLoader appClassLoader;
 
-    private OpenApiWalker<?> apiWalker;
+    private OpenApiWalker apiWalker;
 
     /**
      * @param allTypes parsed application classes
@@ -154,7 +144,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     @Override
     public OpenAPI process(OpenAPI api, OpenApiConfiguration config) {
         if (config == null || !config.getScanDisable()) {
-            this.apiWalker = new OpenApiWalker<>(
+            this.apiWalker = new OpenApiWalker(
                     api,
                     allTypes,
                     config == null ? allowedTypes : config.getValidClasses(allowedTypes),
@@ -173,13 +163,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setGET(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.GET);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -195,13 +184,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setPOST(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.POST);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -217,13 +205,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setPUT(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.PUT);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -239,13 +226,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setDELETE(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.DELETE);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -261,13 +247,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setHEAD(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.HEAD);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -283,13 +268,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setOPTIONS(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.OPTIONS);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -305,13 +289,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // Get or create the path item
-        PathItem pathItem = context.getApi().getPaths().getPathItems().getOrDefault(context.getPath(), new PathItemImpl());
+        PathItem pathItem = context.getApi().getPaths().getOrDefault(context.getPath(), new PathItemImpl());
         context.getApi().getPaths().addPathItem(context.getPath(), pathItem);
 
-        OperationImpl operation = new OperationImpl();
+        Operation operation = new OperationImpl();
         pathItem.setPATCH(operation);
         operation.setOperationId(element.getName());
-        operation.setMethod(HttpMethod.PATCH);
 
         // Add the default request
         insertDefaultRequestBody(context, operation, element);
@@ -324,7 +307,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     public void visitProduces(AnnotationModel produces, AnnotatedElement element, ApiContext context) {
         if (element instanceof MethodModel && context.getWorkingOperation() != null) {
             for (APIResponse response : context.getWorkingOperation()
-                    .getResponses().getAPIResponses().values()) {
+                    .getResponses().values()) {
 
                 if (response != null) {
                     // Find the wildcard return type
@@ -403,21 +386,18 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             }
         }
 
-        final Operation workingOperation = context.getWorkingOperation();
-        if (workingOperation != null) {
+        if (context.getWorkingOperation() != null) {
             // If there's no request body, fill out a new one right down to the schema
-            if (workingOperation.getRequestBody() == null) {
-                workingOperation.setRequestBody(new RequestBodyImpl().content(new ContentImpl()
+            if (context.getWorkingOperation().getRequestBody() == null) {
+                context.getWorkingOperation().setRequestBody(new RequestBodyImpl().content(new ContentImpl()
                         .addMediaType(javax.ws.rs.core.MediaType.WILDCARD, new MediaTypeImpl()
                                 .schema(new SchemaImpl()))));
             }
 
-            for (MediaType mediaType : workingOperation.getRequestBody().getContent().getMediaTypes().values()) {
-                final Schema schema = mediaType.getSchema();
-                if (schema != null) {
-                    schema.setType(formSchemaType);
-                }
-            }
+            // Set the request body type accordingly.
+            context.getWorkingOperation().getRequestBody().getContent()
+                    .getMediaType(javax.ws.rs.core.MediaType.WILDCARD).getSchema()
+                    .setType(formSchemaType);
         }
     }
 
@@ -459,16 +439,8 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
 
         newParameter.setSchema(schema);
 
-        final Operation workingOperation = context.getWorkingOperation();
-        if (workingOperation != null) {
-            for (Parameter parameter : workingOperation.getParameters()) {
-                final String parameterName = parameter.getName();
-                if (parameterName != null && parameterName.equals(newParameter.getName())) {
-                    ParameterImpl.merge(newParameter, parameter, false, context);
-                    return;
-                }
-            }
-            workingOperation.addParameter(newParameter);
+        if (context.getWorkingOperation() != null) {
+            context.getWorkingOperation().addParameter(newParameter);
         } else {
             LOGGER.log(
                     SEVERE,
@@ -521,8 +493,6 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             vistEnumClass(annotation, (EnumType) element, context);
         } else if (element instanceof FieldModel) {
             visitSchemaField(annotation, (FieldModel) element, context);
-        } else if (element instanceof MethodModel) {
-            visitSchemaMethod(annotation, (MethodModel) element, context);
         } else if (element instanceof org.glassfish.hk2.classmodel.reflect.Parameter) {
             visitSchemaParameter(annotation, (org.glassfish.hk2.classmodel.reflect.Parameter) element, context);
         }
@@ -530,7 +500,10 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
 
     private void vistEnumClass(AnnotationModel schemaAnnotation, EnumType enumType, ApiContext context) {
         // Get the schema object name
-        String schemaName = ModelUtils.getSchemaName(context, enumType);
+        String schemaName = (schemaAnnotation == null) ? null : schemaAnnotation.getValue("name", String.class);
+        if (schemaName == null || schemaName.isEmpty()) {
+            schemaName = enumType.getSimpleName();
+        }
         Schema schema = SchemaImpl.createInstance(schemaAnnotation, context);
 
         Schema newSchema = new SchemaImpl();
@@ -557,29 +530,24 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             ApiContext context) {
 
         // Get the schema object name
-        String schemaName = ModelUtils.getSchemaName(context, clazz);
+        String schemaName = (schemaAnnotation == null) ? null : schemaAnnotation.getValue("name", String.class);
+        if (schemaName == null || schemaName.isEmpty()) {
+            schemaName = clazz.getSimpleName();
+        }
 
         // Add a new schema
         if (schema == null) {
-            final Components components = context.getApi().getComponents();
-            schema = components.getSchemas().getOrDefault(schemaName, new SchemaImpl());
-            components.addSchema(schemaName, schema);
+            schema = new SchemaImpl();
+            context.getApi().getComponents().addSchema(schemaName, schema);
         }
 
-        // If there is an annotation, parse its configuration
+        // If there is an annotation
         if (schemaAnnotation != null) {
-            SchemaImpl.merge(SchemaImpl.createInstance(schemaAnnotation, context), schema, false, context);
+            SchemaImpl.merge(SchemaImpl.createInstance(schemaAnnotation, context), schema, true, context);
         }
-
         for (FieldModel field : clazz.getFields()) {
-            final String fieldName = field.getName();
-            if (!field.isTransient() && !fieldName.startsWith("this$")) {
-                final Schema existingProperty = schema.getProperties().get(fieldName);
-                final Schema newProperty = createSchema(null, context, field, clazz, parameterizedInterfaces);
-                if (existingProperty != null) {
-                    SchemaImpl.merge(existingProperty, newProperty, true, context);
-                }
-                schema.addProperty(fieldName, newProperty);
+            if (!field.isTransient() && !field.getName().startsWith("this$")) {
+                schema.addProperty(field.getName(), createSchema(null, context, field, clazz, parameterizedInterfaces));
             }
         }
 
@@ -588,87 +556,66 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         }
 
         // If there is an extending class, add the data
-        final ClassModel superClass = clazz.getParent();
-        if (superClass != null && !superClass.getName().startsWith("java.")) {
+        if (clazz.getParent() != null) {
+            ClassModel superClass = clazz.getParent();
 
-            // Get the parent annotation
-            AnnotationModel parentSchemAnnotation = context.getAnnotationInfo(superClass)
-                    .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
+            // If the super class is legitimate
+            if (superClass != null) {
 
-            ParameterizedInterfaceModel parameterizedInterface = clazz.getParameterizedInterface(superClass);
-            if (parameterizedInterface == null) {
-                // Create a schema for the parent
-                final Schema parentSchema = visitSchemaClass(null, parentSchemAnnotation, superClass, Collections.emptyList(), context);
+                // Get the parent schema annotation
+                AnnotationModel parentSchemAnnotation = context.getAnnotationInfo(superClass)
+                        .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
 
-                // Get the superclass schema name
-                String parentSchemaName = ModelUtils.getSchemaName(context, superClass);
+                ParameterizedInterfaceModel parameterizedInterface = clazz.getParameterizedInterface(superClass);
+                if (parameterizedInterface == null) {
+                    // Create a schema for the parent
+                    visitSchemaClass(null, parentSchemAnnotation, superClass, Collections.emptyList(), context);
 
-                // Link the schemas
-                schema.addAllOf(new SchemaImpl().ref(parentSchemaName));
+                    // Get the superclass schema name
+                    String parentSchemaName = parentSchemAnnotation == null ? null : parentSchemAnnotation.getValue("name", String.class);
+                    if (parentSchemaName == null || parentSchemaName.isEmpty()) {
+                        parentSchemaName = superClass.getSimpleName();
+                    }
 
-                // Add all the parent schema properties
-                for (Entry<String, Schema> property : parentSchema.getProperties().entrySet()) {
-                    schema.addProperty(property.getKey(), property.getValue());
+                    // Link the schemas
+                    schema.addAllOf(new SchemaImpl().ref(parentSchemaName));
+                } else {
+                    visitSchemaClass(schema, parentSchemAnnotation, superClass, parameterizedInterface.getParametizedTypes(), context);
                 }
-            } else {
-                visitSchemaClass(schema, parentSchemAnnotation, superClass, parameterizedInterface.getParametizedTypes(), context);
             }
         }
         return schema;
     }
 
-    private void visitSchemaMethod(AnnotationModel schemaAnnotation, MethodModel method, ApiContext context) {
-        final ExtensibleType<?> declaringType = method.getDeclaringType();
-        final String methodName = method.getName();
-        final String typeName;
-        if (methodName.toLowerCase().contains("set")) {
-            typeName = method.getArgumentTypes()[0];
-        } else {
-            typeName = method.getReturnType().getTypeName();
-        }
-        visitSchemaFieldOrMethod(schemaAnnotation, method, declaringType, typeName, context);
-    }
-
-    private void visitSchemaField(AnnotationModel schemaAnnotation, FieldModel field, ApiContext context) {
-        final ExtensibleType<?> declaringType = field.getDeclaringType();
-        final String typeName = field.getTypeName();
-        visitSchemaFieldOrMethod(schemaAnnotation, field, declaringType, typeName, context);
-    }
-
-    public void visitSchemaFieldOrMethod(AnnotationModel schemaAnnotation, AnnotatedElement fieldOrMethod,
-            ExtensibleType<?> declaringType, String typeName, ApiContext context) {
-        assert (fieldOrMethod instanceof FieldModel) || (fieldOrMethod instanceof MethodModel);
-
+    public void visitSchemaField(AnnotationModel schemaAnnotation, FieldModel field, ApiContext context) {
         // Get the schema object name
-        String schemaName = ModelUtils.getSchemaName(context, fieldOrMethod);
-        SchemaImpl schema = SchemaImpl.createInstance(schemaAnnotation, context);
+        String schemaName = (schemaAnnotation == null) ? null : schemaAnnotation.getValue("name", String.class);
+        if (schemaName == null || schemaName.isEmpty()) {
+            schemaName = field.getName();
+        }
+        Schema schema = SchemaImpl.createInstance(schemaAnnotation, context);
 
         // Get the parent schema object name
         String parentName = null;
-        AnnotationModel classSchemaAnnotation = context.getAnnotationInfo(declaringType)
+        AnnotationModel classSchemaAnnotation = context.getAnnotationInfo(field.getDeclaringType())
                 .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
         if (classSchemaAnnotation != null) {
             parentName = classSchemaAnnotation.getValue("name", String.class);
         }
         if (parentName == null || parentName.isEmpty()) {
-            parentName = declaringType.getSimpleName();
+            parentName = field.getDeclaringType().getSimpleName();
         }
 
         // Get or create the parent schema object
-        final Components components = context.getApi().getComponents();
-        Schema parentSchema = components.getSchemas().getOrDefault(parentName, new SchemaImpl());
-        components.addSchema(parentName, parentSchema);
+        Map<String, Schema> schemas
+                = context.getApi().getComponents().getSchemas();
+        Schema parentSchema
+                = schemas.getOrDefault(parentName, new SchemaImpl());
+        schemas.put(parentName, parentSchema);
 
-        Schema property = parentSchema.getProperties().getOrDefault(schemaName, new SchemaImpl());
+        Schema property = new SchemaImpl();
         parentSchema.addProperty(schemaName, property);
-        if (schema.isRequired()) {
-            parentSchema.addRequired(schemaName);
-        }
-
-        if (property.getRef() == null) {
-            property.setType(ModelUtils.getSchemaType(typeName, context));
-        }
-
+        property.setType(ModelUtils.getSchemaType(field.getTypeName(), context));
         SchemaImpl.merge(schema, property, true, context);
     }
 
@@ -732,8 +679,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     public void visitOperation(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         OperationImpl.merge(OperationImpl.createInstance(annotation, context), context.getWorkingOperation(), true);
         // If the operation should be hidden, remove it
-        final Boolean hidden = annotation.getValue("hidden", Boolean.class);
-        if (hidden != null && hidden) {
+        if (annotation.getValue("hidden", Boolean.class)) {
             ModelUtils.removeOperation(context.getApi().getPaths().getPathItem(context.getPath()),
                     context.getWorkingOperation());
         }
@@ -745,7 +691,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             String name = annotation.getValue("name", String.class);
             Callback callbackModel = context.getWorkingOperation()
                     .getCallbacks().getOrDefault(name, new CallbackImpl());
-            context.getWorkingOperation().addCallback(name, callbackModel);
+            context.getWorkingOperation().getCallbacks().put(name, callbackModel);
             CallbackImpl.merge(CallbackImpl.createInstance(annotation, context), callbackModel, true, context);
         }
     }
@@ -770,39 +716,9 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     }
 
     @Override
-    public void visitRequestBodySchema(AnnotationModel requestBodySchema, AnnotatedElement element,
-            ApiContext context) {
-        if (element instanceof MethodModel || element instanceof org.glassfish.hk2.classmodel.reflect.Parameter) {
-            final RequestBody currentRequestBody = context.getWorkingOperation().getRequestBody();
-            if (currentRequestBody != null) {
-                final String implementationClass = requestBodySchema.getValue("value", String.class);
-                final SchemaImpl schema = SchemaImpl.fromImplementation(implementationClass, context);
-
-                for (MediaType mediaType : currentRequestBody.getContent().getMediaTypes().values()) {
-                    mediaType.setSchema(schema);
-                }
-            }
-        }
-    }
-
-    @Override
     public void visitAPIResponse(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         APIResponseImpl apiResponse = APIResponseImpl.createInstance(annotation, context);
-        Operation workingOperation = context.getWorkingOperation();
-
-        // Handle exception mappers
-        if (workingOperation == null) {
-            if (element instanceof MethodModel && "toResponse".equals(element.getName())) {
-                final MethodModel methodModel = (MethodModel) element;
-                final String exceptionType = methodModel.getParameter(0).getTypeName();
-                mapException(context, exceptionType, apiResponse);
-            } else {
-                LOGGER.warning("Unrecognised annotation position at: " + element.shortDesc());
-            }
-            return;
-        }
-
-        APIResponsesImpl.merge(apiResponse, workingOperation.getResponses(), true, context);
+        APIResponsesImpl.merge(apiResponse, context.getWorkingOperation().getResponses(), true, context);
 
         // If an APIResponse has been processed that isn't the default
         String responseCode = apiResponse.getResponseCode();
@@ -817,11 +733,11 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
                         .map(a -> a.getValue("responseCode", String.class))
                         .noneMatch(code -> code == null || code.isEmpty() || code.equals(APIResponses.DEFAULT))) {
                     // Then remove the default response
-                    workingOperation.getResponses()
+                    context.getWorkingOperation().getResponses()
                             .removeAPIResponse(APIResponses.DEFAULT);
                 }
             } else {
-                workingOperation.getResponses()
+                context.getWorkingOperation().getResponses()
                         .removeAPIResponse(APIResponses.DEFAULT);
             }
         }
@@ -836,108 +752,10 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     }
 
     @Override
-    public void visitAPIResponseSchema(AnnotationModel apiResponseSchema, AnnotatedElement element,
-            ApiContext context) {
-        final APIResponseImpl response = APIResponseImpl.createInstance(apiResponseSchema, context);
-
-        final OperationImpl operation = (OperationImpl) context.getWorkingOperation();
-
-        // Handle exception mappers
-        if (operation == null) {
-            if (element instanceof MethodModel && "toResponse".equals(element.getName())) {
-                final MethodModel methodModel = (MethodModel) element;
-                final String exceptionType = methodModel.getParameter(0).getTypeName();
-                mapException(context, exceptionType, response);
-            } else {
-                LOGGER.warning("Unrecognised annotation position at: " + element.shortDesc());
-            }
-            return;
-        }
-
-        // If response code hasn't been specified
-        String responseCode = response.getResponseCode();
-        if (responseCode == null || responseCode.isEmpty()) {
-            assert element instanceof MethodModel;
-            final MethodModel method = (MethodModel) element;
-
-            if (isVoid(method.getReturnType())) {
-                if (HttpMethod.POST.equals(operation.getMethod())) {
-                    responseCode = "201";
-                } else if (Arrays.asList(method.getArgumentTypes()).contains("javax.ws.rs.container.AsyncResponse")) {
-                    responseCode = "200";
-                } else {
-                    responseCode = "204";
-                }
-            } else {
-                responseCode = "200";
-            }
-        }
-        response.setResponseCode(responseCode);
-
-        // If the response description hasn't been specified
-        final String responseDescription = response.getDescription();
-        if (responseDescription == null || responseDescription.isEmpty()) {
-            try {
-                final int statusInt = Integer.parseInt(responseCode);
-                final Status status = Status.fromStatusCode(statusInt);
-                if (status != null) {
-                    response.setDescription(status.getReasonPhrase());
-                }
-            } catch (NumberFormatException ex) {
-                LOGGER.log(Level.FINE, "Unrecognised status code, description will be empty", ex);
-            }
-        }
-
-        final APIResponses responses = operation.getResponses();
-
-        // Remove the default response
-        final APIResponse defaultResponse = responses.getAPIResponse(APIResponses.DEFAULT);
-        if (defaultResponse != null) {
-            responses.removeAPIResponse(APIResponses.DEFAULT);
-            responses.addAPIResponse(responseCode, defaultResponse);
-        }
-
-        // Add the generated response
-        APIResponsesImpl.merge(response, responses, true, context);
-    }
-
-    /**
-     * When an exception mapper is encountered, register the mapped response and
-     * find any operations already parsed that this exception mapper is applicable
-     * to
-     */
-    private void mapException(ApiContext context, String exceptionType, APIResponseImpl exceptionResponse) {
-        // Don't allow null responses
-        if (exceptionResponse.getDescription() == null || exceptionResponse.getDescription().isEmpty()) {
-            exceptionResponse.setDescription(ModelUtils.getSimpleName(exceptionType));
-        }
-        context.addMappedExceptionResponse(exceptionType, exceptionResponse);
-        final String exceptionStatus = exceptionResponse.getResponseCode();
-
-        if (exceptionStatus != null) {
-            for (PathItem path : context.getApi().getPaths().getPathItems().values()) {
-                for (Operation operation : path.getOperations().values()) {
-                    if (((OperationImpl) operation).getExceptionTypes().contains(exceptionType)) {
-                        operation.getResponses().addAPIResponse(exceptionStatus, exceptionResponse);
-                    } 
-                }
-            }
-        } else {
-            LOGGER.fine("Failed to add mapped response as no response code was provided");
-        }
-    }
-
-    @Override
     public void visitParameters(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         List<AnnotationModel> parameters = annotation.getValue("value", List.class);
         if (parameters != null) {
-            for (AnnotationModel paramAnnotation : parameters) {
-                final Parameter parameter = ParameterImpl.createInstance(paramAnnotation, context);
-                final Operation workingOperation = context.getWorkingOperation();
-                if (workingOperation != null) {
-                    workingOperation.addParameter(parameter);
-                }
-            }
+            parameters.forEach(parameter -> visitParameter(parameter, element, context));
         }
     }
 
@@ -957,13 +775,13 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
 
             // If a content was added, and a schema type exists, reconfigure the schema type
             if (matchedParam.getContent() != null
-                    && !matchedParam.getContent().getMediaTypes().isEmpty()
+                    && !matchedParam.getContent().values().isEmpty()
                     && matchedParam.getSchema() != null
                     && matchedParam.getSchema().getType() != null) {
                 SchemaType type = matchedParam.getSchema().getType();
                 matchedParam.setSchema(null);
 
-                for (MediaType mediaType : matchedParam.getContent().getMediaTypes().values()) {
+                for (MediaType mediaType : matchedParam.getContent().values()) {
                     if (mediaType.getSchema() == null) {
                         mediaType.setSchema(new SchemaImpl());
                     }
@@ -1060,15 +878,12 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     public void visitTag(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         Tag from = TagImpl.createInstance(annotation, context);
         if (element instanceof MethodModel) {
-            final List<Tag> tags = new ArrayList<>();
-            tags.addAll(context.getApi().getTags());
-            TagImpl.merge(from, context.getWorkingOperation(), true, tags);
-            context.getApi().setTags(tags);
+            TagImpl.merge(from, context.getWorkingOperation(), true, context.getApi().getTags());
         } else {
             Tag newTag = new TagImpl();
             TagImpl.merge(from, newTag, true);
             if (newTag.getName() != null && !newTag.getName().isEmpty()) {
-                context.getApi().addTag(newTag);
+                context.getApi().getTags().add(newTag);
             }
         }
     }
@@ -1168,34 +983,21 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
      * @param method the {@link Method} to model the default response on.
      * @return the newly created {@link APIResponse}.
      */
-    private void insertDefaultResponse(ApiContext context,
-            OperationImpl operation, MethodModel method) {
-
-        final APIResponsesImpl responses = new APIResponsesImpl();
-        operation.setResponses(responses);
-
-        // Add the default response
+    private APIResponse insertDefaultResponse(ApiContext context,
+            Operation operation, MethodModel method) {
         APIResponse defaultResponse = new APIResponseImpl();
-        responses.addAPIResponse(APIResponses.DEFAULT, defaultResponse);
         defaultResponse.setDescription("Default Response.");
 
-        // Configure the default response with a wildcard mediatype
+        // Create the default response with a wildcard mediatype
         MediaType mediaType = new MediaTypeImpl().schema(
                 createSchema(context, method.getReturnType())
         );
         defaultResponse.getContent().addMediaType(javax.ws.rs.core.MediaType.WILDCARD, mediaType);
 
-        // Add responses for the applicable declared exceptions
-        for (String exceptionType : method.getExceptionTypes()) {
-            final APIResponseImpl mappedResponse = (APIResponseImpl) context.getMappedExceptionResponses().get(exceptionType);
-            if (mappedResponse != null) {
-                final String responseCode = mappedResponse.getResponseCode();
-                if (responseCode != null) {
-                    responses.addAPIResponse(responseCode, mappedResponse);
-                }
-            }
-            operation.addExceptionType(exceptionType);
-        }
+        // Add the default response
+        operation.setResponses(new APIResponsesImpl().addAPIResponse(
+                APIResponses.DEFAULT, defaultResponse));
+        return defaultResponse;
     }
 
     /**
@@ -1362,19 +1164,6 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
      */
     private boolean insertObjectReference(ApiContext context, Reference<?> referee, AnnotatedElement referenceClass, String referenceClassName) {
 
-        // Firstly check if it's been already defined (i.e. config property definition)
-        for (Entry<String, Schema> schemaEntry : context.getApi().getComponents().getSchemas().entrySet()) {
-            final Schema entryValue = schemaEntry.getValue();
-            if (entryValue instanceof SchemaImpl) {
-                final SchemaImpl entryValueImpl = (SchemaImpl) entryValue;
-                final String implementationClass = entryValueImpl.getImplementation();
-                if (implementationClass != null && implementationClass.equals(referenceClassName)) {
-                    referee.setRef(schemaEntry.getKey());
-                    return true;
-                }
-            }
-        }
-
         // If the object is a java core class
         if (referenceClassName == null || referenceClassName.startsWith("java.")) {
             return false;
@@ -1394,7 +1183,13 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             ExtensibleType referenceClassType = (ExtensibleType) referenceClass;
             final AnnotationModel schemaAnnotation = context.getAnnotationInfo(referenceClassType)
                     .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
-            String schemaName = ModelUtils.getSchemaName(context, referenceClass);
+            String schemaName = null;
+            if (schemaAnnotation != null) {
+                schemaName = schemaAnnotation.getValue("name", String.class);
+            }
+            if (schemaName == null || schemaName.isEmpty()) {
+                schemaName = ModelUtils.getSimpleName(referenceClassName);
+            }
             // Set the reference name
             referee.setRef(schemaName);
 

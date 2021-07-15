@@ -50,9 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.util.logging.Level.WARNING;
 import java.util.logging.Logger;
 import static java.util.stream.Collectors.toSet;
-
-import java.util.Collections;
-
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -66,7 +63,6 @@ import javax.ws.rs.core.Application;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
 import org.eclipse.microprofile.openapi.models.Operation;
 import org.eclipse.microprofile.openapi.models.PathItem;
-import org.eclipse.microprofile.openapi.models.responses.APIResponse;
 import org.glassfish.hk2.classmodel.reflect.AnnotatedElement;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
 import org.glassfish.hk2.classmodel.reflect.ClassModel;
@@ -90,8 +86,6 @@ public class OpenApiContext implements ApiContext {
 
     private Map<ExtensibleType<? extends ExtensibleType>, AnnotationInfo> parsedTypes = new ConcurrentHashMap<>();
 
-    private Map<String, APIResponse> mappedExceptionResponses = new ConcurrentHashMap<>();
-
     public OpenApiContext(Types allTypes, Set<Type> allowedTypes, ClassLoader appClassLoader, OpenAPI api) {
         this.allTypes = allTypes;
         this.allowedTypes = allowedTypes;
@@ -107,7 +101,6 @@ public class OpenApiContext implements ApiContext {
         this.appClassLoader = parentApiContext.appClassLoader;
         this.resourceMapping = parentApiContext.resourceMapping;
         this.parsedTypes = parentApiContext.parsedTypes;
-        this.mappedExceptionResponses = parentApiContext.mappedExceptionResponses;
         this.annotatedElement = annotatedElement;
     }
 
@@ -130,18 +123,6 @@ public class OpenApiContext implements ApiContext {
             operation = getOperation((MethodModel) annotatedElement);
         }
         return operation;
-    }
-
-    @Override
-    public void addMappedExceptionResponse(String exceptionType, APIResponse exceptionResponse) {
-        if (exceptionType != null) {
-            mappedExceptionResponses.put(exceptionType, exceptionResponse);
-        }
-    }
-
-    @Override
-    public Map<String, APIResponse> getMappedExceptionResponses() {
-        return Collections.unmodifiableMap(mappedExceptionResponses);
     }
 
     @Override

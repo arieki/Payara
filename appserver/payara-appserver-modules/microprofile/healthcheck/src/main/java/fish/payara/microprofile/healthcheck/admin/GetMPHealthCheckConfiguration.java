@@ -44,7 +44,7 @@ package fish.payara.microprofile.healthcheck.admin;
 
 import com.sun.enterprise.config.serverbeans.Config;
 import com.sun.enterprise.util.ColumnFormatter;
-import fish.payara.microprofile.healthcheck.config.MicroprofileHealthCheckConfiguration;
+import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfiguration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -72,7 +72,7 @@ import org.jvnet.hk2.annotations.Service;
 @ExecuteOn({RuntimeType.DAS, RuntimeType.INSTANCE})
 @TargetType(value = {CommandTarget.DAS, CommandTarget.STANDALONE_INSTANCE, CommandTarget.CLUSTER, CommandTarget.CONFIG, CommandTarget.DEPLOYMENT_GROUP})
 @RestEndpoints({
-    @RestEndpoint(configBean = MicroprofileHealthCheckConfiguration.class,
+    @RestEndpoint(configBean = MetricsHealthCheckConfiguration.class,
             opType = RestEndpoint.OpType.GET,
             path = "get-microprofile-healthcheck-configuration",
             description = "Gets the Microprofile Health Check Configuration")
@@ -97,8 +97,8 @@ public class GetMPHealthCheckConfiguration implements AdminCommand {
             return;
         }
 
-        MicroprofileHealthCheckConfiguration healthCheckConfiguration = targetConfig
-                .getExtensionByType(MicroprofileHealthCheckConfiguration.class);
+        MetricsHealthCheckConfiguration healthCheckConfiguration = targetConfig
+                .getExtensionByType(MetricsHealthCheckConfiguration.class);
 
         ColumnFormatter columnFormatter = new ColumnFormatter(OUTPUT_HEADERS);
         Object[] outputValues = {

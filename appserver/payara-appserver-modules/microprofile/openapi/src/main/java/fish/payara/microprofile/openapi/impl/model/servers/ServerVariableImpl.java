@@ -39,12 +39,9 @@
  */
 package fish.payara.microprofile.openapi.impl.model.servers;
 
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createList;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.impl.model.ExtensibleImpl;
-
+import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
@@ -54,9 +51,8 @@ public class ServerVariableImpl extends ExtensibleImpl<ServerVariable> implement
     private String description;
     private String defaultValue;
 
-    protected List<String> enumeration = createList();
+    protected List<String> enumeration = new ArrayList<>();
 
-    @SuppressWarnings("unchecked")
     public static ServerVariable createInstance(AnnotationModel annotation, ApiContext context) {
         ServerVariable from = new ServerVariableImpl();
         from.setDescription(annotation.getValue("description", String.class));
@@ -90,32 +86,25 @@ public class ServerVariableImpl extends ExtensibleImpl<ServerVariable> implement
 
     @Override
     public List<String> getEnumeration() {
-        return readOnlyView(enumeration);
+        return enumeration;
     }
 
     @Override
     public void setEnumeration(List<String> enumeration) {
-        this.enumeration = createList(enumeration);
+        this.enumeration = enumeration;
     }
 
     @Override
     public ServerVariable addEnumeration(String enumeration) {
-        if (enumeration != null) {
-            if (this.enumeration == null) {
-                this.enumeration = createList();
-            }
-            if (!this.enumeration.contains(enumeration)) {
-                this.enumeration.add(enumeration);
-            }
+        if (enumeration != null && !this.enumeration.contains(enumeration)) {
+            this.enumeration.add(enumeration);
         }
         return this;
     }
 
     @Override
     public void removeEnumeration(String enumeration) {
-        if (this.enumeration != null) {
-            this.enumeration.remove(enumeration);
-        }
+        this.enumeration.remove(enumeration);
     }
 
 }

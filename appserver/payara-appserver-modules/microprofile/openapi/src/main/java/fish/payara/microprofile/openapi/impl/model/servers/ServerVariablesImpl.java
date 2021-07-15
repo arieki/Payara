@@ -37,60 +37,70 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.microprofile.openapi.impl.model;
+package fish.payara.microprofile.openapi.impl.model.servers;
 
-import fish.payara.microprofile.openapi.impl.model.util.ModelUtils;
+import fish.payara.microprofile.openapi.impl.model.ExtensibleTreeMap;
+import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
+import java.util.ArrayList;
 import java.util.Map;
-import org.eclipse.microprofile.openapi.models.PathItem;
-import org.eclipse.microprofile.openapi.models.Paths;
+import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
+import org.eclipse.microprofile.openapi.models.servers.ServerVariables;
 
-public class PathsImpl extends ExtensibleTreeMap<PathItem, Paths> implements Paths {
+public class ServerVariablesImpl extends ExtensibleTreeMap<ServerVariable, ServerVariables> implements ServerVariables {
 
-    private static final long serialVersionUID = -3876996963579977405L;
+    private static final long serialVersionUID = 8869393484826870024L;
 
-    public PathsImpl() {
+    public ServerVariablesImpl() {
         super();
     }
 
-    public PathsImpl(Map<String, ? extends PathItem> items) {
-        super(items);
+    public ServerVariablesImpl(Map<String, ServerVariable> variables) {
+        super(variables);
     }
 
     @Override
-    public Paths addPathItem(String name, PathItem item) {
+    public ServerVariables addServerVariable(String name, ServerVariable item) {
         if (item != null) {
-            put(name, item);
+            this.put(name, item);
         }
         return this;
     }
 
     @Override
-    public void removePathItem(String name) {
+    public void removeServerVariable(String name) {
         remove(name);
     }
 
     @Override
-    public Map<String, PathItem> getPathItems() {
-        return new PathsImpl(this);
+    public Map<String, ServerVariable> getServerVariables() {
+        return new ServerVariablesImpl(this);
     }
 
     @Override
-    public void setPathItems(Map<String, PathItem> items) {
+    public void setServerVariables(Map<String, ServerVariable> items) {
         clear();
         putAll(items);
     }
 
-    public static void merge(Paths from, Paths to, boolean override) {
-        if (from == null || to == null) {
+    public static void merge(String serverVariableName, ServerVariable from,
+            ServerVariables to, boolean override) {
+        if (from == null) {
             return;
         }
-        from.entrySet().forEach(entry -> {
-            if (!to.hasPathItem(entry.getKey())) {
-                to.addPathItem(entry.getKey(), entry.getValue());
-            } else {
-                ModelUtils.merge(entry.getValue(), to.getPathItem(entry.getKey()), override);
+        org.eclipse.microprofile.openapi.models.servers.ServerVariable variable = new ServerVariableImpl();
+        variable.setDefaultValue(mergeProperty(variable.getDefaultValue(), from.getDefaultValue(), override));
+        variable.setDescription(mergeProperty(variable.getDescription(), from.getDescription(), override));
+        if (from.getEnumeration()!= null && !from.getEnumeration().isEmpty()) {
+            if (variable.getEnumeration() == null) {
+                variable.setEnumeration(new ArrayList<>());
             }
-        });
+            for (String value : from.getEnumeration()) {
+                variable.addEnumeration(value);
+            }
+        }
+        if ((to.hasServerVariable(serverVariableName) && override) || !to.hasServerVariable(serverVariableName)) {
+            to.addServerVariable(serverVariableName, variable);
+        }
     }
 
 }

@@ -39,12 +39,6 @@
  */
 package fish.payara.microprofile.openapi.impl.model;
 
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createList;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.extractAnnotations;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.impl.model.callbacks.CallbackImpl;
 import fish.payara.microprofile.openapi.impl.model.parameters.ParameterImpl;
@@ -53,12 +47,12 @@ import fish.payara.microprofile.openapi.impl.model.responses.APIResponseImpl;
 import fish.payara.microprofile.openapi.impl.model.responses.APIResponsesImpl;
 import fish.payara.microprofile.openapi.impl.model.security.SecurityRequirementImpl;
 import fish.payara.microprofile.openapi.impl.model.servers.ServerImpl;
-
+import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
+import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.extractAnnotations;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import org.eclipse.microprofile.openapi.models.ExternalDocumentation;
 import org.eclipse.microprofile.openapi.models.Operation;
 import org.eclipse.microprofile.openapi.models.callbacks.Callback;
@@ -72,21 +66,19 @@ import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
 
 public class OperationImpl extends ExtensibleImpl<Operation> implements Operation {
 
-    protected List<String> tags = createList();
+    protected List<String> tags = new ArrayList<>();
     protected String summary;
     protected String description;
     protected ExternalDocumentation externalDocs;
     protected String operationId;
-    protected List<Parameter> parameters = createList();
+    protected List<Parameter> parameters = new ArrayList<>();
     protected RequestBody requestBody;
     protected APIResponses responses = new APIResponsesImpl();
-    protected Map<String, Callback> callbacks = createMap();
+    protected Map<String, Callback> callbacks = new HashMap<>();
     protected Boolean deprecated;
-    protected List<SecurityRequirement> security = createList();
-    protected List<Server> servers = createList();
+    protected List<SecurityRequirement> security = new ArrayList<>();
+    protected List<Server> servers = new ArrayList<>();
     protected String method;
-    @JsonIgnore
-    protected List<String> exceptionTypes = createList();
 
     public static Operation createInstance(AnnotationModel annotation, ApiContext context) {
         OperationImpl from = new OperationImpl();
@@ -97,46 +89,39 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
             from.setExternalDocs(ExternalDocumentationImpl.createInstance(externalDocs));
         }
         from.setOperationId(annotation.getValue("operationId", String.class));
-        extractAnnotations(annotation, context, "parameters", ParameterImpl::createInstance, from::addParameter);
+        extractAnnotations(annotation, context, "parameters", ParameterImpl::createInstance, from.getParameters());
         AnnotationModel requestBody = annotation.getValue("requestBody", AnnotationModel.class);
         if (requestBody != null) {
             from.setRequestBody(RequestBodyImpl.createInstance(requestBody, context));
         }
-        extractAnnotations(annotation, context, "responses", "responseCode", APIResponseImpl::createInstance, from.responses::addAPIResponse);
-        extractAnnotations(annotation, context, "callbacks", "name", CallbackImpl::createInstance, from::addCallback);
+        extractAnnotations(annotation, context, "responses", "responseCode", APIResponseImpl::createInstance, from.getResponses());
+        extractAnnotations(annotation, context, "callbacks", "name", CallbackImpl::createInstance, from.getCallbacks());
         from.setDeprecated(annotation.getValue("deprecated", Boolean.class));
-        extractAnnotations(annotation, context, "security", SecurityRequirementImpl::createInstance, from::addSecurityRequirement);
-        extractAnnotations(annotation, context, "servers", ServerImpl::createInstance, from::addServer);
+        extractAnnotations(annotation, context, "security", SecurityRequirementImpl::createInstance, from.getSecurity());
+        extractAnnotations(annotation, context, "servers", ServerImpl::createInstance, from.getServers());
         from.setMethod(annotation.getValue("method", String.class));
         return from;
     }
 
     @Override
     public List<String> getTags() {
-        return readOnlyView(tags);
+        return tags;
     }
 
     @Override
     public void setTags(List<String> tags) {
-        this.tags = createList(tags);
+        this.tags = tags;
     }
 
     @Override
     public Operation addTag(String tag) {
-        if (tag != null) {
-            if (tags == null) {
-                tags = createList();
-            }
-            tags.add(tag);
-        }
+        tags.add(tag);
         return this;
     }
 
     @Override
     public void removeTag(String tag) {
-        if (tags != null) {
-            tags.remove(tag);
-        }
+        tags.remove(tag);
     }
 
     @Override
@@ -181,20 +166,17 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
 
     @Override
     public List<Parameter> getParameters() {
-        return readOnlyView(parameters);
+        return parameters;
     }
 
     @Override
     public void setParameters(List<Parameter> parameters) {
-        this.parameters = createList(parameters);
+        this.parameters = parameters;
     }
 
     @Override
     public Operation addParameter(Parameter parameter) {
         if (parameter != null) {
-            if (parameters == null) {
-                parameters = createList();
-            }
             parameters.add(parameter);
         }
         return this;
@@ -202,9 +184,7 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
 
     @Override
     public void removeParameter(Parameter parameter) {
-        if (parameters != null) {
-            parameters.remove(parameter);
-        }
+        parameters.remove(parameter);
     }
 
     @Override
@@ -229,30 +209,25 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
 
     @Override
     public Map<String, Callback> getCallbacks() {
-        return readOnlyView(callbacks);
+        return callbacks;
     }
 
     @Override
     public void setCallbacks(Map<String, Callback> callbacks) {
-        this.callbacks = createMap(callbacks);
+        this.callbacks = callbacks;
     }
 
     @Override
     public Operation addCallback(String key, Callback callback) {
         if (callback != null) {
-            if (callbacks == null) {
-                callbacks = createMap();
-            }
-            callbacks.put(key, callback);
+            this.callbacks.put(key, callback);
         }
         return this;
     }
 
     @Override
     public void removeCallback(String key) {
-        if (callbacks != null) {
-            callbacks.remove(key);
-        }
+        this.callbacks.remove(key);
     }
 
     @Override
@@ -273,58 +248,44 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
 
     @Override
     public List<SecurityRequirement> getSecurity() {
-        return readOnlyView(security);
+        return security;
     }
 
     @Override
     public void setSecurity(List<SecurityRequirement> security) {
-        this.security = createList(security);
+        this.security = security;
     }
 
     @Override
     public Operation addSecurityRequirement(SecurityRequirement securityReq) {
-        if (securityReq != null) {
-            if (security == null) {
-                security = createList();
-            }
-            security.add(securityReq);
-        }
+        security.add(securityReq);
         return this;
     }
 
     @Override
     public void removeSecurityRequirement(SecurityRequirement securityRequirement) {
-        if (security != null) {
-            security.remove(securityRequirement);
-        }
+        security.remove(securityRequirement);
     }
 
     @Override
     public List<Server> getServers() {
-        return readOnlyView(servers);
+        return servers;
     }
 
     @Override
     public void setServers(List<Server> servers) {
-        this.servers = createList(servers);
+        this.servers = servers;
     }
 
     @Override
     public Operation addServer(Server server) {
-        if (server != null) {
-            if (servers == null) {
-                servers = createList();
-            }
-            servers.add(server);
-        }
+        servers.add(server);
         return this;
     }
 
     @Override
     public void removeServer(Server server) {
-        if (servers != null) {
-            servers.remove(server);
-        }
+        servers.remove(server);
     }
 
     public String getMethod() {
@@ -333,14 +294,6 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
 
     public void setMethod(String method) {
         this.method = method;
-    }
-
-    public List<String> getExceptionTypes() {
-        return readOnlyView(exceptionTypes);
-    }
-
-    public void addExceptionType(String type) {
-        exceptionTypes.add(type);
     }
 
     public static void merge(Operation from, Operation to,
@@ -383,7 +336,7 @@ public class OperationImpl extends ExtensibleImpl<Operation> implements Operatio
             RequestBodyImpl.merge(from.getRequestBody(), to.getRequestBody(), override, context);
         }
         if (from.getResponses() != null) {
-            for (APIResponse response : from.getResponses().getAPIResponses().values()) {
+            for (APIResponse response : from.getResponses().values()) {
                 APIResponsesImpl.merge(response, to.getResponses(), override, context);
             }
         }

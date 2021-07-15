@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) [2018-2020] Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,49 +37,44 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.nucleus.microprofile.config.spi;
+package fish.payara.microprofile.openapi.impl.model.security;
 
-import org.eclipse.microprofile.config.ConfigValue;
+import fish.payara.microprofile.openapi.impl.model.ExtensibleTreeMap;
+import java.util.Map;
+import org.eclipse.microprofile.openapi.models.security.Scopes;
 
-public class ConfigValueImpl implements ConfigValue {
+public class ScopesImpl extends ExtensibleTreeMap<String, Scopes> implements Scopes {
 
-    private final String name;
-    private final String value;
-    private final String rawValue;
-    private final String sourceName;
-    private final int sourceOrdinal;
+    private static final long serialVersionUID = -615440059031779085L;
 
-    protected ConfigValueImpl(String name, String rawValue, String value, String sourceName, int sourceOrdinal) {
-        this.name = name;
-        this.rawValue = rawValue;
-        this.value = value;
-        this.sourceName = sourceName;
-        this.sourceOrdinal = sourceOrdinal;
+    public ScopesImpl() {
+        super();
+    }
+
+    public ScopesImpl(Map<String, ? extends String> scopes) {
+        super(scopes);
     }
 
     @Override
-    public String getName() {
-        return name;
+    public Scopes addScope(String name, String item) {
+        this.put(name, item); // this DOES accept null!
+        return this;
     }
 
     @Override
-    public String getValue() {
-        return value;
+    public void removeScope(String scope) {
+        this.remove(scope);
     }
 
     @Override
-    public String getRawValue() {
-        return rawValue;
+    public Map<String, String> getScopes() {
+        return new ScopesImpl(this);
     }
 
     @Override
-    public String getSourceName() {
-        return sourceName;
-    }
-
-    @Override
-    public int getSourceOrdinal() {
-        return sourceOrdinal;
+    public void setScopes(Map<String, String> items) {
+        clear();
+        putAll(items);
     }
 
 }
