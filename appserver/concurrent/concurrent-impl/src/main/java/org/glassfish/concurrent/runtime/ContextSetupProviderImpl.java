@@ -268,7 +268,7 @@ public class ContextSetupProviderImpl implements ContextSetupProvider {
 
         builder.withTag("Thread Name", Thread.currentThread().getName());
 
-        tracer.activateSpan(builder.start());
+        builder.startActive(true);
     }
 
     @Override

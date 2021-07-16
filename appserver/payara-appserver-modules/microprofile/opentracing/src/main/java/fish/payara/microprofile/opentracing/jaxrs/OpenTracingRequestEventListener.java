@@ -43,7 +43,6 @@ import fish.payara.microprofile.opentracing.cdi.OpenTracingCdiUtils;
 import fish.payara.opentracing.OpenTracingService;
 
 import io.opentracing.Scope;
-import io.opentracing.ScopeManager;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -138,9 +137,9 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
                 return;
             }
 
-            final Span activeSpan = openTracing.getTracer(this.applicationName).scopeManager().activeSpan();
-            if (activeSpan == null) {
-                LOG.finest(() -> "Could not find any active span, nothing to do.");
+            final Scope activeScope = openTracing.getTracer(this.applicationName).scopeManager().active();
+            if (activeScope == null) {
+                LOG.finest(() -> "Could not find any active scope, nothing to do.");
                 return;
             }
 
@@ -181,8 +180,7 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
             spanBuilder.asChildOf(spanContext);
         }
         // Start the span and continue on to the targeted method
-        Scope scope = tracer.activateSpan(spanBuilder.start());
-        requestContext.setProperty(Scope.class.getName(), scope);//tracer.activeSpan();
+        spanBuilder.startActive(true);
         LOG.fine(() -> "Request tracing enabled for request=" + requestContext.getRequest() + " to application="
             + this.applicationName + " on uri=" + toString(requestContext.getUriInfo()));
 
@@ -191,7 +189,8 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
 
     private void onException(final RequestEvent event) {
         LOG.fine(() -> "onException(event=" + event.getType() + ")");
-        final Span activeSpan = getAlreadyActiveSpan();
+        final Scope activeScope = getAlreadyActiveScope();
+        final Span activeSpan = activeScope.span();
         activeSpan.setTag(Tags.ERROR.getKey(), true);
         activeSpan.setTag(Tags.HTTP_STATUS.getKey(), Status.INTERNAL_SERVER_ERROR.getStatusCode());
         activeSpan.log(Collections.singletonMap(Fields.EVENT, "error"));
@@ -207,8 +206,9 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
         LOG.fine(() -> "Response context: status code=" + statusInfo.getStatusCode() //
             + ", hasEntity=" + response.hasEntity());
 
-        final Span activeSpan = getAlreadyActiveSpan();
+        final Scope activeScope = getAlreadyActiveScope();
         LOG.finest("Setting the HTTP response status etc. to the active span...");
+        final Span activeSpan = activeScope.span();
         activeSpan.setTag(Tags.HTTP_STATUS.getKey(), statusInfo.getStatusCode());
 
         // If the response status is an error, add error information to the span
@@ -227,19 +227,12 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
 
     private void finish(final RequestEvent event) {
         LOG.fine(() -> "finish(event=" + event.getType() + ")");
-        ScopeManager scopeManager = openTracing.getTracer(this.applicationName).scopeManager();
-        final Span activeSpan = scopeManager.activeSpan();
-        if (activeSpan == null) {
-            LOG.finest("Active span is null, nothing to do.");
+        final Scope activeScope = openTracing.getTracer(this.applicationName).scopeManager().active();
+        if (activeScope == null) {
+            LOG.finest("Active scope is null, nothing to do.");
             return;
         }
-        scopeManager.activeSpan().finish();
-        Object scopeObj = event.getContainerRequest().getProperty(Scope.class.getName());
-        if(scopeObj !=null && scopeObj instanceof Scope){
-            try(Scope scope = (Scope)scopeObj) {
-                event.getContainerRequest().removeProperty(Scope.class.getName());
-            }
-        }
+        activeScope.close();
         LOG.finest("Finished.");
     }
 
@@ -333,12 +326,12 @@ public class OpenTracingRequestEventListener implements RequestEventListener {
         return OpenTracingCdiUtils.getConfigOverrideValue(Traced.class, "value", resourceInfo, Boolean.class);
     }
 
-    private Span getAlreadyActiveSpan() {
-        final Span activeSpan = openTracing.getTracer(this.applicationName).scopeManager().activeSpan();
-        if (activeSpan == null) {
-            throw new IllegalStateException("Active span is null, something closed it.");
+    private Scope getAlreadyActiveScope() {
+        final Scope activeScope = openTracing.getTracer(this.applicationName).scopeManager().active();
+        if (activeScope == null) {
+            throw new IllegalStateException("Active scope is null, something closed it.");
         }
-        return activeSpan;
+        return activeScope;
     }
 
     /**

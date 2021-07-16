@@ -43,7 +43,6 @@ import fish.payara.notification.requesttracing.RequestTraceSpan;
 import fish.payara.notification.requesttracing.RequestTraceSpanLog;
 import fish.payara.nucleus.requesttracing.RequestTracingService;
 import io.opentracing.SpanContext;
-import io.opentracing.tag.Tag;
 
 import java.time.Instant;
 import java.util.Map;
@@ -107,13 +106,6 @@ public class Span extends RequestTraceSpan implements io.opentracing.Span {
     public io.opentracing.Span setTag(String tagName, Number tagValue) {
         // Pass through to the Request Tracing Service
         addSpanTag(tagName, String.valueOf(tagValue));
-        return this;
-    }
-
-    @Override
-    public <T> io.opentracing.Span setTag(Tag<T> tag, T tagValue) {
-        // Pass through to the Request Tracing Service
-        addSpanTag(tag, String.valueOf(tagValue));
         return this;
     }
 

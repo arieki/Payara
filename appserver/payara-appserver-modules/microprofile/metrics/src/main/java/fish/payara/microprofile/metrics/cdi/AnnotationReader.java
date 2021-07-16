@@ -56,7 +56,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import javax.enterprise.inject.Stereotype;
 import javax.enterprise.inject.spi.Annotated;
 import javax.enterprise.inject.spi.AnnotatedMember;
 import javax.enterprise.inject.spi.AnnotatedParameter;
@@ -135,7 +134,8 @@ public final class AnnotationReader<T extends Annotation> {
             ConcurrentGauge::displayName,
             ConcurrentGauge::description,
             ConcurrentGauge::absolute,
-            ConcurrentGauge::unit);
+            ConcurrentGauge::unit,
+            ConcurrentGauge::reusable);
 
     public static final AnnotationReader<Counted> COUNTED = new AnnotationReader<>(
             Counted.class, MetricType.COUNTER,
@@ -144,7 +144,8 @@ public final class AnnotationReader<T extends Annotation> {
             Counted::displayName,
             Counted::description,
             Counted::absolute,
-            Counted::unit);
+            Counted::unit,
+            Counted::reusable);
 
     public static final AnnotationReader<Gauge> GAUGE = new AnnotationReader<>(
             Gauge.class, MetricType.GAUGE,
@@ -153,7 +154,8 @@ public final class AnnotationReader<T extends Annotation> {
             Gauge::displayName,
             Gauge::description,
             Gauge::absolute,
-            Gauge::unit);
+            Gauge::unit,
+            gauge -> false);
 
     public static final AnnotationReader<Metered> METERED = new AnnotationReader<>(
             Metered.class, MetricType.METERED,
@@ -162,7 +164,8 @@ public final class AnnotationReader<T extends Annotation> {
             Metered::displayName,
             Metered::description,
             Metered::absolute,
-            Metered::unit);
+            Metered::unit,
+            Metered::reusable);
 
     public static final AnnotationReader<Metric> METRIC = new AnnotationReader<>(
             Metric.class, MetricType.INVALID,
@@ -171,7 +174,8 @@ public final class AnnotationReader<T extends Annotation> {
             Metric::displayName,
             Metric::description,
             Metric::absolute,
-            Metric::unit);
+            Metric::unit,
+            metric -> false);
 
     public static final AnnotationReader<Timed> TIMED = new AnnotationReader<>(
             Timed.class, MetricType.TIMER,
@@ -180,7 +184,8 @@ public final class AnnotationReader<T extends Annotation> {
             Timed::displayName,
             Timed::description,
             Timed::absolute,
-            Timed::unit);
+            Timed::unit,
+            Timed::reusable);
 
     public static final AnnotationReader<SimplyTimed> SIMPLY_TIMED = new AnnotationReader<>(
             SimplyTimed.class, MetricType.SIMPLE_TIMER,
@@ -189,7 +194,8 @@ public final class AnnotationReader<T extends Annotation> {
             SimplyTimed::displayName,
             SimplyTimed::description,
             SimplyTimed::absolute,
-            SimplyTimed::unit);
+            SimplyTimed::unit,
+            SimplyTimed::reusable);
 
     private static void register(AnnotationReader<?> reader) {
         READERS_BY_ANNOTATION.put(reader.annotationType(), reader);
@@ -213,6 +219,7 @@ public final class AnnotationReader<T extends Annotation> {
     private final Function<T, String> description;
     private final Predicate<T> absolute;
     private final Function<T, String> unit;
+    private final Predicate<T> reusable;
 
     private AnnotationReader(Class<T> annotationType, MetricType type,
             Function<T, String> name,
@@ -220,7 +227,8 @@ public final class AnnotationReader<T extends Annotation> {
             Function<T, String> displayName,
             Function<T, String> description,
             Predicate<T> absolute,
-            Function<T, String> unit) {
+            Function<T, String> unit,
+            Predicate<T> reusable) {
         this.annotationType = annotationType;
         this.name = name;
         this.tags = tags;
@@ -229,6 +237,7 @@ public final class AnnotationReader<T extends Annotation> {
         this.absolute = absolute;
         this.type = type;
         this.unit = unit;
+        this.reusable = reusable;
     }
 
     public Class<T> annotationType() {
@@ -249,7 +258,7 @@ public final class AnnotationReader<T extends Annotation> {
         if (this.annotationType != Metric.class) {
             throw new IllegalStateException("Only Metric reader can be typed!");
         }
-        return new AnnotationReader<>(annotationType, type, name, tags, displayName, description, absolute, unit);
+        return new AnnotationReader<>(annotationType, type, name, tags, displayName, description, absolute, unit, reusable);
     }
 
     /**
@@ -487,6 +496,16 @@ public final class AnnotationReader<T extends Annotation> {
     }
 
     /**
+     * Returns the metric reusable flag as defined by the provided {@link Annotation}
+     *
+     * @param annotation source annotation to read, not {@code null}
+     * @return reusable flag of the provided source annotation
+     */
+    public boolean reusable(T annotation) {
+        return reusable.test(annotation);
+    }
+
+    /**
      * Returns the metric absolute flag as defined by the provided {@link Annotation}
      *
      * @param annotation source annotation to read, not {@code null}
@@ -563,11 +582,16 @@ public final class AnnotationReader<T extends Annotation> {
     private Metadata metadata(T annotation, String name) {
         return Metadata.builder()
                 .withName(name)
-                .withDisplayName(displayName(annotation))
-                .withDescription(description(annotation))
+                .withOptionalDisplayName(emptyAsNull(displayName(annotation)))
+                .withOptionalDescription(emptyAsNull(description(annotation)))
                 .withType(type)
-                .withUnit(unit(annotation))
+                .withOptionalUnit(emptyAsNull(unit(annotation)))
+                .reusable(reusable(annotation))
                 .build();
+    }
+
+    private static String emptyAsNull(String actual) {
+        return actual.isEmpty() ? null : actual;
     }
 
     @Override
@@ -675,11 +699,6 @@ public final class AnnotationReader<T extends Annotation> {
         }
         if (bean.isAnnotationPresent(annotationType)) {
             return onClass.apply(bean.getAnnotation(annotationType));
-        }
-        for (Annotation a : bean.getAnnotations()) {
-            if (a.annotationType().isAnnotationPresent(Stereotype.class) && a.annotationType().isAnnotationPresent(annotationType)) {
-                return onClass.apply(a.annotationType().getAnnotation(annotationType));
-            }
         }
         if (bean.getSuperclass() != null) {
             return compute(bean.getSuperclass(), member, element, onElement, onClass);

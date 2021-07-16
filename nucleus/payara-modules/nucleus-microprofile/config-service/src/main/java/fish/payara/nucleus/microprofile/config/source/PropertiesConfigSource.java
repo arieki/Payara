@@ -42,8 +42,6 @@ package fish.payara.nucleus.microprofile.config.source;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-
 import org.eclipse.microprofile.config.spi.ConfigSource;
 
 /**
@@ -65,11 +63,6 @@ public class PropertiesConfigSource implements ConfigSource {
             result.put((String) key, props.getProperty((String) key));
         }
         return result;
-    }
-
-    @Override
-    public Set<String> getPropertyNames() {
-        return getProperties().keySet();
     }
 
     @Override

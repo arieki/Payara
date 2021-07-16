@@ -42,14 +42,10 @@ package fish.payara.microprofile.openapi.impl.model.media;
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.impl.model.ExtensibleImpl;
 import fish.payara.microprofile.openapi.impl.model.headers.HeaderImpl;
-
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-
 import org.eclipse.microprofile.openapi.models.headers.Header;
 import org.eclipse.microprofile.openapi.models.media.Encoding;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
@@ -57,7 +53,7 @@ import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
 public class EncodingImpl extends ExtensibleImpl<Encoding> implements Encoding {
 
     private String contentType;
-    private Map<String, Header> headers = createMap();
+    private Map<String, Header> headers = new HashMap<>();
     private Style style;
     private Boolean explode;
     private Boolean allowReserved;
@@ -65,7 +61,7 @@ public class EncodingImpl extends ExtensibleImpl<Encoding> implements Encoding {
     public static Encoding createInstance(AnnotationModel annotation, ApiContext context) {
         Encoding from = new EncodingImpl();
         from.setContentType(annotation.getValue("contentType", String.class));
-        HeaderImpl.createInstances(annotation, context).forEach(from::addHeader);
+        from.getHeaders().putAll(HeaderImpl.createInstances(annotation, context));
         String styleEnum = annotation.getValue("style", String.class);
         if (styleEnum != null) {
             from.setStyle(Style.valueOf(styleEnum.toUpperCase()));
@@ -88,20 +84,17 @@ public class EncodingImpl extends ExtensibleImpl<Encoding> implements Encoding {
 
     @Override
     public Map<String, Header> getHeaders() {
-        return readOnlyView(headers);
+        return headers;
     }
 
     @Override
     public void setHeaders(Map<String, Header> headers) {
-        this.headers = createMap(headers);
+        this.headers = headers;
     }
 
     @Override
     public Encoding addHeader(String key, Header header) {
         if (header != null) {
-            if (headers == null) {
-                headers = createMap();
-            }
             headers.put(key, header);
         }
         return this;
@@ -109,9 +102,7 @@ public class EncodingImpl extends ExtensibleImpl<Encoding> implements Encoding {
 
     @Override
     public void removeHeader(String key) {
-        if (headers != null) {
-            headers.remove(key);
-        }
+        headers.remove(key);
     }
 
     @Override
@@ -154,16 +145,9 @@ public class EncodingImpl extends ExtensibleImpl<Encoding> implements Encoding {
         to.setExplode(mergeProperty(to.getExplode(), from.getExplode(), override));
         to.setAllowReserved(mergeProperty(to.getAllowReserved(), from.getAllowReserved(), override));
         if (from.getHeaders() != null) {
-            for (Entry<String, Header> header : from.getHeaders().entrySet()) {
-                final String headerName = header.getKey();
+            for (String headerName : from.getHeaders().keySet()) {
                 if (headerName != null) {
-                    HeaderImpl.merge(
-                        headerName,
-                        header.getValue(),
-                        ((EncodingImpl) to).headers,
-                        override,
-                        context
-                    );
+                    HeaderImpl.merge(headerName, from.getHeaders().get(headerName), to.getHeaders(), override, context);
                 }
             }
         }

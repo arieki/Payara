@@ -44,7 +44,6 @@ import com.sun.xml.ws.api.message.Packet;
 
 import fish.payara.nucleus.requesttracing.RequestTracingService;
 import fish.payara.opentracing.OpenTracingService;
-import fish.payara.opentracing.ScopeManager;
 
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -157,8 +156,7 @@ public class JaxwsContainerRequestTracingFilter implements MonitorFilter {
                 }
 
                 // Start the span and continue on to the targeted method
-                Scope scope = tracer.activateSpan(spanBuilder.start());
-                httpRequest.setAttribute(Scope.class.getName(), scope);
+                spanBuilder.startActive(true);
             }
         }
     }
@@ -177,16 +175,15 @@ public class JaxwsContainerRequestTracingFilter implements MonitorFilter {
                 // If there is no matching skip pattern and no traced annotation, or if there is there is no matching skip
                 // pattern and a traced annotation set to true (via annotation or config override)
                 if (shouldTrace(pipeRequest) && shouldTrace(monitorContext, tracedAnnotation)) {
-                    Span activeSpan = getTracer().scopeManager().activeSpan();
-                    if (activeSpan == null) {
-                        return;
-                    }
-                    HttpServletRequest httpRequest = (HttpServletRequest) pipeRequest.get(SERVLET_REQUEST);
-                    try {
+                    try (Scope activeScope = getTracer().scopeManager().active()) {
+                        if (activeScope == null) {
+                            return;
+                        }
 
                         // Get and add the response status to the active span
                         Response.StatusType statusInfo = getResponseStatus(pipeRequest, pipeRequest);
 
+                        Span activeSpan = activeScope.span();
                         activeSpan.setTag(HTTP_STATUS.getKey(), statusInfo.getStatusCode());
 
                         // If the response status is an error, add error information to the span
@@ -199,14 +196,6 @@ public class JaxwsContainerRequestTracingFilter implements MonitorFilter {
                             Message message = pipeResponse.getMessage();
                             if (message != null && message.isFault()) {
                                 activeSpan.log(singletonMap("error.object", getErrorObject(message)));
-                            }
-                        }
-                    } finally {
-                        activeSpan.finish();
-                        Object scopeObj = httpRequest.getAttribute(Scope.class.getName());
-                        if (scopeObj != null && scopeObj instanceof Scope) {
-                            try (Scope scope = (Scope) scopeObj) {
-                                httpRequest.removeAttribute(Scope.class.getName());
                             }
                         }
                     }

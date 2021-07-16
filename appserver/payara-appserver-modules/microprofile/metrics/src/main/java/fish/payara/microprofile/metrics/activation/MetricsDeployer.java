@@ -53,14 +53,13 @@ import org.jvnet.hk2.annotations.Service;
 import fish.payara.microprofile.connector.MicroProfileDeployer;
 import fish.payara.microprofile.metrics.MetricsService;
 import fish.payara.microprofile.metrics.cdi.extension.MetricCDIExtension;
-import fish.payara.microprofile.metrics.impl.MetricsServiceImpl;
 
 @Service
 @PerLookup
 public class MetricsDeployer extends MicroProfileDeployer<MetricsContainer, MetricsApplicationContainer> {
 
     @Inject
-    private MetricsServiceImpl metricsService;
+    private MetricsService metricsService;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -79,5 +78,5 @@ public class MetricsDeployer extends MicroProfileDeployer<MetricsContainer, Metr
     @Override
     public void unload(MetricsApplicationContainer applicationContainer, DeploymentContext ctx) {
     }
-
+    
 }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2017-2021] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -41,44 +41,32 @@ package fish.payara.microprofile.config.cdi;
 
 import fish.payara.nucleus.microprofile.config.spi.PayaraConfig;
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.ConfigValue;
-import org.eclipse.microprofile.config.inject.ConfigProperties;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.*;
 import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import javax.inject.Provider;
 
 /**
- * CDI extension that implements the Microprofile Config API ConfigProperty
- * injection
- * 
+ * CDI extension that implements the Microprofile Config API ConfigProperty injection
  * @author Steve Millidge <Payara Services Limited>
  */
 public class ConfigCdiExtension implements Extension {
-
-    private Set<Type> configPropertiesBeanTypes = new HashSet<>();
-
+    
     public void validateInjectionPoint(@Observes ProcessInjectionPoint<?, ?> pip) {
-
-        // we need to validate the injection point for the ConfigProperty to meet the 3
-        // TCK tests
+        
+        // we need to validate the injection point for the ConfigProperty to meet the 3 TCK tests
         // (1) Deployment should fail if there is no converter for a class
         // (2) Deployment should fail if there is no value for an injected primitive
-        // (3) Deployment should fail if a primitive conversion will fail from the
-        // property value
-
+        // (3) Deployment should fail if a primitive conversion will fail from the property value
+        
         // ok check this is a config property injection point
         ConfigProperty property = pip.getInjectionPoint().getAnnotated().getAnnotation(ConfigProperty.class);
         if (property != null) {
@@ -87,13 +75,13 @@ public class ConfigCdiExtension implements Extension {
                 Type t = pip.getInjectionPoint().getType();
                 if (Class.class.isInstance(pip.getInjectionPoint().getType())) {
                     ConfigPropertyProducer.getGenericProperty(pip.getInjectionPoint());
-                } else if (t instanceof ParameterizedType) {
+                } else if (t instanceof ParameterizedType ){
                     Class rawClazz = (Class) ((ParameterizedType) t).getRawType();
                     if (rawClazz != Provider.class && rawClazz != Optional.class) {
                         ConfigPropertyProducer.getGenericProperty(pip.getInjectionPoint());
                     }
-                }
-            } catch (Throwable de) {
+                } 
+            }catch (Throwable de ) {
                 Class failingClass = null;
                 Bean bean = pip.getInjectionPoint().getBean();
                 if (bean == null) {
@@ -101,9 +89,7 @@ public class ConfigCdiExtension implements Extension {
                 } else {
                     failingClass = pip.getInjectionPoint().getBean().getBeanClass();
                 }
-                pip.addDefinitionError(
-                        new DeploymentException("Deployment Failure for ConfigProperty " + property.name()
-                                + " in class " + failingClass.getCanonicalName() + " Reason " + de.getMessage(), de));
+                pip.addDefinitionError(new DeploymentException("Deployment Failure for ConfigProperty " + property.name() + " in class " + failingClass.getCanonicalName() + " Reason " + de.getMessage(),de));
             }
         }
     }
@@ -116,22 +102,6 @@ public class ConfigCdiExtension implements Extension {
     public void createConfigProducer(@Observes BeforeBeanDiscovery event, BeanManager bm) {
         AnnotatedType<ConfigProducer> at = bm.createAnnotatedType(ConfigProducer.class);
         event.addAnnotatedType(at, ConfigProducer.class.getName());
-    }
-
-    public <T> void storeConfigPropertiesType(@Observes @WithAnnotations(ConfigProperties.class) ProcessAnnotatedType<T> event) {
-        
-        final AnnotatedType<?> type = event.getAnnotatedType();
-
-        if (type.getJavaClass().isAnnotationPresent(ConfigProperties.class)) {
-            event.veto();
-            return;
-        }
-        for (AnnotatedField<?> field : type.getFields()) {
-            final Class<?> memberClass = field.getJavaMember().getType();
-            if (memberClass.isAnnotationPresent(ConfigProperties.class)) {
-                configPropertiesBeanTypes.add(memberClass);
-            }
-        }
     }
 
     /**
@@ -147,53 +117,27 @@ public class ConfigCdiExtension implements Extension {
         // Retrieve the config for the application
         Config config = ConfigProvider.getConfig();
         if (config instanceof PayaraConfig) {
-
-            final AnnotatedType<ConfigPropertyProducer> propertyProducerType = bm.createAnnotatedType(ConfigPropertyProducer.class);
-            final AnnotatedType<ConfigPropertiesProducer> objectProducerType = bm.createAnnotatedType(ConfigPropertiesProducer.class);
-
+            
             // create a synthetic bean based on the ConfigPropertyProducer which 
             // has a method we can use to create the correct objects based on 
             // the InjectionPoint
-            BeanAttributes<?> propertyBeanAttributes = null;
-            BeanAttributes<?> objectBeanAttributes = null;
+            AnnotatedType<ConfigPropertyProducer> atype = bm.createAnnotatedType(ConfigPropertyProducer.class);
+            BeanAttributes<?> beanAttr = null;
             
             // first find the producer method
-            AnnotatedMethod<? super ConfigPropertyProducer> propertyProducerMethod = null;
-            AnnotatedMethod<? super ConfigPropertiesProducer> objectProducerMethod = null;
-
-            for (AnnotatedMethod m : propertyProducerType.getMethods()) {
-                final String methodName = m.getJavaMember().getName();
-                if (methodName.equals("getGenericProperty")) {
+            AnnotatedMethod<? super ConfigPropertyProducer> method = null;
+            for (AnnotatedMethod m : atype.getMethods()) {
+                if (m.getJavaMember().getName().equals("getGenericProperty")) {
                     // create a bean attributes based on this method
-                    propertyBeanAttributes = bm.createBeanAttributes(m);
-                    propertyProducerMethod = m;
+                    beanAttr = bm.createBeanAttributes(m);
+                    method = m;
                     break;
                 }
-            }
-            for (AnnotatedMethod m : objectProducerType.getMethods()) {
-                final String methodName = m.getJavaMember().getName();
-                if (methodName.equals("getGenericObject")) {
-                    objectBeanAttributes = bm.createBeanAttributes(m);
-                    objectProducerMethod = m;
-                    break;
-                }
-            }
-
-            if (objectProducerMethod != null & !configPropertiesBeanTypes.isEmpty()) {
-                Bean<?> bean = bm.createBean(new TypesBeanAttributes<Object>(objectBeanAttributes){
-                    @Override
-                    public Set<Type> getTypes() {
-                        return configPropertiesBeanTypes;
-                    }
-                }, ConfigPropertiesProducer.class,
-                        bm.getProducerFactory(objectProducerMethod, null));
-                event.addBean(bean);
             }
             
-            // if we have the producer method
-            if (propertyProducerMethod != null) {
+            // we have the method
+            if (beanAttr != null) {
                 HashSet<Type> types = new HashSet<>();
-                types.add(ConfigValue.class);
                 types.addAll(((PayaraConfig) config).getConverterTypes());
                 // add String explictly
                 types.add(String.class);
@@ -202,7 +146,7 @@ public class ConfigCdiExtension implements Extension {
                 // create a bean with a Producer method using the bean factory and with custom bean attributes
                 // also override the set of types depending on the type of the converter
                 for (final Type converterType : types) {
-                    Bean<?> bean = bm.createBean(new TypesBeanAttributes<Object>(propertyBeanAttributes) {
+                    Bean<?> bean = bm.createBean(new TypesBeanAttributes<Object>(beanAttr) {
                         
                         // overrides the bean types to return the types registered for a Converter
                         @Override
@@ -239,7 +183,7 @@ public class ConfigCdiExtension implements Extension {
                             
                             return result;
                         }
-                    }, ConfigPropertyProducer.class, bm.getProducerFactory(propertyProducerMethod, null));
+                    }, ConfigPropertyProducer.class, bm.getProducerFactory(method, null));
                     event.addBean(bean);
                 }
             }

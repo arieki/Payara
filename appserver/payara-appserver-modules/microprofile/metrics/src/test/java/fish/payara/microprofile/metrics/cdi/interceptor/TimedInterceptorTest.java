@@ -55,8 +55,6 @@ import java.lang.reflect.Method;
 
 import javax.interceptor.InvocationContext;
 
-import org.eclipse.microprofile.metrics.MetricRegistry;
-import org.eclipse.microprofile.metrics.MetricRegistry.Type;
 import org.eclipse.microprofile.metrics.Timer;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.junit.Test;
@@ -75,7 +73,7 @@ import fish.payara.microprofile.metrics.test.TestUtils;
 public class TimedInterceptorTest {
 
     private final InvocationContext context = mock(InvocationContext.class);
-    private final MetricRegistry registry = new MetricRegistryImpl(Type.APPLICATION);
+    private final MetricRegistryImpl registry = new MetricRegistryImpl();
 
     @Test
     @Timed
@@ -90,7 +88,7 @@ public class TimedInterceptorTest {
     }
 
     @Test
-    @Timed()
+    @Timed(reusable = true)
     public void timerReusable() throws Exception {
         assertTimed(0);
     }
@@ -138,7 +136,7 @@ public class TimedInterceptorTest {
     }
 
     @Test
-    @Timed(absolute = true, name= "name", tags = {"a=b", "b=c"})
+    @Timed(absolute = true, name= "name", tags = {"a=b", "b=c"}, reusable = true)
     public void timerWithAbsoluteNameAndTagsReusable() throws Exception {
         assertTimed(0);
         assertTimed(3); // this tries to register the timer again, but it gets reused so we start at 2

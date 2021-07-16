@@ -41,13 +41,11 @@ package fish.payara.microprofile.metrics.impl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.function.Supplier;
-
 import javax.enterprise.inject.Vetoed;
 import org.eclipse.microprofile.metrics.Gauge;
 
 @Vetoed
-public class GaugeImpl<T extends Object> implements Gauge<T>, Supplier<T> {
+public class GaugeImpl<T extends Object> implements Gauge<T> {
 
     private final Method method;
     private final Object target;
@@ -56,11 +54,6 @@ public class GaugeImpl<T extends Object> implements Gauge<T>, Supplier<T> {
         this.method = method;
         this.target = target;
         method.setAccessible(true);
-    }
-
-    @Override
-    public T get() {
-        return getValue();
     }
 
     @Override
@@ -77,8 +70,4 @@ public class GaugeImpl<T extends Object> implements Gauge<T>, Supplier<T> {
         }
     }
 
-    @Override
-    public String toString() {
-        return "Gauge[" + getValue() + "]";
-    }
 }

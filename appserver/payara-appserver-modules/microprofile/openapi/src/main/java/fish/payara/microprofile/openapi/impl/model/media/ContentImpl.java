@@ -41,17 +41,11 @@ package fish.payara.microprofile.openapi.impl.model.media;
 
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.impl.model.examples.ExampleImpl;
-
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.extractAnnotations;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-
-import org.eclipse.microprofile.openapi.models.examples.Example;
 import org.eclipse.microprofile.openapi.models.media.Content;
-import org.eclipse.microprofile.openapi.models.media.Encoding;
 import org.eclipse.microprofile.openapi.models.media.MediaType;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
@@ -76,18 +70,18 @@ public class ContentImpl extends LinkedHashMap<String, MediaType> implements Con
         }
         MediaType mediaType = new MediaTypeImpl();
         from.addMediaType(typeName, mediaType);
-        extractAnnotations(annotation, context, "examples", "name", ExampleImpl::createInstance, mediaType::addExample);
+        extractAnnotations(annotation, context, "examples", "name", ExampleImpl::createInstance, mediaType.getExamples());
         mediaType.setExample(annotation.getValue("example", String.class));
         AnnotationModel schemaAnnotation = annotation.getValue("schema", AnnotationModel.class);
         if (schemaAnnotation != null) {
             mediaType.setSchema(SchemaImpl.createInstance(schemaAnnotation, context));
         }
-        extractAnnotations(annotation, context, "encoding", "name", EncodingImpl::createInstance, mediaType::addEncoding);
+        extractAnnotations(annotation, context, "encoding", "name", EncodingImpl::createInstance, mediaType.getEncoding());
         return from;
     }
 
     @Override
-    public ContentImpl addMediaType(String name, MediaType item) {
+    public Content addMediaType(String name, MediaType item) {
         if (item != null) {
             this.put(name, item);
         }
@@ -101,7 +95,7 @@ public class ContentImpl extends LinkedHashMap<String, MediaType> implements Con
 
     @Override
     public Map<String, MediaType> getMediaTypes() {
-        return readOnlyView(this);
+        return new ContentImpl(this);
     }
 
     @Override
@@ -116,37 +110,28 @@ public class ContentImpl extends LinkedHashMap<String, MediaType> implements Con
             return;
         }
 
-        for (Map.Entry<String, MediaType> fromEntry : from.getMediaTypes().entrySet()) {
+        for (String typeName : from.getMediaTypes().keySet()) {
 
-            final String typeName = fromEntry.getKey();
-            final MediaType fromMediaType = fromEntry.getValue();
+            MediaType fromMediaType = from.getMediaType(typeName);
 
             // Get or create the corresponding media type
-
-            MediaTypeImpl toMediaType = (MediaTypeImpl) to.getMediaTypes().getOrDefault(typeName, new MediaTypeImpl());
+            MediaType toMediaType = to.getOrDefault(typeName, new MediaTypeImpl());
             to.addMediaType(typeName, toMediaType);
+
             // Merge encoding
-            for (Map.Entry<String, Encoding> encoding : fromMediaType.getEncoding().entrySet()) {
-                EncodingImpl.merge(
-                    encoding.getKey(),
-                    encoding.getValue(),
-                    toMediaType.encoding,
-                    override,
-                    context
-                );
+            for (String encodingName : fromMediaType.getEncoding().keySet()) {
+                EncodingImpl.merge(encodingName,
+                        fromMediaType.getEncoding().get(encodingName),
+                        to.getMediaType(typeName).getEncoding(), override, context);
             }
 
             // Merge examples
-            for (Map.Entry<String, Example> example : fromMediaType.getExamples().entrySet()) {
-                ExampleImpl.merge(
-                    example.getKey(),
-                    example.getValue(),
-                    toMediaType.examples,
-                    override
-                );
+            for (String exampleName : fromMediaType.getExamples().keySet()) {
+                ExampleImpl.merge(exampleName, fromMediaType.getExamples().get(exampleName), to.getMediaType(typeName).getExamples(), override);
             }
-
-            toMediaType.setExample(mergeProperty(toMediaType.getExample(), fromMediaType.getExample(), override));
+            if (fromMediaType.getExample() != null) {
+                to.getMediaType(typeName).setExample(fromMediaType.getExample());
+            }
 
             // Merge schema
             if (fromMediaType.getSchema() != null) {

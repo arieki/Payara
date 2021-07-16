@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2017-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,6 +42,7 @@ package fish.payara.nucleus.microprofile.config.source;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.glassfish.internal.api.Globals;
 import org.glassfish.internal.api.ServerContext;
 
@@ -49,7 +50,7 @@ import org.glassfish.internal.api.ServerContext;
  *
  * @author Steve Millidge (Payara Foundation)
  */
-public class SystemPropertyConfigSource extends PayaraConfigSource {
+public class SystemPropertyConfigSource extends PayaraConfigSource implements ConfigSource {
 
     // Provides access to information on the server including;
     // command line, initial context, service locator, installation
@@ -82,10 +83,6 @@ public class SystemPropertyConfigSource extends PayaraConfigSource {
 
     @Override
     public int getOrdinal() {
-        String storedOrdinal = getValue("config_ordinal");
-        if (storedOrdinal != null) {
-            return Integer.parseInt(storedOrdinal);
-        }
         return 400;
     }
 

@@ -39,16 +39,14 @@
  */
 package fish.payara.microprofile.openapi.impl.model;
 
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
@@ -60,20 +58,17 @@ public abstract class ExtensibleImpl<T extends Extensible<T>> implements Extensi
     private static final Logger LOGGER = Logger.getLogger(ExtensibleImpl.class.getName());
 
     @JsonIgnore
-    protected Map<String, Object> extensions = createMap();
+    protected Map<String, Object> extensions = new LinkedHashMap<>();
 
     @Override
     public Map<String, Object> getExtensions() {
-        return readOnlyView(extensions);
+        return extensions;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public T addExtension(String name, Object value) {
         if (value != null) {
-            if (extensions == null) {
-                extensions = createMap();
-            }
             extensions.put(extensionName(name), value);
         }
         return (T) this;
@@ -81,14 +76,15 @@ public abstract class ExtensibleImpl<T extends Extensible<T>> implements Extensi
 
     @Override
     public void removeExtension(String name) {
-        if (extensions != null) {
-            extensions.remove(extensionName(name));
-        }
+        extensions.remove(extensionName(name));
     }
 
     @Override
     public void setExtensions(Map<String, Object> extensions) {
-        this.extensions = createMap(extensions);
+        this.extensions.clear();
+        for (Entry<String, Object> entry : extensions.entrySet()) {
+            this.extensions.put(extensionName(entry.getKey()), entry.getValue());
+        }
     }
 
     public static String extensionName(String name) {
@@ -104,18 +100,17 @@ public abstract class ExtensibleImpl<T extends Extensible<T>> implements Extensi
             return;
         }
         if (to.getExtensions() == null) {
-            to.setExtensions(createMap());
+            to.setExtensions(new LinkedHashMap<>());
         }
-        if (from.getExtensions().isEmpty()) {
-            return;
-        }
-        for (String extensionName : from.getExtensions().keySet()) {
-            Object value = mergeProperty(
-                    to.getExtensions().get(extensionName),
-                    from.getExtensions().get(extensionName),
-                    override
-            );
-            to.addExtension(extensionName, value);
+        if (!from.getExtensions().isEmpty()) {
+            for (String extensionName : from.getExtensions().keySet()) {
+                Object value = mergeProperty(
+                        to.getExtensions().get(extensionName),
+                        from.getExtensions().get(extensionName),
+                        override
+                );
+                to.getExtensions().put(extensionName, value);
+            }
         }
     }
 

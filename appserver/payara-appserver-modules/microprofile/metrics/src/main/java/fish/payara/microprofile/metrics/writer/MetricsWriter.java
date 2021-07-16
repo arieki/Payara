@@ -49,7 +49,7 @@ import org.eclipse.microprofile.metrics.MetricRegistry.Type;
 public interface MetricsWriter {
 
     /**
-     * Write the metrics that matches the metricName for the respective scope.
+     * Write the metrics that matches the metricName for the respective registryName.
      *
      * @param scope
      * @param metricName
@@ -60,7 +60,7 @@ public interface MetricsWriter {
     public void write(Type scope, String metricName) throws NoSuchRegistryException, NoSuchMetricException, IOException;
 
     /**
-     * Write the metrics that registered for the respective scope.
+     * Write the metrics that registered for the respective registryName.
      *
      * @param scope
      * @throws NoSuchRegistryException

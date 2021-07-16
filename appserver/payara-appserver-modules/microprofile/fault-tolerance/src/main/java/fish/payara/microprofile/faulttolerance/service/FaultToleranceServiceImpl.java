@@ -53,28 +53,34 @@ import fish.payara.monitoring.collect.MonitoringDataSource;
 import fish.payara.notification.requesttracing.RequestTraceSpan;
 import fish.payara.nucleus.requesttracing.RequestTracingService;
 
+import static java.lang.Integer.parseInt;
+
+import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.annotation.PostConstruct;
-import javax.enterprise.concurrent.ManagedExecutorService;
-import javax.enterprise.concurrent.ManagedScheduledExecutorService;
+import javax.annotation.PreDestroy;
 import javax.enterprise.context.control.RequestContextController;
 import javax.inject.Inject;
 import javax.interceptor.InvocationContext;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
 
 import org.eclipse.microprofile.metrics.MetricRegistry;
 import org.glassfish.api.StartupRunLevel;
 import org.glassfish.api.event.EventListener;
+import org.glassfish.api.event.EventTypes;
 import org.glassfish.api.event.Events;
 import org.glassfish.api.invocation.ComponentInvocation;
 import org.glassfish.api.invocation.InvocationManager;
@@ -114,44 +120,108 @@ public class FaultToleranceServiceImpl
     @Inject
     private MetricsService metricsService;
 
-    private final ConcurrentMap<MethodKey, FaultToleranceMethodContextImpl> contextByMethod = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, BindableFaultToleranceConfig> configByAppName = new ConcurrentHashMap<>();
-    private ExecutorService asyncExecutorService;
+    private final ConcurrentMap<String, FaultToleranceMethodContextImpl> methodByTargetObjectAndName = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, BindableFaultToleranceConfig> configByApplication = new ConcurrentHashMap<>();
+    private ThreadPoolExecutor asyncExecutorService;
     private ScheduledExecutorService delayExecutorService;
 
     @PostConstruct
-    public void postConstruct() throws NamingException {
+    public void postConstruct() {
         events.register(this);
         invocationManager = serviceLocator.getService(InvocationManager.class);
         requestTracingService = serviceLocator.getService(RequestTracingService.class);
         config = serviceLocator.getService(FaultToleranceServiceConfiguration.class);
-        InitialContext context = new InitialContext();
-        asyncExecutorService = (ManagedExecutorService) context.lookup(config.getManagedExecutorService());
-        delayExecutorService = (ManagedScheduledExecutorService) context.lookup(config.getManagedScheduledExecutorService());
+        delayExecutorService = Executors.newScheduledThreadPool(getMaxDelayPoolSize());
+        asyncExecutorService = new ThreadPoolExecutor(0, getMaxAsyncPoolSize(), getAsyncPoolKeepAliveInSeconds(),
+                TimeUnit.SECONDS, new SynchronousQueue<Runnable>(true)); // a fair queue => FIFO
+        int interval = getCleanupIntervalInMinutes();
+        delayExecutorService.scheduleAtFixedRate(this::cleanMethodContexts, interval, interval, TimeUnit.MINUTES);
+        if (config != null) {
+            if (!"concurrent/__defaultManagedExecutorService".equals(config.getManagedExecutorService())) {
+                logger.log(Level.WARNING,
+                        "Fault tolerance executor service was configured to managed executor service {0}. This option has been replaced by 'async-max-pool-size' to set the maximum size of a fixed Fault Tolerance pool.",
+                        config.getManagedExecutorService());
+            }
+            if (!"concurrent/__defaultManagedScheduledExecutorService".equals(config.getManagedScheduledExecutorService())) {
+                logger.log(Level.WARNING,
+                        "Fault tolerance scheduled executor service was configured to managed scheduled executor service {0}. This option has been replaced by 'delay-max-pool-size' to set the maximum size of a fixed Fault Tolerance pool.",
+                        config.getManagedScheduledExecutorService());
+            }
+        }
+    }
+
+    /**
+     * Since {@link Map#compute(Object, java.util.function.BiFunction)} locks the key entry for
+     * {@link ConcurrentHashMap} it is safe to remove the entry in case
+     * {@link FaultToleranceMethodContextImpl#isExpired(long)} as concurrent call to
+     * {@link Map#computeIfAbsent(Object, java.util.function.Function)} are going to wait for the completion of
+     * {@link Map#compute(Object, java.util.function.BiFunction)}.
+     */
+    private void cleanMethodContexts() {
+        final long ttl = TimeUnit.MINUTES.toMillis(1);
+        int cleaned = 0;
+        for (String key : new HashSet<>(methodByTargetObjectAndName.keySet())) {
+            try {
+                Object newValue = methodByTargetObjectAndName.compute(key,
+                        (k, methodContext) -> methodContext.isExpired(ttl) ? null : methodContext);
+                if (newValue == null) {
+                    cleaned++;
+                }
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Failed to clean FT method context for " + key, e);
+            }
+        }
+        if (cleaned > 0) {
+            String allClean = methodByTargetObjectAndName.isEmpty() ? ".All clean." : ".";
+            logger.log(Level.INFO, "Cleaned {0} expired FT method contexts" + allClean, cleaned);
+        }
+    }
+
+    private int getMaxDelayPoolSize() {
+        return config == null ? 20 : parseInt(config.getDelayMaxPoolSize());
+    }
+
+    private int getMaxAsyncPoolSize() {
+        return config == null ? 2000 : parseInt(config.getAsyncMaxPoolSize());
+    }
+
+    private int getAsyncPoolKeepAliveInSeconds() {
+        return config == null ? 60 : parseInt(config.getAsyncPoolKeepAliveInSeconds());
+    }
+
+    private int getCleanupIntervalInMinutes() {
+        return config == null ? 1 : parseInt(config.getCleanupIntervalInMinutes());
     }
 
     @Override
     public void event(Event<?> event) {
         if (event.is(Deployment.APPLICATION_UNLOADED)) {
             ApplicationInfo info = (ApplicationInfo) event.hook();
-            deregisterApplication(info);
-            FaultTolerancePolicy.clean(info.getAppClassLoader());
+            deregisterApplication(info.getName());
+            FaultTolerancePolicy.clean();
+        } else if (event.is(EventTypes.SERVER_SHUTDOWN)) {
+            if (asyncExecutorService != null) {
+                asyncExecutorService.shutdownNow();
+            }
+            if (delayExecutorService != null) {
+                delayExecutorService.shutdownNow();
+            }
         }
     }
 
     @Override
     @MonitoringData(ns = "ft")
     public void collect(MonitoringDataCollector collector) {
-        for (Entry<MethodKey, FaultToleranceMethodContextImpl> methodEntry : contextByMethod.entrySet()) {
-                MonitoringDataCollector methodCollector = collector.group(methodEntry.getKey().getMethodId())
-                        .tag("app", methodEntry.getValue().getAppName());
-                FaultToleranceMethodContext context = methodEntry.getValue();
-                BlockingQueue<Thread> concurrentExecutions = context.getConcurrentExecutions();
-                if (concurrentExecutions != null) {
-                    collectBulkheadSemaphores(methodCollector, concurrentExecutions);
-                    collectBulkheadSemaphores(methodCollector, concurrentExecutions, context.getQueuingOrRunningPopulation());
-                }
-                collectCircuitBreakerState(methodCollector, context.getState());
+        for (Entry<String, FaultToleranceMethodContextImpl> methodValue : methodByTargetObjectAndName.entrySet()) {
+            String group = methodValue.getKey();
+            MonitoringDataCollector methodCollector = collector.group(group);
+            FaultToleranceMethodContext context = methodValue.getValue();
+            BlockingQueue<Thread> concurrentExecutions = context.getConcurrentExecutions(-1);
+            if (concurrentExecutions != null) {
+                collectBulkheadSemaphores(methodCollector, concurrentExecutions);
+                collectBulkheadSemaphores(methodCollector, concurrentExecutions, context.getQueuingOrRunningPopulation());
+            }
+            collectCircuitBreakerState(methodCollector, context.getState(-1));
         }
     }
 
@@ -179,13 +249,13 @@ public class FaultToleranceServiceImpl
 
     @Override
     public FaultToleranceConfig getConfig(InvocationContext context, Stereotypes stereotypes) {
-        return configByAppName.computeIfAbsent(getAppName(context),
+        return configByApplication.computeIfAbsent(getApplicationContext(context),
                 key -> new BindableFaultToleranceConfig(stereotypes)).bindTo(context);
     }
 
-    private MetricsService.MetricsContext getMetricsContext() {
+    private MetricRegistry getApplicationMetricRegistry() {
         try {
-            return metricsService.getContext(true);
+            return metricsService.getApplicationRegistry();
         } catch (Exception e) {
             return null;
         }
@@ -193,21 +263,20 @@ public class FaultToleranceServiceImpl
 
     /**
      * Removes an application from the enabled map, CircuitBreaker map, and bulkhead maps
-     * @param appInfo The name of the application to remove
+     * @param applicationName The name of the application to remove
      */
-    private void deregisterApplication(ApplicationInfo appInfo) {
-        configByAppName.remove(appInfo.getName());
-        contextByMethod.keySet().removeIf(methodKey ->
-                methodKey.targetClass.getClassLoader().equals(appInfo.getAppClassLoader()));
+    private void deregisterApplication(String applicationName) {
+        configByApplication.remove(applicationName);
     }
 
     /**
      * Gets the application name from the invocation manager. Failing that, it will use the module name, component name,
      * or method signature (in that order).
+     * @param invocationManager The invocation manager to get the application name from
      * @param context The context of the current invocation
      * @return The application name
      */
-    private String getAppName(InvocationContext context) {
+    private String getApplicationContext(InvocationContext context) {
         ComponentInvocation currentInvocation = invocationManager.getCurrentInvocation();
         String appName = currentInvocation.getAppName();
         return appName != null ? appName : "common";
@@ -241,20 +310,44 @@ public class FaultToleranceServiceImpl
     @Override
     public FaultToleranceMethodContext getMethodContext(InvocationContext context, FaultTolerancePolicy policy,
             RequestContextController requestContextController) {
-        return contextByMethod.computeIfAbsent(new MethodKey(context),
-                        methodKey -> createMethodContext(methodKey, context, requestContextController)).boundTo(context, policy);
+        FaultToleranceMethodContextImpl methodContext = methodByTargetObjectAndName //
+                .computeIfAbsent(getTargetMethodId(context),
+                        key -> createMethodContext(key, context, requestContextController));
+        return methodContext.in(context, policy);
     }
 
-    private FaultToleranceMethodContextImpl createMethodContext(MethodKey methodKey, InvocationContext context,
-                                                                RequestContextController requestContextController) {
-        MetricsService.MetricsContext metricsContext = getMetricsContext();
-        MetricRegistry metricRegistry = metricsContext != null ? metricsContext.getBaseRegistry() : null;
-        String appName = metricsContext != null ? metricsContext.getName() : "";
+    private FaultToleranceMethodContextImpl createMethodContext(String methodId, InvocationContext context,
+            RequestContextController requestContextController) {
+        MetricRegistry metricRegistry = getApplicationMetricRegistry();
         FaultToleranceMetrics metrics = metricRegistry == null
                 ? FaultToleranceMetrics.DISABLED
                 : new MethodFaultToleranceMetrics(metricRegistry, FaultToleranceUtils.getCanonicalMethodName(context));
-        logger.log(Level.FINE, "Creating FT method context for {0}", methodKey);
+        asyncExecutorService.setMaximumPoolSize(getMaxAsyncPoolSize()); // lazy update of max size
+        asyncExecutorService.setKeepAliveTime(getAsyncPoolKeepAliveInSeconds(), TimeUnit.SECONDS);
+        logger.log(Level.INFO, "Creating FT method context for {0}", methodId);
         return new FaultToleranceMethodContextImpl(requestContextController, this, metrics, asyncExecutorService,
-                delayExecutorService, appName);
+                delayExecutorService, context.getTarget());
     }
+
+    /**
+     * It is essential that the computed signature is referring to the {@link Method} as defined by the target
+     * {@link Object} class not its declaring {@link Class} as this could be different when called via an abstract
+     * {@link Method} implemented or overridden by the target {@link Class}.
+     */
+    private static String getTargetMethodId(InvocationContext context) {
+        Object target = context.getTarget();
+        Method method = context.getMethod();
+        StringBuilder methodId = new StringBuilder();
+        methodId.append(Integer.toHexString(System.identityHashCode(target))).append('@');
+        methodId.append(target.getClass().getName()).append('.').append(method.getName());
+        if (method.getParameterCount() > 0) {
+            methodId.append('(');
+            for (Class<?> param : method.getParameterTypes()) {
+                methodId.append(param.getName()).append(' ');
+            }
+            methodId.append(')');
+        }
+        return methodId.toString();
+    }
+
 }

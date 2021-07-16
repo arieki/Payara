@@ -39,28 +39,27 @@
  */
 package fish.payara.nucleus.microprofile.config.spi;
 
-import static fish.payara.nucleus.microprofile.config.spi.ConfigTestUtils.assertException;
-import static fish.payara.nucleus.microprofile.config.spi.ConfigTestUtils.createSource;
-import java.lang.annotation.ElementType;
-import java.lang.reflect.Array;
-import java.math.BigInteger;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigValue;
-import org.eclipse.microprofile.config.spi.ConfigSource;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.lang.annotation.ElementType;
+import java.lang.reflect.Array;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -75,7 +74,7 @@ public class PayaraConfigTest {
 
     private final ConfigSource source1 = createSource("S1", 100, new HashMap<>());
     private final ConfigSource source2 = createSource("S2", 200, new HashMap<>());
-    private final Config config = new PayaraConfig(asList(source1, source2), emptyMap(), CACHE_TTL);
+    private final PayaraConfig config = new PayaraConfig(asList(source1, source2), emptyMap(), CACHE_TTL);
 
     @Before
     public void setUp() {
@@ -83,51 +82,6 @@ public class PayaraConfigTest {
         source2.getProperties().put("key2", "value2");
         source1.getProperties().put("int1", "1");
         source2.getProperties().put("int2", "2");
-        source2.getProperties().put("bool2", "true,false,true");
-        source2.getProperties().put("brokenarr", "1,a,2");
-    }
-
-    @Test
-    public void optionalBooleanArrayConversion() {
-        assertArrayEquals(new Boolean[]{true, false, true}, config.getOptionalValue("bool2", Boolean[].class).get());
-    }
-
-    @Test
-    public void booleanArrayConversion() {
-        assertArrayEquals(new boolean[]{true, false, true}, config.getValue("bool2", boolean[].class));
-    }
-
-    @Test
-    public void configValueTest() {
-        ConfigValue value = config.getValue("key1", ConfigValue.class);
-        assertEquals("key1", value.getName());
-        assertEquals("value1", value.getRawValue());
-        assertEquals("value1", value.getValue());
-        assertEquals("S1", value.getSourceName());
-        assertEquals(100, value.getSourceOrdinal());
-    }
-
-    /**
-     * Introduced by QACI-625. Not reproducible on all machines, but this aims
-     * to catch issues caused by high concurrency in the cache map
-     */
-    @Test
-    public void concurrentConfigValueTest() throws InterruptedException {
-        ExecutorService exec = Executors.newFixedThreadPool(1000);
-        AtomicReference<Throwable> failure = new AtomicReference<>(null);
-        for (int i = 0; i < 100000; i++) {
-            exec.submit(() -> {
-                try {
-                    config.getConfigValue("mp.config.profile").getValue();
-                } catch (Throwable t) {
-                    failure.set(t);
-                    throw (RuntimeException) t;
-                }
-            });
-        }
-        exec.shutdown();
-        exec.awaitTermination(60, TimeUnit.SECONDS);
-        assertNull("stress test failed", failure.get());
     }
 
     @Test
@@ -177,13 +131,13 @@ public class PayaraConfigTest {
     }
 
     @Test
-    public void undefinedPropertyThrowsException() {
+    public void undefinedPropertyThrowsExcetion() {
         assertException(NoSuchElementException.class, "Unable to find property with name undefined",
                 () -> config.getValue("undefined", String.class));
     }
 
     @Test
-    public void unknownConversionReturnsThrowsException() {
+    public void unknownConversionThrowsExcetion() {
         assertException(IllegalArgumentException.class, "Unable to convert value to type java.lang.CharSequence",
                 () -> config.getValue("key1", CharSequence.class));
     }
@@ -192,7 +146,7 @@ public class PayaraConfigTest {
     public void getPropertyNamesContainsPeopertiesOfAllSources() {
         HashSet<String> actual = new HashSet<>();
         config.getPropertyNames().forEach(e -> actual.add(e));
-        assertEquals(new HashSet<>(asList("key1", "key2", "bool2", "int1", "int2", "brokenarr")), actual);
+        assertEquals(new HashSet<>(asList("key1", "key2", "int1", "int2")), actual);
     }
 
     @Test
@@ -204,50 +158,42 @@ public class PayaraConfigTest {
 
     @Test
     public void listValueAllowSingleElement() {
-        assertEquals(asList("value1"),
-                config.getValue("key1", ConfigValueResolver.class).withDefault("default").asList(String.class));
-        assertEquals(asList(1),
-                config.getValue("int1", ConfigValueResolver.class).withDefault("42").asList(Integer.class));
+        assertEquals(asList("value1"), config.getListValues("key1", "default", String.class));
+        assertEquals(asList(1), config.getListValues("int1", "42", Integer.class));
     }
 
     @Test
     public void listValueAllowMultipleElements() {
         source1.getProperties().put("key1", "value1,value2");
         source1.getProperties().put("int1", "1,2");
-        assertEquals(asList("value1", "value2"),
-                config.getValue("key1", ConfigValueResolver.class).withDefault("default").asList(String.class));
-        assertEquals(asList(1, 2),
-                config.getValue("int1", ConfigValueResolver.class).withDefault("42").asList(Integer.class));
+        assertEquals(asList("value1", "value2"), config.getListValues("key1", "default", String.class));
+        assertEquals(asList(1, 2), config.getListValues("int1", "42", Integer.class));
     }
 
     @Test
     public void setValueAllowSingleElement() {
-        assertEquals(new HashSet<>(asList("value1")),
-                config.getValue("key1", ConfigValueResolver.class).withDefault("default").asSet(String.class));
-        assertEquals(new HashSet<>(asList(1)),
-                config.getValue("int1", ConfigValueResolver.class).withDefault("42").asSet(Integer.class));
+        assertEquals(new HashSet<>(asList("value1")), config.getSetValues("key1", "default", String.class));
+        assertEquals(new HashSet<>(asList(1)), config.getSetValues("int1", "42", Integer.class));
     }
 
     @Test
     public void setValueAllowMultipleElements() {
         source1.getProperties().put("key1", "value1,value2");
         source1.getProperties().put("int1", "1,2");
-        assertEquals(new HashSet<>(asList("value1", "value2")),
-                config.getValue("key1", ConfigValueResolver.class).withDefault("default").asSet(String.class));
-        assertEquals(new HashSet<>(asList(1, 2)),
-                config.getValue("int1", ConfigValueResolver.class).withDefault("42").asSet(Integer.class));
+        assertEquals(new HashSet<>(asList("value1", "value2")), config.getSetValues("key1", "default", String.class));
+        assertEquals(new HashSet<>(asList(1, 2)), config.getSetValues("int1", "42", Integer.class));
     }
 
     @Test
     public void undefinedSetPropertyThrowsExcetion() {
         assertException(NoSuchElementException.class, "Unable to find property with name undefined-set",
-                () -> config.getValue("undefined-set", ConfigValueResolver.class).throwOnMissingProperty().asSet(String.class));
+                () -> config.getListValues("undefined-set", null, String.class));
     }
 
     @Test
     public void undefinedListPropertyThrowsExcetion() {
         assertException(NoSuchElementException.class, "Unable to find property with name undefined-list",
-                () -> config.getValue("undefined-list", ConfigValueResolver.class).throwOnMissingProperty().asList(String.class));
+                () -> config.getListValues("undefined-list", null, String.class));
     }
 
     @Test
@@ -262,15 +208,8 @@ public class PayaraConfigTest {
     }
 
     @Test
-    public void illegalArrayElementFailsOverallArrayConversion() {
-        assertException(IllegalArgumentException.class, "Unable to convert value to type java.lang.Integer for value `a`",
-                () -> config.getValue("brokenarr", Integer[].class));
-    }
-
-    @Test
-    public void ttlParameterIsRespected() {
-        final long ttl = 60 * 1000L;
-        assertEquals(ttl, new PayaraConfig(emptyList(), emptyMap(), ttl).getCacheDurationSeconds());
+    public void defaultTTLisOneMinute() {
+        assertEquals(60 * 1000L, new PayaraConfig(emptyList(), emptyMap()).getTTL());
     }
 
     private <T> void assertCachedValue(ConfigSource source, String key, Class<T> propertyType, T expectedValue1,
@@ -287,15 +226,12 @@ public class PayaraConfigTest {
 
     private <T> void assertValue(String msg, String key, Class<T> propertyType, T expected) {
         assertEquals(msg, expected, config.getValue(key, propertyType));
-        assertEquals(msg, expected,
-                config.getValue(key, ConfigValueResolver.class).withDefault("default").as(propertyType).get());
+        assertEquals(msg, expected, config.getValue(key, "default", propertyType));
         assertEquals(msg, expected, config.getOptionalValue(key, propertyType).get());
         // as list
-        assertEquals(msg, asList(expected),
-                config.getValue(key, ConfigValueResolver.class).withDefault("default").asList(propertyType));
+        assertEquals(msg, asList(expected), config.getListValues(key, "default", propertyType));
         // as set
-        assertEquals(msg, new HashSet<>(asList(expected)),
-                config.getValue(key, ConfigValueResolver.class).withDefault("default").asSet(propertyType));
+        assertEquals(msg, new HashSet<>(asList(expected)), config.getSetValues(key, "default", propertyType));
 
         if (propertyType.isPrimitive()) {
             return;
@@ -307,4 +243,23 @@ public class PayaraConfigTest {
         assertArrayEquals((Object[]) expectedArray, (Object[]) config.getValue(key, arrayType));
     }
 
+    private static ConfigSource createSource(String name, int ordinal, Map<String, String> properties) {
+        ConfigSource source = mock(ConfigSource.class);
+        when(source.getProperties()).thenReturn(properties);
+        when(source.getOrdinal()).thenReturn(ordinal);
+        when(source.getName()).thenReturn(name);
+        when(source.getPropertyNames()).thenReturn(properties.keySet());
+        when(source.getValue(anyString())).thenAnswer(invocation -> properties.get(invocation.getArgument(0)));
+        return source;
+    }
+
+    private static void assertException(Class<? extends Exception> expectedException, String expectedMsg, Runnable test) {
+        try {
+            test.run();
+            fail("Expected " + expectedException.getName());
+        } catch (Exception ex) {
+            assertEquals(expectedException, ex.getClass());
+            assertEquals(expectedMsg, ex.getMessage());
+        }
+    }
 }

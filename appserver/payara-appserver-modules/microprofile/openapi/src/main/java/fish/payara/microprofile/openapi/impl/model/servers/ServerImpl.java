@@ -41,29 +41,28 @@ package fish.payara.microprofile.openapi.impl.model.servers;
 
 import fish.payara.microprofile.openapi.api.visitor.ApiContext;
 import fish.payara.microprofile.openapi.impl.model.ExtensibleImpl;
-
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createList;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.extractAnnotations;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
+import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.models.servers.Server;
 import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
+import org.eclipse.microprofile.openapi.models.servers.ServerVariables;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
 
 public class ServerImpl extends ExtensibleImpl<Server> implements Server {
 
     private String url;
     private String description;
-    private Map<String, ServerVariable> variables = createMap();
+    private Map<String, ServerVariable> variables;
 
     public static Server createInstance(AnnotationModel annotation, ApiContext context) {
         Server from = new ServerImpl();
         from.setDescription(annotation.getValue("description", String.class));
         from.setUrl(annotation.getValue("url", String.class));
-        extractAnnotations(annotation, context, "variables", "name", ServerVariableImpl::createInstance, from::addVariable);
+        Map<String, ServerVariable> variables = new HashMap<>();
+        extractAnnotations(annotation, context, "variables", "name", ServerVariableImpl::createInstance, variables);
+        from.setVariables(variables);
         return from;
     }
 
@@ -88,31 +87,20 @@ public class ServerImpl extends ExtensibleImpl<Server> implements Server {
     }
 
     @Override
-    public Map<String, ServerVariable> getVariables() {
-        return readOnlyView(variables);
+    public ServerVariables getVariables() {
+        return variables instanceof ServerVariables || variables == null 
+                ? (ServerVariables) variables
+                : new ServerVariablesImpl(variables);
     }
 
     @Override
-    public Server addVariable(String variableName, ServerVariable variable) {
-        if (variableName != null && variable != null) {
-            if (variables == null) {
-                variables = createMap();
-            }
-            variables.put(variableName, variable);
-        }
-        return this;
-    }
-
-    @Override
-    public void removeVariable(String variableName) {
-        if (variables != null) {
-            variables.remove(variableName);
-        }
+    public void setVariables(ServerVariables variables) {
+        this.variables = variables;
     }
 
     @Override
     public void setVariables(Map<String, ServerVariable> variables) {
-        this.variables = createMap(variables);
+        this.variables = variables;
     }
 
     public static void merge(Server from, Server to,
@@ -123,35 +111,17 @@ public class ServerImpl extends ExtensibleImpl<Server> implements Server {
         to.setUrl(mergeProperty(to.getUrl(), from.getUrl(), override));
         to.setDescription(mergeProperty(to.getDescription(), from.getDescription(), override));
         if (from.getVariables() != null) {
+            if (to.getVariables() == null) {
+                to.setVariables(new ServerVariablesImpl());
+            }
             for (String serverVariableName : from.getVariables().keySet()) {
-                merge(
+                ServerVariablesImpl.merge(
                         serverVariableName,
                         from.getVariables().get(serverVariableName),
-                        ((ServerImpl) to).variables,
+                        to.getVariables(),
                         override
                 );
             }
-        }
-    }
-
-    public static void merge(String serverVariableName, ServerVariable from,
-            Map<String, ServerVariable> to, boolean override) {
-        if (from == null) {
-            return;
-        }
-        org.eclipse.microprofile.openapi.models.servers.ServerVariable variable = new ServerVariableImpl();
-        variable.setDefaultValue(mergeProperty(variable.getDefaultValue(), from.getDefaultValue(), override));
-        variable.setDescription(mergeProperty(variable.getDescription(), from.getDescription(), override));
-        if (from.getEnumeration()!= null && !from.getEnumeration().isEmpty()) {
-            if (variable.getEnumeration() == null) {
-                variable.setEnumeration(createList());
-            }
-            for (String value : from.getEnumeration()) {
-                variable.addEnumeration(value);
-            }
-        }
-        if ((to.containsKey(serverVariableName) && override) || !to.containsKey(serverVariableName)) {
-            to.put(serverVariableName, variable);
         }
     }
 
