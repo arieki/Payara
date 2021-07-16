@@ -85,6 +85,7 @@ import org.eclipse.microprofile.openapi.models.media.MediaType;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.eclipse.microprofile.openapi.models.parameters.Parameter;
 import org.eclipse.microprofile.openapi.models.parameters.Parameter.In;
+import org.eclipse.microprofile.openapi.models.parameters.Parameter.Style;
 import org.eclipse.microprofile.openapi.models.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.models.Operation;
 import org.eclipse.microprofile.openapi.models.media.Schema.SchemaType;
@@ -414,6 +415,7 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         Parameter newParameter = new ParameterImpl();
         newParameter.setName(name);
         newParameter.setIn(in);
+        newParameter.setStyle(Style.SIMPLE);
         newParameter.setRequired(required);
         SchemaImpl schema = new SchemaImpl();
         String defaultValue = getDefaultValueIfPresent(element);
