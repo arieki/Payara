@@ -48,6 +48,8 @@ import javax.security.enterprise.identitystore.CredentialValidationResult;
 import javax.security.enterprise.identitystore.IdentityStore;
 import java.io.IOException;
 import java.net.URL;
+import java.security.Key;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.time.Duration;
 import java.util.Collection;
@@ -79,6 +81,7 @@ public class SignedJWTIdentityStore implements IdentityStore {
 
     private final Config config;
     private final JwtPublicKeyStore publicKeyStore;
+    private final JwtPrivateKeyStore privateKeyStore;
 
     public SignedJWTIdentityStore() {
         config = ConfigProvider.getConfig();
@@ -92,6 +95,7 @@ public class SignedJWTIdentityStore implements IdentityStore {
         customNamespace = readCustomNamespace(properties);
         disableTypeVerification = readDisableTypeVerification(properties);
         publicKeyStore = new JwtPublicKeyStore(readPublicKeyCacheTTL(properties));
+        privateKeyStore = new JwtPrivateKeyStore(readPublicKeyCacheTTL(properties));
     }
 
     public CredentialValidationResult validate(SignedJWTCredential signedJWTCredential) {
@@ -101,9 +105,18 @@ public class SignedJWTIdentityStore implements IdentityStore {
             String keyID = jwtTokenParser.getKeyID();
 
             PublicKey publicKey = publicKeyStore.getPublicKey(keyID);
+            JsonWebTokenImpl jsonWebToken = null;
+            try {
+                jsonWebToken = jwtTokenParser.verify(acceptedIssuer, publicKey);
+            } catch (IllegalStateException illegalStateException) {
+                if (illegalStateException.getMessage().equals("No parsed SignedJWT.")) {
+                    jsonWebToken = jwtTokenParser.verify(acceptedIssuer, publicKey, privateKeyStore.getPrivateKey());
+                } else {
+                    throw illegalStateException;
+                }
+            }
 
-            JsonWebTokenImpl jsonWebToken
-                    = jwtTokenParser.verify(acceptedIssuer, publicKey);
+
 
             Set<String> groups = new HashSet<>();
             Collection<String> groupClaims = jsonWebToken.getClaim("groups");
@@ -157,6 +170,5 @@ public class SignedJWTIdentityStore implements IdentityStore {
         		.map(Duration::ofMillis)
         		.orElseGet( () -> Duration.ofMinutes(5));
     }
-
     
 }
