@@ -1,7 +1,7 @@
 /*
  *    DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- *    Copyright (c) [2019-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ *    Copyright (c) [2019-2021] Payara Foundation and/or its affiliates. All rights reserved.
  *
  *    The contents of this file are subject to the terms of either the GNU
  *    General Public License Version 2 only ("GPL") or the Common Development
@@ -71,7 +71,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PayaraArquillianTestRunner.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @NotMicroCompatible("JAX-WS is not supported on Micro")
-@SincePayara("5.193")
+@SincePayara("5.20.0")
 @Category(Unstable.class)
 public class EJBEndpointTest extends JAXWSEndpointTest {
 
