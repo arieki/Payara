@@ -412,15 +412,6 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     }
 
     private static void addParameter(AnnotatedElement element, ApiContext context, String name, In in, Boolean required) {
-        Boolean hidden = false;
-        AnnotationModel paramAnnotation = element.getAnnotation(org.eclipse.microprofile.openapi.annotations.parameters.Parameter.class.getName());
-        if (paramAnnotation != null) {
-            hidden = paramAnnotation.getValue("hidden", Boolean.class);
-        }
-        if (hidden != null && hidden) {
-            return;
-        }
-
         Parameter newParameter = new ParameterImpl();
         newParameter.setName(name);
         newParameter.setIn(in);
@@ -555,8 +546,14 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
             SchemaImpl.merge(SchemaImpl.createInstance(schemaAnnotation, context), schema, true, context);
         }
         for (FieldModel field : clazz.getFields()) {
-            if (!field.isTransient() && !field.getName().startsWith("this$")) {
-                schema.addProperty(field.getName(), createSchema(null, context, field, clazz, parameterizedInterfaces));
+            final String fieldName = field.getName();
+            if (!field.isTransient() && !fieldName.startsWith("this$")) {
+                final Schema existingProperty = schema.getProperties().get(fieldName);
+                final Schema newProperty = createSchema(null, context, field, clazz, parameterizedInterfaces);
+                if (existingProperty != null) {
+                    SchemaImpl.merge(existingProperty, newProperty, true, context);
+                }
+                schema.addProperty(fieldName, newProperty);
             }
         }
 
@@ -602,29 +599,49 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
         if (schemaName == null || schemaName.isEmpty()) {
             schemaName = field.getName();
         }
-        Schema schema = SchemaImpl.createInstance(schemaAnnotation, context);
+        visitSchemaFieldOrMethod(schemaAnnotation, method, declaringType, typeName, context);
+    }
+
+    private void visitSchemaField(AnnotationModel schemaAnnotation, FieldModel field, ApiContext context) {
+        final ExtensibleType<?> declaringType = field.getDeclaringType();
+        final String typeName = field.getTypeName();
+        visitSchemaFieldOrMethod(schemaAnnotation, field, declaringType, typeName, context);
+    }
+
+    private void visitSchemaFieldOrMethod(AnnotationModel schemaAnnotation, AnnotatedElement fieldOrMethod,
+            ExtensibleType<?> declaringType, String typeName, ApiContext context) {
+        assert (fieldOrMethod instanceof FieldModel) || (fieldOrMethod instanceof MethodModel);
+
+        // Get the schema object name
+        String schemaName = ModelUtils.getSchemaName(context, fieldOrMethod);
+        SchemaImpl schema = SchemaImpl.createInstance(schemaAnnotation, context);
 
         // Get the parent schema object name
         String parentName = null;
-        AnnotationModel classSchemaAnnotation = context.getAnnotationInfo(field.getDeclaringType())
+        AnnotationModel classSchemaAnnotation = context.getAnnotationInfo(declaringType)
                 .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
         if (classSchemaAnnotation != null) {
             parentName = classSchemaAnnotation.getValue("name", String.class);
         }
         if (parentName == null || parentName.isEmpty()) {
-            parentName = field.getDeclaringType().getSimpleName();
+            parentName = declaringType.getSimpleName();
         }
 
         // Get or create the parent schema object
-        Map<String, Schema> schemas
-                = context.getApi().getComponents().getSchemas();
-        Schema parentSchema
-                = schemas.getOrDefault(parentName, new SchemaImpl());
-        schemas.put(parentName, parentSchema);
+        final Components components = context.getApi().getComponents();
+        Schema parentSchema = components.getSchemas().getOrDefault(parentName, new SchemaImpl());
+        components.addSchema(parentName, parentSchema);
 
-        Schema property = new SchemaImpl();
+        Schema property = parentSchema.getProperties().getOrDefault(schemaName, new SchemaImpl());
         parentSchema.addProperty(schemaName, property);
-        property.setType(ModelUtils.getSchemaType(field.getTypeName(), context));
+        if (schema.isRequired()) {
+            parentSchema.addRequired(schemaName);
+        }
+
+        if (property.getRef() == null) {
+            property.setType(ModelUtils.getSchemaType(typeName, context));
+        }
+
         SchemaImpl.merge(schema, property, true, context);
     }
 
@@ -771,10 +788,6 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     @Override
     public void visitParameter(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         Parameter matchedParam = null;
-        Boolean hidden = annotation.getValue("hidden", Boolean.class);
-        if (hidden != null && hidden) {
-            return;
-        }
         Parameter parameter = ParameterImpl.createInstance(annotation, context);
 
         if (element instanceof org.glassfish.hk2.classmodel.reflect.Parameter) {
