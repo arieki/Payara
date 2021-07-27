@@ -412,6 +412,15 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     }
 
     private static void addParameter(AnnotatedElement element, ApiContext context, String name, In in, Boolean required) {
+        Boolean hidden = false;
+        AnnotationModel paramAnnotation = element.getAnnotation(org.eclipse.microprofile.openapi.annotations.parameters.Parameter.class.getName());
+        if (paramAnnotation != null) {
+            hidden = paramAnnotation.getValue("hidden", Boolean.class);
+        }
+        if (hidden != null && hidden) {
+            return;
+        }
+
         Parameter newParameter = new ParameterImpl();
         newParameter.setName(name);
         newParameter.setIn(in);
@@ -762,6 +771,10 @@ public class ApplicationProcessor implements OASProcessor, ApiVisitor {
     @Override
     public void visitParameter(AnnotationModel annotation, AnnotatedElement element, ApiContext context) {
         Parameter matchedParam = null;
+        Boolean hidden = annotation.getValue("hidden", Boolean.class);
+        if (hidden != null && hidden) {
+            return;
+        }
         Parameter parameter = ParameterImpl.createInstance(annotation, context);
 
         if (element instanceof org.glassfish.hk2.classmodel.reflect.Parameter) {

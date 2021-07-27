@@ -68,7 +68,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(PayaraArquillianTestRunner.class)
-@SincePayara("5.2020.5")
+@SincePayara("5.22.0")
 @NotMicroCompatible
 public class JsonLogFormatIT {
 
