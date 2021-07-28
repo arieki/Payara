@@ -15,6 +15,7 @@ import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.ProcessBean;
 
+import org.eclipse.microprofile.health.Health;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.Liveness;
 import org.eclipse.microprofile.health.Readiness;
@@ -45,7 +46,8 @@ public class HealthCDIExtension implements Extension {
     void processBean(@Observes ProcessBean<?> event) {
         final Annotated annotated = event.getAnnotated();
         if (annotated.isAnnotationPresent(Readiness.class)
-                || annotated.isAnnotationPresent(Liveness.class)) {
+                || annotated.isAnnotationPresent(Liveness.class)
+                || annotated.isAnnotationPresent(Health.class)) {
             this.healthCheckBeans.add(event.getBean());
         }
     }

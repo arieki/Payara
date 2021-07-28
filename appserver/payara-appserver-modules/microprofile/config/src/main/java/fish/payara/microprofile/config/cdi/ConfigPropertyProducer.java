@@ -39,26 +39,16 @@
  */
 package fish.payara.microprofile.config.cdi;
 
-import fish.payara.microprofile.config.cdi.model.ConfigPropertyModel;
-import fish.payara.nucleus.microprofile.config.spi.ConfigValueResolver;
-
-import static fish.payara.nucleus.microprofile.config.spi.ConfigValueResolver.ElementPolicy.FAIL;
-
+import fish.payara.nucleus.microprofile.config.spi.PayaraConfig;
+import java.lang.reflect.Member;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Optional;
-import java.util.OptionalDouble;
-import java.util.OptionalInt;
-import java.util.OptionalLong;
 import java.util.Set;
-import java.util.function.Supplier;
-
 import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.DeploymentException;
 import javax.enterprise.inject.spi.InjectionPoint;
-
-import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -80,85 +70,44 @@ public class ConfigPropertyProducer {
     @ConfigProperty
     @Dependent
     public static final Object getGenericProperty(InjectionPoint ip) {
-        ConfigPropertyModel property = new ConfigPropertyModel(ip);
-        return getGenericPropertyFromModel(property);
-    }
-
-    public static final Object getGenericPropertyFromModel(ConfigPropertyModel property) {
         Object result = null;
-        
-        Config config = ConfigProvider.getConfig();
+        ConfigProperty property = ip.getAnnotated().getAnnotation(ConfigProperty.class);
+        PayaraConfig config = (PayaraConfig) ConfigProvider.getConfig();
 
-        String name = property.getName();
-
-        Type type = property.getInjectionPoint().getType();
-        String defaultValue = property.getDefaultValue();
-        if (type instanceof Class) {
-            if (type == OptionalDouble.class) {
-                result = config.getValue(property.getName(), ConfigValueResolver.class)
-                    .throwOnFailedConversion()
-                    .withDefault(property.getDefaultValue())
-                    .as(OptionalDouble.class)
-                    .orElse(OptionalDouble.empty());
-            } else if (type == OptionalInt.class) {
-                result = config.getValue(property.getName(), ConfigValueResolver.class)
-                    .throwOnFailedConversion()
-                    .withDefault(property.getDefaultValue())
-                    .as(OptionalInt.class)
-                    .orElse(OptionalInt.empty());
-            } else if (type == OptionalLong.class) {
-                result = config.getValue(property.getName(), ConfigValueResolver.class)
-                    .throwOnFailedConversion()
-                    .withDefault(property.getDefaultValue())
-                    .as(OptionalLong.class)
-                    .orElse(OptionalLong.empty());
+        String name = property.name();
+        if (name.isEmpty()) {
+            // derive the property name from the injection point
+            Class<?> beanClass = null;
+            Bean<?> bean = ip.getBean();
+            if (bean == null) {
+                Member member = ip.getMember();
+                beanClass = member.getDeclaringClass();
             } else {
-                result = config.getValue(name, ConfigValueResolver.class)
-                    .throwOnMissingProperty(defaultValue == null)
-                    .throwOnFailedConversion()
-                    .withDefault(defaultValue)
-                    .withPolicy(FAIL)
-                    .as((Class<?>)type)
-                    .get();
+                beanClass = bean.getBeanClass();
             }
-        } else if (type instanceof ParameterizedType) {
+            StringBuilder sb = new StringBuilder(beanClass.getCanonicalName());
+            sb.append('.');
+            sb.append(ip.getMember().getName());
+            name =  sb.toString();
+        }
+
+        Type type = ip.getType();
+        if (type instanceof Class) {
+            result = config.getValue(name, property.defaultValue(),(Class<?>)type);
+        } else if ( type instanceof ParameterizedType) {
             ParameterizedType ptype = (ParameterizedType)type;
             Type rawType = ptype.getRawType();
             if (List.class.equals(rawType)) {
-                result = config.getValue(name, ConfigValueResolver.class)
-                    .throwOnMissingProperty(defaultValue == null)
-                    .throwOnFailedConversion()
-                    .withDefault(defaultValue)
-                    .withPolicy(FAIL)
-                    .asList(getElementTypeFrom(ptype));
+                result = config.getListValues(name, property.defaultValue(), getElementTypeFrom(ptype));
             } else if (Set.class.equals(rawType)) {
-                result = config.getValue(name, ConfigValueResolver.class)
-                    .throwOnMissingProperty(defaultValue == null)
-                    .throwOnFailedConversion()
-                    .withDefault(defaultValue)
-                    .withPolicy(FAIL)
-                    .asSet(getElementTypeFrom(ptype));
-            } else if (Supplier.class.equals(rawType)) {
-                result = config.getValue(name, ConfigValueResolver.class)
-                    .throwOnMissingProperty(defaultValue == null)
-                    .throwOnFailedConversion()
-                    .withDefault(defaultValue)
-                    .withPolicy(FAIL)
-                    .asSupplier(getElementTypeFrom(ptype));
-            } else if (Optional.class.equals(rawType)) {
-                result = config.getValue(name, ConfigValueResolver.class)
-                    .throwOnMissingProperty(false)
-                    .throwOnFailedConversion()
-                    .withDefault(defaultValue)
-                    .withPolicy(FAIL)
-                    .as(getElementTypeFrom(ptype));
+                result = config.getSetValues(name, property.defaultValue(), getElementTypeFrom(ptype));
             } else {
                 result = config.getValue(name, (Class<?>) rawType);
             }
         }
 
         if (result == null) {
-            throw new DeploymentException("Microprofile Config Property " + property.getName() + " can not be found");
+            throw new DeploymentException("Microprofile Config Property " + property.name() + " can not be found");
         }
         return result;
     }

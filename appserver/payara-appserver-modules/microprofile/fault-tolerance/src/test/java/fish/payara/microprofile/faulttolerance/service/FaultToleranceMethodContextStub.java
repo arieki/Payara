@@ -44,12 +44,11 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 
 import javax.interceptor.InvocationContext;
 
@@ -59,33 +58,22 @@ import org.eclipse.microprofile.faulttolerance.exceptions.FaultToleranceDefiniti
 import fish.payara.microprofile.faulttolerance.FaultToleranceMethodContext;
 import fish.payara.microprofile.faulttolerance.FaultToleranceMetrics;
 import fish.payara.microprofile.faulttolerance.policy.AsynchronousPolicy;
-import fish.payara.microprofile.faulttolerance.policy.FaultTolerancePolicy;
 import fish.payara.microprofile.faulttolerance.state.CircuitBreakerState;
 
 public class FaultToleranceMethodContextStub implements FaultToleranceMethodContext {
 
     private final InvocationContext context;
-    private final FaultTolerancePolicy policy;
     private final AtomicReference<CircuitBreakerState> state;
     private final AtomicReference<BlockingQueue<Thread>> concurrentExecutions;
     private final AtomicInteger queuingOrRunningPopulation;
-    private final BiFunction<InvocationContext, FaultTolerancePolicy, FaultToleranceMethodContext> binder;
 
-    public FaultToleranceMethodContextStub(FaultToleranceServiceStub.StubContext ctx,
-                                           AtomicReference<CircuitBreakerState> state,
-                                           AtomicReference<BlockingQueue<Thread>> concurrentExecutions,
-                                           AtomicInteger queuingOrRunningPopulation) {
-        this.context = ctx.context;
-        this.policy = ctx.policy;
+    public FaultToleranceMethodContextStub(InvocationContext context, AtomicReference<CircuitBreakerState> state,
+            AtomicReference<BlockingQueue<Thread>> concurrentExecutions,
+            AtomicInteger queuingOrRunningPopulation) {
+        this.context = context;
         this.state = state;
         this.concurrentExecutions = concurrentExecutions;
         this.queuingOrRunningPopulation = queuingOrRunningPopulation;
-        this.binder = ctx.binder;
-    }
-
-    @Override
-    public FaultToleranceMethodContext boundTo(InvocationContext context, FaultTolerancePolicy policy) {
-        return binder.apply(context, policy);
     }
 
     @Override
@@ -94,29 +82,27 @@ public class FaultToleranceMethodContextStub implements FaultToleranceMethodCont
     }
 
     @Override
-    public FaultToleranceMetrics getMetrics() {
+    public FaultToleranceMetrics getMetrics(boolean enabled) {
         return FaultToleranceMetrics.DISABLED;
     }
 
     @Override
-    public CircuitBreakerState getState() {
+    public CircuitBreakerState getState(int requestVolumeThreshold) {
         if (state == null) {
             throw new UnsupportedOperationException();
         }
-        return policy.circuitBreaker.requestVolumeThreshold < 0
+        return requestVolumeThreshold < 0
                 ? state.get()
                 : state.updateAndGet(
-                    value -> value != null ? value :
-                        new CircuitBreakerState(policy.circuitBreaker.requestVolumeThreshold, policy.circuitBreaker.failureRatio));
+                    value -> value != null ? value : new CircuitBreakerState(requestVolumeThreshold));
     }
 
     @Override
-    public BlockingQueue<Thread> getConcurrentExecutions() {
+    public BlockingQueue<Thread> getConcurrentExecutions(int maxConcurrentThreads) {
         if (concurrentExecutions == null) {
             throw new UnsupportedOperationException();
         }
-        int maxConcurrentThreads = policy.bulkhead.value;
-        return maxConcurrentThreads < 0
+        return maxConcurrentThreads < 0 
                 ? concurrentExecutions.get()
                 : concurrentExecutions.updateAndGet(
                     value -> value != null ? value : new ArrayBlockingQueue<>(maxConcurrentThreads));
@@ -141,17 +127,12 @@ public class FaultToleranceMethodContextStub implements FaultToleranceMethodCont
     }
 
     @Override
-    public void runAsynchronous(AsyncFuture asyncResult, Callable<Object> task)
+    public void runAsynchronous(CompletableFuture<Object> asyncResult, Callable<Object> task)
             throws RejectedExecutionException {
-        boolean returned = false;
         try {
-            Object res = task.call();
-            returned = true;
-            Object futureResult = AsynchronousPolicy.toFuture(res).get();
-            asyncResult.complete(futureResult);
-        } catch (Exception ex) {
-            asyncResult.setExceptionThrown(!returned);
-            asyncResult.completeExceptionally(returned && ex instanceof ExecutionException ? ex.getCause() : ex);
+            asyncResult.complete(AsynchronousPolicy.toFuture(task.call()).get());
+        } catch (Exception e) {
+            asyncResult.completeExceptionally(e);
         }
     }
 

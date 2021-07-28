@@ -81,10 +81,10 @@ public final class MetricUnitsUtils {
     }
 
     public static Number scaleToBaseUnit(Number value, Metadata metadata) {
-        if (!metadata.unit().isPresent()) {
+        if (!metadata.getUnit().isPresent()) {
             return value;
         }
-        String unit = metadata.getUnit();
+        String unit = metadata.getUnit().get();
         return scaleToBaseUnit(value, unit);
     }
 

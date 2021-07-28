@@ -5,13 +5,17 @@ def DOMAIN_NAME
 def payaraBuildNumber
 pipeline {
     agent any
+    environment {
+        MP_METRICS_TAGS='tier=integration'
+        MP_CONFIG_CACHE_DURATION=0
+    }
     tools {
         jdk "zulu-8"
     }
     stages {
         stage('Report') {
             steps {
-                script {
+                script{
                     pom = readMavenPom file: 'pom.xml'
                     payaraBuildNumber = "PR${env.ghprbPullId}#${currentBuild.number}"
                     DOMAIN_NAME = "test-domain"
@@ -31,18 +35,10 @@ pipeline {
                 }
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#    Built SRC   *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
-            post {
-                success{
-                    archiveArtifacts artifacts: 'appserver/distributions/payara/target/payara.zip', fingerprint: true
-                    archiveArtifacts artifacts: 'appserver/extras/payara-micro/payara-micro-distribution/target/payara-micro.jar', fingerprint: true
-                }
-                always {
-                    archiveArtifacts allowEmptyArchive: true, artifacts: 'appserver/distributions/payara/target/stage/payara5/glassfish/logs/server.log'
-                }
-            }
         }
         stage('Setup for Quicklook Tests') {
             steps {
+                sh "rm -f -v *.zip"
                 setupDomain()
             }
         }
@@ -57,50 +53,43 @@ pipeline {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
+                failure {
+                    zip archive: true, dir: "appserver/distributions/payara/target/stage/payara5/glassfish/domains/${DOMAIN_NAME}/logs", glob: 'server.*', zipFile: 'quicklook-log.zip'
+                }
                 always {
-                    processReportAndStopDomain()
+                    junit '**/target/surefire-reports/*.xml'
                 }
                 cleanup {
-                    saveLogsAndCleanup 'quicklook-log.zip'
+                    teardownDomain()
                 }
-            }
-        }
-        stage('Setup for Payara Samples Tests') {
-            steps {
-                setupDomain()
             }
         }
         stage('Run Payara Samples Tests') {
             steps {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Running test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
-                sh """mvn -V -B -ff clean install --strict-checksums -Ppayara-server-remote \
+                sh """mvn -V -B -ff clean install -Ppayara-server-managed \
                 -Dpayara.version=${pom.version} \
+                -Dglassfish.home=\"${pwd()}/appserver/distributions/payara/target/stage/payara5/glassfish\" \
+                -Dpayara_domain=${DOMAIN_NAME} \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all \
+                -Dsurefire.rerunFailingTestsCount=2 \
                 -f appserver/tests/payara-samples """
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
-                always {
-                    processReportAndStopDomain()
-                }
-                cleanup {
-                    saveLogsAndCleanup 'samples-log.zip'
-                }
+               always {
+                   junit '**/target/surefire-reports/*.xml'
+               }
             }
         }
         stage('Checkout MP TCK Runners') {
             steps{
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Checking out MP TCK Runners  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
                 checkout changelog: false, poll: false, scm: [$class: 'GitSCM',
-                    branches: [[name: "*/microprofile-4.0"]],
+                    branches: [[name: "*/master"]],
                     userRemoteConfigs: [[url: "https://github.com/payara/MicroProfile-TCK-Runners.git"]]]
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Checked out MP TCK Runners  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
-            }
-        }
-        stage('Setup for MP TCK Tests') {
-            steps {
-                setupDomain()
             }
         }
         stage('Run MP TCK Tests') {
@@ -109,15 +98,13 @@ pipeline {
                 sh """mvn -B -V -ff -e clean verify \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all -Dpayara.version=${pom.version} \
-                -Dpayara_domain=${DOMAIN_NAME} -Ppayara-server-remote"""
+                -Dpayara_domain=${DOMAIN_NAME} -Duse.cnHost=true \
+                -Dsurefire.rerunFailingTestsCount=2 -Ppayara-server-managed,payara5"""
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
                 always {
-                    processReportAndStopDomain()
-                }
-                cleanup {
-                    saveLogsAndCleanup 'mp-tck-log.zip'
+                    junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -141,15 +128,18 @@ pipeline {
                 sh "mvn -B -V -ff -e clean install -Dsurefire.useFile=false \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all -Dpayara.version=${pom.version} \
-                -Ppayara-server-remote,stable"
+                -Dsurefire.rerunFailingTestsCount=2 -Ppayara-server-remote,stable"
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
+                failure {
+                    zip archive: true, dir: "appserver/distributions/payara/target/stage/payara5/glassfish/domains/${DOMAIN_NAME}/logs", glob: 'server.*', zipFile: 'ee8-samples-log.zip'
+                }
                 always {
-                    processReportAndStopDomain()
+                    junit '**/target/surefire-reports/*.xml'
                 }
                 cleanup {
-                    saveLogsAndCleanup 'ee8-samples-log.zip'
+                    teardownDomain()
                 }
             }
         }
@@ -162,11 +152,6 @@ pipeline {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Checked out cargoTracker tests  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
         }
-        stage('Setup for CargoTracker Tests') {
-            steps {
-                setupDomain()
-            }
-        }
         stage('Run CargoTracker Tests') {
             steps {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Cleaning CargoTracker Database in /tmp  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
@@ -176,15 +161,12 @@ pipeline {
                 sh """mvn -B -V -ff -e clean install -Dsurefire.useFile=false \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all -Dpayara.version=${pom.version} \
-                -Ppayara-server-remote,payara5"""
+                -Dsurefire.rerunFailingTestsCount=2 -Ppayara-server-managed,payara5"""
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
                 always {
-                    processReportAndStopDomain()
-                }
-                cleanup {
-                    saveLogsAndCleanup 'cargotracker-log.zip'
+                    junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -205,19 +187,22 @@ pipeline {
         stage('Run EE7 Tests') {
             steps {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Running test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
-                sh """mvn -B -V -ff -e clean install --strict-checksums \
+                sh """mvn -B -V -ff -e clean install -Dsurefire.useFile=false \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all -Dpayara.version=${pom.version} \
-                -Dpayara_domain=${DOMAIN_NAME} \
-                -Ppayara-server-remote,stable,payara5"""
+                -Dpayara_domain=${DOMAIN_NAME} -Duse.cnHost=true \
+                -Dsurefire.rerunFailingTestsCount=2 -Ppayara-server-remote,stable,payara5"""
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
             post {
+                failure {
+                    zip archive: true, dir: "appserver/distributions/payara/target/stage/payara5/glassfish/domains/${DOMAIN_NAME}/logs", glob: 'server.*', zipFile: 'ee7-samples-log.zip'
+                }
                 always {
-                    processReportAndStopDomain()
+                    junit '**/target/surefire-reports/*.xml'
                 }
                 cleanup {
-                    saveLogsAndCleanup 'ee7-samples-log.zip'
+                    teardownDomain()
                 }
             }
         }
@@ -225,7 +210,7 @@ pipeline {
 }
 
 void makeDomain() {
-    script {
+    script{
         ASADMIN = "./appserver/distributions/payara/target/stage/payara5/bin/asadmin"
         DOMAIN_NAME = "test-domain"
     }
@@ -239,15 +224,9 @@ void setupDomain() {
     sh "${ASADMIN} start-database || true"
 }
 
-void processReportAndStopDomain() {
-    junit '**/target/surefire-reports/*.xml'
+void teardownDomain() {
+    echo 'tidying up after tests:'
     sh "${ASADMIN} stop-domain ${DOMAIN_NAME}"
     sh "${ASADMIN} stop-database || true"
-}
-
-void saveLogsAndCleanup(String logArchiveName) {
-    zip archive: true, dir: "appserver/distributions/payara/target/stage/payara5/glassfish/domains/${DOMAIN_NAME}/logs", glob: 'server.*', zipFile: logArchiveName
-    echo 'tidying up after tests: '
-    sh "rm -f -v *.zip"
     sh "${ASADMIN} delete-domain ${DOMAIN_NAME}"
 }

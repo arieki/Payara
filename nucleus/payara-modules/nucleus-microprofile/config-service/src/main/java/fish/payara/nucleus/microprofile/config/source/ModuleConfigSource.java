@@ -45,6 +45,7 @@ import java.beans.PropertyVetoException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.jvnet.hk2.config.ConfigBean;
 import org.jvnet.hk2.config.ConfigSupport;
 import org.jvnet.hk2.config.SingleConfigCode;
@@ -55,7 +56,7 @@ import org.jvnet.hk2.config.types.Property;
  *
  * @author Steve Millidge (Payara Foundation)
  */
-public class ModuleConfigSource extends PayaraConfigSource {
+public class ModuleConfigSource extends PayaraConfigSource implements ConfigSource {
 
     private final String configurationName;
     private final String moduleName;

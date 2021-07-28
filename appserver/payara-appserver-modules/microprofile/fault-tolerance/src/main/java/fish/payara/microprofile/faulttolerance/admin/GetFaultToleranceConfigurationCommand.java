@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2017-2021] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017-2020 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -78,10 +78,7 @@ import org.jvnet.hk2.annotations.Service;
 })
 public class GetFaultToleranceConfigurationCommand implements AdminCommand {
 
-    private final String OUTPUT_HEADERS[] = {
-        "Managed Executor Service Name",
-        "Managed Scheduled Executor Service Name"
-    };
+    private final String OUTPUT_HEADERS[] = { "Async Max Pool Size", "Delay Max Pool Size" };
 
     @Inject
     private Target targetUtil;
@@ -103,17 +100,14 @@ public class GetFaultToleranceConfigurationCommand implements AdminCommand {
                 .getExtensionByType(FaultToleranceServiceConfiguration.class);
 
         ColumnFormatter columnFormatter = new ColumnFormatter(OUTPUT_HEADERS);
-        Object[] outputValues = {
-            config.getManagedExecutorService(),
-            config.getManagedScheduledExecutorService()
-        };
+        Object[] outputValues = { config.getAsyncMaxPoolSize(), config.getDelayMaxPoolSize() };
         columnFormatter.addRow(outputValues);
 
         acc.getActionReport().appendMessage(columnFormatter.toString());
 
         Map<String, Object> extraPropertiesMap = new HashMap<>();
-        extraPropertiesMap.put("managedExecutorServiceName", config.getManagedExecutorService());
-        extraPropertiesMap.put("managedScheduledExecutorServiceName", config.getManagedScheduledExecutorService());
+        extraPropertiesMap.put("asyncMaxPoolSize", config.getAsyncMaxPoolSize());
+        extraPropertiesMap.put("delayMaxPoolSize", config.getDelayMaxPoolSize());
         Properties extraProperties = new Properties();
         extraProperties.put("faultToleranceConfiguration", extraPropertiesMap);
         acc.getActionReport().setExtraProperties(extraProperties);

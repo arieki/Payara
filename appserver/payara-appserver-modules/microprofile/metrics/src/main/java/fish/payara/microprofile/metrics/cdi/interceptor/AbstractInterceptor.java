@@ -66,7 +66,6 @@ import org.glassfish.internal.api.Globals;
     protected Bean<?> bean;
 
     private MetricsService metricsService;
-    private MetricsService.MetricsContext metricsContext;
 
     protected static <E extends Member & AnnotatedElement, M extends Metric> M apply(E element,
             Class<?> bean, AnnotationReader<?> reader, Class<M> metricType, BiFunction<MetricID, Class<M>, M> loader) {
@@ -81,7 +80,7 @@ import org.glassfish.internal.api.Globals;
 
     public <T extends Metric> T getMetric(MetricID metricID, Class<T> metricType) {
         initService();
-        return metricsContext.getApplicationRegistry().getMetric(metricID, metricType);
+        return metricsService.getApplicationMetric(metricID, metricType);
     }
 
     @AroundConstruct
@@ -114,9 +113,6 @@ import org.glassfish.internal.api.Globals;
     private void initService() {
         if (metricsService == null) {
             metricsService = Globals.getDefaultBaseServiceLocator().getService(MetricsService.class);
-            if (metricsService.isEnabled()) {
-                metricsContext = metricsService.getContext(true);
-            }
         }
     }
 

@@ -129,7 +129,6 @@ public class OpenMetricsExporterTest {
     public void exportHistogram() {
         Histogram histogram = mock(Histogram.class);
         when(histogram.getCount()).thenReturn(2037L);
-        when(histogram.getSum()).thenReturn(45678L);
         Snapshot snapshot = mock(Snapshot.class);
         when(histogram.getSnapshot()).thenReturn(snapshot);
         when(snapshot.getMin()).thenReturn(180L);
@@ -156,8 +155,6 @@ public class OpenMetricsExporterTest {
         SimpleTimer timer = mock(SimpleTimer.class);
         when(timer.getCount()).thenReturn(12L);
         when(timer.getElapsedTime()).thenReturn(Duration.ofMillis(12300L));
-        when(timer.getMaxTimeDuration()).thenReturn(Duration.ofMillis(3231L));
-        when(timer.getMinTimeDuration()).thenReturn(Duration.ofNanos(25600000L));
         MetricID metricID = new MetricID("response_time");
         Metadata metadata = Metadata.builder()
                 .withName(metricID.getName())
@@ -183,7 +180,6 @@ public class OpenMetricsExporterTest {
     @Test
     public void exportTimer() {
         Timer timer = mock(Timer.class);
-        when(timer.getElapsedTime()).thenReturn(Duration.ofMillis(23L));
         when(timer.getCount()).thenReturn(80L);
         when(timer.getMeanRate()).thenReturn(0.004292520715985437d);
         when(timer.getOneMinuteRate()).thenReturn(2.794076465421066E-14d);
@@ -374,7 +370,7 @@ public class OpenMetricsExporterTest {
         MetricID metricID = new MetricID("test1");
         Metadata metadata = Metadata.builder()
                 .withName(metricID.getName())
-                .withDescription("")
+                .withOptionalDescription("")
                 .build();
         assertOutputEquals("# TYPE application_test1_total counter\n" +
                 "application_test1_total 13\n", metricID, counter, metadata);

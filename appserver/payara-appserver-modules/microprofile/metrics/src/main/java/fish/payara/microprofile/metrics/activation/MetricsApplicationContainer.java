@@ -44,13 +44,12 @@ import org.glassfish.api.deployment.DeploymentContext;
 
 import fish.payara.microprofile.connector.MicroProfileApplicationContainer;
 import fish.payara.microprofile.metrics.MetricsService;
-import fish.payara.microprofile.metrics.impl.MetricsServiceImpl;
 
 public class MetricsApplicationContainer extends MicroProfileApplicationContainer {
 
-    private final MetricsServiceImpl metricsService;
+    private final MetricsService metricsService;
 
-    protected MetricsApplicationContainer(MetricsServiceImpl metricsService, DeploymentContext deploymentContext) {
+    protected MetricsApplicationContainer(MetricsService metricsService, DeploymentContext deploymentContext) {
         super(deploymentContext);
         this.metricsService = metricsService;
     }

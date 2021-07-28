@@ -101,7 +101,6 @@ import fish.payara.notification.requesttracing.RequestTraceSpan;
 import fish.payara.nucleus.executorservice.PayaraExecutorService;
 import fish.payara.nucleus.hazelcast.HazelcastCore;
 import fish.payara.nucleus.requesttracing.RequestTracingService;
-import io.opentracing.tag.Tag;
 
 /**
  * This implementation of the {@link MonitoringConsoleRuntime} connects the Payara independent parts of the monitoring
@@ -367,12 +366,8 @@ public class MonitoringConsoleRuntimeImpl
                         .addField("endTime", span.getTraceEndTime().toEpochMilli())
                         .addField("duration", span.getSpanDuration())
                         .addChild("tags");
-                    for (Entry<Object, String> tag : span.getSpanTags().entrySet()) {
-                        if (tag.getKey() instanceof Tag) {
-                            tags.addField(((Tag)tag.getKey()).getKey(), tag.getValue());
-                        } else {
-                            tags.addField(tag.getKey().toString(), tag.getValue());
-                        }
+                    for (Entry<String, String> tag : span.getSpanTags().entrySet()) {
+                        tags.addField(tag.getKey(), tag.getValue());
                     }
                 }
                 matches.add(data);

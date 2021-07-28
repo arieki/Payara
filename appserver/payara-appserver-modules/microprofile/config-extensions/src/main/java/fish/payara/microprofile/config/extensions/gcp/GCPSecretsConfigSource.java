@@ -55,7 +55,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -79,14 +78,16 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import fish.payara.microprofile.config.extensions.oauth.OAuth2Client;
+
+import org.glassfish.api.admin.ServerEnvironment;
+import org.jvnet.hk2.annotations.Service;
+
 import fish.payara.microprofile.config.extensions.gcp.model.Secret;
 import fish.payara.microprofile.config.extensions.gcp.model.SecretHolder;
 import fish.payara.microprofile.config.extensions.gcp.model.SecretsResponse;
 import fish.payara.nucleus.microprofile.config.source.extension.ConfiguredExtensionConfigSource;
 import fish.payara.nucleus.microprofile.config.spi.MicroprofileConfigConfiguration;
-import org.glassfish.api.admin.ServerEnvironment;
-import org.jvnet.hk2.annotations.Service;
+import fish.payara.security.oauth2.OAuth2Client;
 
 @Service(name = "gcp-secrets-config-source")
 public class GCPSecretsConfigSource extends ConfiguredExtensionConfigSource<GCPSecretsConfigSourceConfiguration> {
@@ -217,11 +218,6 @@ public class GCPSecretsConfigSource extends ConfiguredExtensionConfigSource<GCPS
         }
 
         return results;
-    }
-
-    @Override
-    public Set<String> getPropertyNames() {
-        return getProperties().keySet();
     }
 
     @Override

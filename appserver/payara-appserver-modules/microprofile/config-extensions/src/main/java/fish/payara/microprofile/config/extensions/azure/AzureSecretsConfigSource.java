@@ -48,12 +48,12 @@ import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import fish.payara.microprofile.config.extensions.oauth.OAuth2Client;
 import fish.payara.microprofile.config.extensions.azure.model.Secret;
 import fish.payara.microprofile.config.extensions.azure.model.SecretHolder;
 import fish.payara.microprofile.config.extensions.azure.model.SecretsResponse;
 import fish.payara.nucleus.microprofile.config.source.extension.ConfiguredExtensionConfigSource;
 import fish.payara.nucleus.microprofile.config.spi.MicroprofileConfigConfiguration;
+import fish.payara.security.oauth2.OAuth2Client;
 import java.io.File;
 import java.nio.file.Files;
 import java.security.KeyFactory;
@@ -68,7 +68,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -172,11 +171,6 @@ public class AzureSecretsConfigSource extends ConfiguredExtensionConfigSource<Az
             results.put(secretName, getValue(secretName));
         }
         return results;
-    }
-
-    @Override
-    public Set<String> getPropertyNames() {
-        return getProperties().keySet();
     }
 
     @Override

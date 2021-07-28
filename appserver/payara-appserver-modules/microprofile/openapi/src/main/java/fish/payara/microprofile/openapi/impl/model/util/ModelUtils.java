@@ -48,19 +48,11 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.Map.Entry;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
-
 import static java.util.logging.Level.WARNING;
 import java.util.logging.Logger;
 import javax.inject.Inject;
@@ -87,10 +79,7 @@ import org.eclipse.microprofile.openapi.models.PathItem;
 import org.eclipse.microprofile.openapi.models.PathItem.HttpMethod;
 import org.eclipse.microprofile.openapi.models.media.Schema.SchemaType;
 import org.eclipse.microprofile.openapi.models.parameters.Parameter.In;
-import org.glassfish.hk2.classmodel.reflect.AnnotatedElement;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
-import org.glassfish.hk2.classmodel.reflect.ExtensibleType;
-import org.glassfish.hk2.classmodel.reflect.FieldModel;
 import org.glassfish.hk2.classmodel.reflect.MethodModel;
 import org.glassfish.hk2.classmodel.reflect.ParameterizedType;
 
@@ -281,65 +270,6 @@ public final class ModelUtils {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static String getSchemaName(ApiContext context, AnnotatedElement type) {
-
-        assert type != null;
-        // context and annotation can be null
-
-        final Class<? extends Annotation>[] ANNOTATION_TYPES = new Class[] {
-            org.eclipse.microprofile.openapi.annotations.media.Schema.class,
-            javax.xml.bind.annotation.XmlRootElement.class,
-            javax.xml.bind.annotation.XmlElement.class
-        };
-
-        for (Class<? extends Annotation> annotationType : ANNOTATION_TYPES) {
-
-            AnnotationModel annotationModel;
-
-            // Fetch the element annotations
-            if (context != null && type instanceof ExtensibleType) {
-                // Fetch the annotation from the cache
-                ExtensibleType<?> implementationType = (ExtensibleType<?>) type;
-                AnnotationInfo annotationInfo = context.getAnnotationInfo(implementationType);
-                annotationModel = annotationInfo.getAnnotation(annotationType);
-            } else {
-                // Fetch the annotation manually
-                annotationModel = type.getAnnotation(annotationType.getName());
-            }
-
-            // Fields can be named by their accessors
-            if (annotationModel == null) {
-                if (type instanceof FieldModel) {
-                    final FieldModel field = (FieldModel) type;
-                    final String accessorName = getAccessorName(field.getName());
-                    for (MethodModel method : field.getDeclaringType().getMethods()) {
-                        // Check if it's the accessor
-                        if (accessorName.equals(method.getName())) {
-                            annotationModel = type.getAnnotation(annotationType.getName());
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Get the schema name if the annotation exists
-            if (annotationModel != null) {
-                final String name = annotationModel.getValue("name", String.class);
-                if (name != null && !name.isEmpty() && !name.equals("##default")) {
-                    return name;
-                }
-            }
-        }
-
-        return getSimpleName(type.getName());
-    }
-
-    public static String getAccessorName(String fieldName) {
-        char firstCharacter = Character.toUpperCase(fieldName.charAt(0));
-        return "get" + firstCharacter + fieldName.substring(1);
-    }
-
     public static SchemaType getSchemaType(ParameterizedType type, ApiContext context) {
         if(type.isArray()) {
             return SchemaType.ARRAY;
@@ -373,9 +303,6 @@ public final class ModelUtils {
                 || Float.class.getName().equals(typeName)
                 || Double.class.getName().equals(typeName)) {
             return SchemaType.NUMBER;
-        }
-        if (typeName != null && typeName.endsWith("[]")) {
-            return SchemaType.ARRAY;
         }
         Class clazz = null;
         try {
@@ -479,23 +406,6 @@ public final class ModelUtils {
         return null;
     }
 
-    public static boolean isVoid(ParameterizedType type) {
-        if (type == null) {
-            return true;
-        }
-        final String typeName = type.getTypeName();
-        if (typeName == null) {
-            return true;
-        }
-        if ("void".equals(typeName)) {
-            return true;
-        }
-        if ("java.lang.Void".equals(typeName)) {
-            return true;
-        }
-        return false;
-    }
-
     public static boolean isAnnotationNull(Annotation annotation) {
         if (annotation == null) {
             return true;
@@ -533,15 +443,15 @@ public final class ModelUtils {
             String type,
             String key,
             BiFunction<AnnotationModel, ApiContext, T> factory,
-            BiConsumer<String, T> wrapperAddFunction) {
+            Map<String, T> wrapper) {
 
-        if (wrapperAddFunction == null) {
-            throw new IllegalArgumentException("null wrapperAddFunction. This is required to modify OpenAPI documents");
+        if (wrapper == null) {
+            throw new IllegalArgumentException();
         }
         List<AnnotationModel> annotations = annotationModel.getValue(type, List.class);
         if (annotations != null) {
             for (AnnotationModel annotation : annotations) {
-                wrapperAddFunction.accept(
+                wrapper.put(
                         annotation.getValue(key, String.class),
                         factory.apply(annotation, context)
                 );
@@ -554,32 +464,19 @@ public final class ModelUtils {
             ApiContext context,
             String type,
             BiFunction<AnnotationModel, ApiContext, T> factory,
-            Consumer<T> wrapperAddFunction) {
+            List<T> wrapper) {
 
-        if (wrapperAddFunction == null) {
-            throw new IllegalArgumentException("null wrapperAddFunction. This is required to modify OpenAPI documents");
+        if (wrapper == null) {
+            throw new IllegalArgumentException();
         }
         List<AnnotationModel> annotations = annotationModel.getValue(type, List.class);
         if (annotations != null) {
             for (AnnotationModel annotation : annotations) {
-                wrapperAddFunction.accept(
+                wrapper.add(
                         factory.apply(annotation, context)
                 );
             }
         }
-    }
-    
-    public static <T> void mergeImmutableList(List<T> from, List<T> to, Consumer<List<T>> setFunction) {
-        final List<T> list = new ArrayList<>();
-
-        if (from != null) {
-            list.addAll(from);
-        }
-        if (to != null) {
-            list.addAll(to);
-        }
-
-        setFunction.accept(list);
     }
 
     public static Boolean mergeProperty(Boolean current, boolean offer, boolean override) {
@@ -670,47 +567,41 @@ public final class ModelUtils {
     public static <T> void merge(T from, T to, boolean override) {
         if (from != null && to != null) {
             for (Field f : to.getClass().getDeclaredFields()) {
-                // Skip static or synthetic fields
-                if (f.isSynthetic() || Modifier.isStatic(f.getModifiers())) {
-                    continue;
-                }
                 f.setAccessible(true);
                 try {
                     // Get the new and old value
-                    Object fromValue = f.get(from);
-                    Object toValue = f.get(to);
-
-                    // If there is no 'from', ignore
-                    if (fromValue == null) {
-                        continue;
-                    }
-
-                    if (fromValue instanceof Map && toValue != null) {
-                        Map<Object, Object> fromMap = (Map<Object, Object>) fromValue;
-                        Map<Object, Object> toMap = (Map<Object, Object>) toValue;
-                        for (Entry<Object, Object> entry : fromMap.entrySet()) {
-                            if (!toMap.containsKey(entry.getKey())) {
-                                toMap.put(entry.getKey(), entry.getValue());
-                            } else {
-                                merge(entry.getValue(), toMap.get(entry.getKey()), override);
+                    Object newValue = f.get(from);
+                    Object currentValue = f.get(to);
+                    if (newValue != null) {
+                        if (newValue instanceof Map) {
+                            Map<Object, Object> newMap = (Map<Object, Object>) newValue;
+                            Map<Object, Object> currentMap = (Map<Object, Object>) currentValue;
+                            for (Entry<Object, Object> entry : newMap.entrySet()) {
+                                if (!currentMap.containsKey(entry.getKey())) {
+                                    currentMap.put(entry.getKey(), entry.getValue());
+                                } else {
+                                    merge(entry.getValue(), currentMap.get(entry.getKey()), override);
+                                }
                             }
                         }
-                    } else if (fromValue instanceof Collection && toValue != null) {
-                        Collection<Object> fromCollection = (Collection<Object>) fromValue;
-                        Collection<Object> toCollection = (Collection<Object>) toValue;
-                        for (Object o : fromCollection) {
-                            if (!toCollection.contains(o)) {
-                                toCollection.add(o);
+                        else if (newValue instanceof Collection) {
+                            Collection<Object> newCollection = (Collection<Object>) newValue;
+                            Collection<Object> currentCollection = (Collection<Object>) currentValue;
+                            for (Object o : newCollection) {
+                                if (!currentCollection.contains(o)) {
+                                    currentCollection.add(o);
+                                }
                             }
                         }
-                    } else if (fromValue instanceof Constructible) {
-                        if (toValue == null) {
-                            f.set(to, fromValue.getClass().newInstance());
-                            toValue = f.get(to);
+                       else if (newValue instanceof Constructible) {
+                            if (currentValue == null) {
+                                f.set(to, newValue.getClass().newInstance());
+                                currentValue = f.get(to);
+                            }
+                            merge(newValue, currentValue, override);
+                        } else {
+                            f.set(to, mergeProperty(f.get(to), f.get(from), override));
                         }
-                        merge(fromValue, toValue, override);
-                    } else {
-                        f.set(to, mergeProperty(f.get(to), f.get(from), override));
                     }
                 } catch (IllegalArgumentException | IllegalAccessException | InstantiationException e) {
                     // Ignore errors
@@ -722,52 +613,5 @@ public final class ModelUtils {
     public static String getSimpleName(String fqn) {
         String simpleName = fqn.substring(fqn.lastIndexOf('.') + 1);
         return simpleName.substring(simpleName.lastIndexOf('$') + 1);
-    }
-
-    public static <K, V> Map<K, V> readOnlyView(Map<K, V> map) {
-        if (map == null) {
-            return null;
-        }
-        return Collections.unmodifiableMap(map);
-    }
-
-    public static <T> List<T> readOnlyView(List<T> list) {
-        if (list == null) {
-            return null;
-        }
-        return Collections.unmodifiableList(list);
-    }
-
-    public static <T> List<T> createList() {
-        return new ArrayList<>();
-    }
-
-    public static <T> List<T> createList(Collection<? extends T> items) {
-        if (items == null) {
-            return null;
-        }
-        return new ArrayList<>(items);
-    }
-
-    public static <K, V> Map<K, V> createMap() {
-        return new LinkedHashMap<>();
-    }
-
-    public static <K, V> Map<K, V> createMap(Map<? extends K, ? extends V> items) {
-        if (items == null) {
-            return null;
-        }
-        return new LinkedHashMap<>(items);
-    }
-
-    public static <K, V> Map<K, V> createOrderedMap() {
-        return new TreeMap<>();
-    }
-
-    public static <K, V> Map<K, V> createOrderedMap(Map<? extends K, ? extends V> items) {
-        if (items == null) {
-            return null;
-        }
-        return new TreeMap<>(items);
     }
 }

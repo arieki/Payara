@@ -76,20 +76,21 @@ public class FaultToleranceInterceptor implements Stereotypes, Serializable {
 
     protected static final String PAYARA_FAULT_TOLERANCE_INTERCEPTOR_EXECUTED =
             "fish.payara.microprofile.faulttolerance.executed";
-    
+
     public Object intercept(InvocationContext context) throws Exception {
         if (!shouldIntercept(context)) {
             return context.proceed();
         }
         context.getContextData().put(PAYARA_FAULT_TOLERANCE_INTERCEPTOR_EXECUTED, Boolean.TRUE);
         try {
-            initialize();
+            FaultToleranceService env =
+                    Globals.getDefaultBaseServiceLocator().getService(FaultToleranceService.class);
             AtomicReference<FaultToleranceConfig> lazyConfig = new AtomicReference<>();
             Supplier<FaultToleranceConfig> configSupplier = () -> //
-                    lazyConfig.updateAndGet(value -> value != null ? value : faultToleranceService.getConfig(context, this));
+                lazyConfig.updateAndGet(value -> value != null ? value : env.getConfig(context, this));
             FaultTolerancePolicy policy = FaultTolerancePolicy.get(context, configSupplier);
             if (policy.isPresent) {
-                return policy.proceed(context, () -> faultToleranceService.getMethodContext(context, policy, getRequestContextController()));
+                return policy.proceed(context, () -> env.getMethodContext(context, policy, getRequestContextController()));
             }
         } catch (FaultToleranceDefinitionException e) {
             logger.log(Level.SEVERE, "Effective FT policy contains illegal values, fault tolerance cannot be applied,"
@@ -97,13 +98,6 @@ public class FaultToleranceInterceptor implements Stereotypes, Serializable {
             // fall-through to normal proceed
         }
         return context.proceed();
-    }
-
-    private void initialize() {
-        if (this.faultToleranceService != null) {
-            return;
-        }
-        this.faultToleranceService = Globals.getDefaultBaseServiceLocator().getService(FaultToleranceService.class);
     }
 
     private RequestContextController getRequestContextController() {

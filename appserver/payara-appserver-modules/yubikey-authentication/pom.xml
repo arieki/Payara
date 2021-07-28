@@ -69,10 +69,8 @@
                         </goals>
                         <configuration>
                             <instructions>
-                                <Import-Package>
-                                    *
-                                </Import-Package>
                                 <Export-Package>
+                                    fish.payara.security.annotations,
                                     fish.payara.security.authentication.twoIdentityStore,
                                     fish.payara.security.identitystores
                                 </Export-Package>

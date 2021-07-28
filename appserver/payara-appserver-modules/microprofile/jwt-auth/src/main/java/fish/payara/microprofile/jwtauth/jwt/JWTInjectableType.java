@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2017-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -141,15 +141,16 @@ public class JWTInjectableType {
     }
 
     private void installCoreConverter() {
-        if (coreClass == String.class) {
+        if (coreClass.equals(String.class)) {
             converter = e -> ((JsonString) e).getString();
-        } else if (coreClass == Set.class) {
+        } else if (coreClass.equals(Set.class)) {
             converter = e -> convertToSet(e);
-        } else if (coreClass == Long.class) {
+        } else if (coreClass.equals(Long.class)) {
             converter = e -> ((JsonNumber) e).longValue();
-        } else if (coreClass == Boolean.class) {
-            converter = e -> convertToBoolean(e);
-        } else if (coreClass == JsonArray.class) {
+        } else if (coreClass.equals(Boolean.class)) {
+            // TODO
+            converter = e -> e;
+        } else if (coreClass.equals(JsonArray.class)) {
             converter = e -> e instanceof JsonArray ? e : createArrayBuilder().add(e).build();
         } else {
             converter = e -> e;
@@ -162,14 +163,6 @@ public class JWTInjectableType {
         }
         
         return singleton(((JsonString) jsonValue).getString());
-    }
-
-    private static boolean convertToBoolean(JsonValue jsonValue) {
-        if (jsonValue instanceof JsonString) {
-            return Boolean.parseBoolean(((JsonString) jsonValue).getString());
-        }
-
-        return Boolean.parseBoolean(jsonValue.toString());
     }
 
 }

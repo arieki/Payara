@@ -45,14 +45,14 @@ import fish.payara.microprofile.openapi.impl.model.security.SecurityRequirementI
 import fish.payara.microprofile.openapi.impl.model.servers.ServerImpl;
 import fish.payara.microprofile.openapi.impl.model.tags.TagImpl;
 import fish.payara.microprofile.openapi.impl.model.util.ModelUtils;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createList;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.extractAnnotations;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
+import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.microprofile.openapi.models.Components;
 import org.eclipse.microprofile.openapi.models.ExternalDocumentation;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
+import org.eclipse.microprofile.openapi.models.PathItem;
 import org.eclipse.microprofile.openapi.models.Paths;
 import org.eclipse.microprofile.openapi.models.info.Info;
 import org.eclipse.microprofile.openapi.models.security.SecurityRequirement;
@@ -65,9 +65,9 @@ public class OpenAPIImpl extends ExtensibleImpl<OpenAPI> implements OpenAPI {
     protected String openapi;
     protected Info info;
     protected ExternalDocumentation externalDocs;
-    protected List<Server> servers = createList();
-    protected List<SecurityRequirement> security = createList();
-    protected List<Tag> tags = createList();
+    protected List<Server> servers = new ArrayList<>();
+    protected List<SecurityRequirement> security = new ArrayList<>();
+    protected List<Tag> tags = new ArrayList<>();
     protected Paths paths = new PathsImpl();
     protected Components components = new ComponentsImpl();
     
@@ -84,9 +84,9 @@ public class OpenAPIImpl extends ExtensibleImpl<OpenAPI> implements OpenAPI {
         if (externalDocs != null) {
             from.setExternalDocs(ExternalDocumentationImpl.createInstance(externalDocs));
         }
-        extractAnnotations(annotation, context, "security", SecurityRequirementImpl::createInstance, from::addSecurityRequirement);
-        extractAnnotations(annotation, context, "servers", ServerImpl::createInstance, from::addServer);
-        extractAnnotations(annotation, context, "tags", TagImpl::createInstance, from::addTag);
+        extractAnnotations(annotation, context, "security", SecurityRequirementImpl::createInstance, from.getSecurity());
+        extractAnnotations(annotation, context, "servers", ServerImpl::createInstance, from.getServers());
+        extractAnnotations(annotation, context, "tags", TagImpl::createInstance, from.getTags());
         AnnotationModel components = annotation.getValue("components", AnnotationModel.class);
         if (components != null) {
             from.setComponents(ComponentsImpl.createInstance(components, context));
@@ -130,100 +130,76 @@ public class OpenAPIImpl extends ExtensibleImpl<OpenAPI> implements OpenAPI {
 
     @Override
     public List<Server> getServers() {
-        return readOnlyView(servers);
+        return servers;
     }
 
     @Override
     public void setServers(List<Server> servers) {
-        this.servers = createList(servers);
+        this.servers = servers;
     }
 
     @Override
     public OpenAPI addServer(Server server) {
-        if (server == null) {
-            return this;
-        }
-
-        final String serverUrl = server.getUrl();
-
-        if (servers == null) {
-            servers = createList();
-        }
-
-        for (Server existingServer : getServers()) {
-            // If a server with the same URL is found, merge them.
-            // Consider two servers without url as different in order to pass TCK.
-            if (serverUrl != null && serverUrl.equals(existingServer.getUrl())) {
-                ModelUtils.merge(server, existingServer, true);
-                return this;
+        if (server.getUrl() != null) {
+            for (Server existingServer : getServers()) {
+                // If a server with the same URL is found, merge them
+                if (server.getUrl().equals(existingServer.getUrl())) {
+                    ModelUtils.merge(server, existingServer, true);
+                    return this;
+                }
             }
         }
 
         // If a server with the same URL doesn't exist, create it
         servers.add(server);
-
         return this;
     }
 
     @Override
     public void removeServer(Server server) {
-        if (servers != null) {
-            servers.remove(server);
-        }
+        servers.remove(server);
     }
 
     @Override
     public List<SecurityRequirement> getSecurity() {
-        return readOnlyView(security);
+        return security;
     }
 
     @Override
     public void setSecurity(List<SecurityRequirement> security) {
-        this.security = createList(security);
+        this.security = security;
     }
 
     @Override
     public OpenAPI addSecurityRequirement(SecurityRequirement securityRequirement) {
-        if (securityRequirement != null) {
-            if (security == null) {
-                security = createList();
-            }
-            security.add(securityRequirement);
-        }
+        security.add(securityRequirement);
         return this;
     }
 
     @Override
     public void removeSecurityRequirement(SecurityRequirement securityRequirement) {
-        if (security != null) {
-            security.remove(securityRequirement);
-        }
+        security.remove(securityRequirement);
     }
 
     @Override
     public List<Tag> getTags() {
-        return readOnlyView(tags);
+        return tags;
     }
 
     @Override
     public void setTags(List<Tag> tags) {
-        this.tags = createList(tags);
+        this.tags = tags;
     }
 
     @Override
     public OpenAPI addTag(Tag tag) {
-        if (tags == null) {
-            tags = createList();
-        }
         tags.add(tag);
         return this;
     }
 
     @Override
     public void removeTag(Tag tag) {
-        if (tags != null) {
-            tags.remove(tag);
-        }
+        tags.remove(tag);
     }
 
     @Override
@@ -234,6 +210,12 @@ public class OpenAPIImpl extends ExtensibleImpl<OpenAPI> implements OpenAPI {
     @Override
     public void setPaths(Paths paths) {
         this.paths = paths;
+    }
+
+    @Override
+    public OpenAPI path(String name, PathItem path) {
+        paths.addPathItem(name, path);
+        return this;
     }
 
     @Override
@@ -301,7 +283,7 @@ public class OpenAPIImpl extends ExtensibleImpl<OpenAPI> implements OpenAPI {
             for (Tag tag : from.getTags()) {
                 if (tag != null) {
                     if (to.getTags() == null) {
-                        to.setTags(createList());
+                        to.setTags(new ArrayList<>());
                     }
                     Tag newTag = new TagImpl();
                     TagImpl.merge(tag, newTag, override);

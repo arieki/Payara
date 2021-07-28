@@ -40,15 +40,10 @@
 package fish.payara.microprofile.openapi.impl.model.security;
 
 import fish.payara.microprofile.openapi.impl.model.ExtensibleImpl;
-
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.createMap;
 import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.mergeProperty;
-import static fish.payara.microprofile.openapi.impl.model.util.ModelUtils.readOnlyView;
-
 import java.util.List;
-import java.util.Map;
-
 import org.eclipse.microprofile.openapi.models.security.OAuthFlow;
+import org.eclipse.microprofile.openapi.models.security.Scopes;
 import org.glassfish.hk2.classmodel.reflect.AnnotationModel;
 
 public class OAuthFlowImpl extends ExtensibleImpl<OAuthFlow> implements OAuthFlow {
@@ -56,9 +51,8 @@ public class OAuthFlowImpl extends ExtensibleImpl<OAuthFlow> implements OAuthFlo
     private String authorizationUrl;
     private String tokenUrl;
     private String refreshUrl;
-    private Map<String, String> scopes = createMap();
+    private Scopes scopes;
 
-    @SuppressWarnings("unchecked")
     public static OAuthFlow createInstance(AnnotationModel annotation) {
         OAuthFlow from = new OAuthFlowImpl();
         from.setAuthorizationUrl(annotation.getValue("authorizationUrl", String.class));
@@ -66,9 +60,9 @@ public class OAuthFlowImpl extends ExtensibleImpl<OAuthFlow> implements OAuthFlo
         from.setRefreshUrl(annotation.getValue("refreshUrl", String.class));
         List<AnnotationModel> scopesAnnotation = annotation.getValue("scopes", List.class);
         if (scopesAnnotation != null) {
-            Map<String, String> scopes = createMap();
+            Scopes scopes = new ScopesImpl();
             for (AnnotationModel scopeAnnotation : scopesAnnotation) {
-                scopes.put(
+                scopes.addScope(
                         scopeAnnotation.getValue("name", String.class),
                         scopeAnnotation.getValue("description", String.class)
                 );
@@ -109,31 +103,13 @@ public class OAuthFlowImpl extends ExtensibleImpl<OAuthFlow> implements OAuthFlo
     }
 
     @Override
-    public Map<String, String> getScopes() {
-        return readOnlyView(scopes);
+    public Scopes getScopes() {
+        return scopes;
     }
 
     @Override
-    public void setScopes(Map<String, String> scopes) {
-        this.scopes = createMap(scopes);
-    }
-
-    @Override
-    public OAuthFlow addScope(String scope, String description) {
-        if (scope != null) {
-            if (scopes == null){
-                scopes = createMap();
-            }
-            scopes.put(scope, description);
-        }
-        return this;
-    }
-
-    @Override
-    public void removeScope(String scope) {
-        if (scopes != null) {
-            scopes.remove(scope);
-        }
+    public void setScopes(Scopes scopes) {
+        this.scopes = scopes;
     }
 
     public static void merge(OAuthFlow from, OAuthFlow to, boolean override) {

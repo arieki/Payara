@@ -44,8 +44,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
-
 import java.util.List;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.models.Operation;
@@ -53,6 +51,7 @@ import org.eclipse.microprofile.openapi.models.PathItem.HttpMethod;
 import org.eclipse.microprofile.openapi.models.Paths;
 import org.eclipse.microprofile.openapi.models.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
+import org.eclipse.microprofile.openapi.models.servers.ServerVariables;
 
 public interface ExtensionsMixin {
 
@@ -81,12 +80,9 @@ public interface ExtensionsMixin {
     Map<HttpMethod, Operation> getOperations();
 
     @JsonIgnore
-    String getMethod();
+    void setVariables(ServerVariables variables);
 
     @JsonProperty("variables")
     void setVariables(Map<String, ServerVariable> variables);
-
-    @JsonSetter
-    public void setRequired(List<String> required);
 
 }
