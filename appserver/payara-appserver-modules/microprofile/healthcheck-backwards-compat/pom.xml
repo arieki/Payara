@@ -44,23 +44,22 @@
     <parent>
         <groupId>fish.payara.server.internal.payara-appserver-modules</groupId>
         <artifactId>microprofile</artifactId>
-        <version>5.29.0-SNAPSHOT</version>
+        <version>5.30.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>microprofile-healthcheck-backwards-compat</artifactId>
+    <packaging>glassfish-jar</packaging>
+
     <name>Microprofile - Healthcheck Backwards Compatibility</name>
     <description>Backwards Compatibility module for MicroProfile Healthcheck Implementation</description>
+
     <dependencies>
         <dependency>
             <groupId>fish.payara.server.internal.payara-appserver-modules</groupId>
             <artifactId>microprofile-healthcheck</artifactId>
-            <version>5.29.0-SNAPSHOT</version>
-            <scope>compile</scope>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
-    <packaging>glassfish-jar</packaging>
-
-
 
 </project>
