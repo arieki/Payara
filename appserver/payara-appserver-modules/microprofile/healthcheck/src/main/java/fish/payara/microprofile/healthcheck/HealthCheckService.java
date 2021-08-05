@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- *    Copyright (c) [2017-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ *    Copyright (c) [2017-2021] Payara Foundation and/or its affiliates. All rights reserved.
  *
  *     The contents of this file are subject to the terms of either the GNU
  *     General Public License Version 2 only ("GPL") or the Common Development
@@ -39,18 +39,17 @@
  */
 package fish.payara.microprofile.healthcheck;
 
-import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfiguration;
-import fish.payara.microprofile.healthcheck.checks.PayaraHealthCheck;
-import fish.payara.nucleus.healthcheck.configuration.Checker;
-import fish.payara.nucleus.healthcheck.events.PayaraHealthCheckServiceEvents;
-import fish.payara.monitoring.collect.MonitoringData;
-import fish.payara.monitoring.collect.MonitoringDataCollector;
-import fish.payara.monitoring.collect.MonitoringDataSource;
-import fish.payara.monitoring.collect.MonitoringWatchCollector;
-import fish.payara.monitoring.collect.MonitoringWatchSource;
+import static fish.payara.microprofile.healthcheck.HealthCheckType.LIVENESS;
+import static fish.payara.microprofile.healthcheck.HealthCheckType.READINESS;
+import static fish.payara.microprofile.healthcheck.HealthCheckType.STARTUP;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonMap;
+import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.joining;
 
 import java.beans.PropertyChangeEvent;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -64,18 +63,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonWriter;
+import javax.json.JsonWriterFactory;
+import javax.json.stream.JsonGenerator;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
-import org.eclipse.microprofile.health.HealthCheckResponse.State;
+import org.eclipse.microprofile.health.HealthCheckResponse.Status;
 import org.glassfish.api.StartupRunLevel;
 import org.glassfish.api.event.EventListener;
 import org.glassfish.api.event.Events;
@@ -88,17 +90,15 @@ import org.jvnet.hk2.config.ConfigListener;
 import org.jvnet.hk2.config.UnprocessedChangeEvent;
 import org.jvnet.hk2.config.UnprocessedChangeEvents;
 
-import static fish.payara.microprofile.healthcheck.HealthCheckType.HEALTH;
-import static fish.payara.microprofile.healthcheck.HealthCheckType.LIVENESS;
-import static fish.payara.microprofile.healthcheck.HealthCheckType.READINESS;
-import java.io.StringWriter;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonMap;
-import static java.util.logging.Level.WARNING;
-import static java.util.stream.Collectors.joining;
-import javax.json.JsonWriter;
-import javax.json.JsonWriterFactory;
-import javax.json.stream.JsonGenerator;
+import fish.payara.microprofile.healthcheck.checks.PayaraHealthCheck;
+import fish.payara.microprofile.healthcheck.config.MicroprofileHealthCheckConfiguration;
+import fish.payara.monitoring.collect.MonitoringData;
+import fish.payara.monitoring.collect.MonitoringDataCollector;
+import fish.payara.monitoring.collect.MonitoringDataSource;
+import fish.payara.monitoring.collect.MonitoringWatchCollector;
+import fish.payara.monitoring.collect.MonitoringWatchSource;
+import fish.payara.nucleus.healthcheck.configuration.Checker;
+import fish.payara.nucleus.healthcheck.events.PayaraHealthCheckServiceEvents;
 
 /**
  * Service that handles the registration, execution, and response of MicroProfile HealthChecks.
@@ -116,25 +116,18 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
     private ApplicationRegistry applicationRegistry;
 
     @Inject
-    private MetricsHealthCheckConfiguration configuration;
-
-    @Inject
-    private ConfigProviderResolver microConfigResolver;
-
-    private boolean backwardCompEnabled;
+    private MicroprofileHealthCheckConfiguration configuration;
 
     private static final Logger LOG = Logger.getLogger(HealthCheckService.class.getName());
 
-    private final Map<String, Set<HealthCheck>> health = new ConcurrentHashMap<>();
     private final Map<String, Set<HealthCheck>> readiness = new ConcurrentHashMap<>();
     private final Map<String, Set<HealthCheck>> liveness = new ConcurrentHashMap<>();
+    private final Map<String, Set<HealthCheck>> startup = new ConcurrentHashMap<>();
 
     private final Map<String, ClassLoader> applicationClassLoaders = new ConcurrentHashMap<>();
     private final List<String> applicationsLoaded = new CopyOnWriteArrayList<>();
 
     private final AtomicReference<Map<String, Set<String>>> checksCollected = new AtomicReference<>();
-
-    private static final String BACKWARD_COMP_ENABLED_PROPERTY = "MP_HEALTH_BACKWARD_COMPATIBILITY_ENABLED";
 
     @PostConstruct
     public void postConstruct() {
@@ -142,37 +135,34 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
             events = Globals.getDefaultBaseServiceLocator().getService(Events.class);
         }
         events.register(this);
-        this.backwardCompEnabled = microConfigResolver.getConfig()
-                .getOptionalValue(BACKWARD_COMP_ENABLED_PROPERTY, Boolean.class)
-                .orElse(false);
     }
 
     @Override
     @MonitoringData(ns = "health", intervalSeconds = 12)
     public void collect(MonitoringDataCollector collector) {
         Map<String, Set<String>> collected = new HashMap<>();
-        Map<String, List<HealthCheckResponse>> healthResponsesByAppName = collectChecks(collector, health, collected);
         Map<String, List<HealthCheckResponse>> readinessResponsesByAppName = collectChecks(collector, readiness, collected);
         Map<String, List<HealthCheckResponse>> livenessResponsesByAppName = collectChecks(collector, liveness, collected);
+        Map<String, List<HealthCheckResponse>> startupResponsesByAppName = collectChecks(collector, startup, collected);
         checksCollected.set(collected);
         if (!collected.isEmpty()) {
             List<HealthCheckResponse> overall = new ArrayList<>();
-            overall.addAll(collectJointType(collector, "Health", healthResponsesByAppName));
             overall.addAll(collectJointType(collector, "Readiness", readinessResponsesByAppName));
             overall.addAll(collectJointType(collector, "Liveness", livenessResponsesByAppName));
+            overall.addAll(collectJointType(collector, "Startup", startupResponsesByAppName));
             collectUpDown(collector, computeJointState("Overall", overall));
         }
         for (String appName : collected.keySet()) {
             List<HealthCheckResponse> overallByApp = new ArrayList<>();
-            overallByApp.addAll(healthResponsesByAppName.getOrDefault(appName, emptyList()));
             overallByApp.addAll(readinessResponsesByAppName.getOrDefault(appName, emptyList()));
             overallByApp.addAll(livenessResponsesByAppName.getOrDefault(appName, emptyList()));
+            overallByApp.addAll(startupResponsesByAppName.getOrDefault(appName, emptyList()));
             collectUpDown(collector.group(appName), computeJointState("Overall", overallByApp));
         }
     }
 
     private static void collectUpDown(MonitoringDataCollector collector, HealthCheckResponse response) {
-        collector.collect(response.getName(), response.getState() == State.UP ? 1 : 0);
+        collector.collect(response.getName(), response.getStatus() == Status.UP ? 1 : 0);
     }
 
     private static List<HealthCheckResponse> collectJointType(MonitoringDataCollector collector, String type,
@@ -196,16 +186,16 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
                 for (String metric : e.getValue()) {
                     addWatch(collector, appName, metric);
                 }
-                addWatch(collector, appName, "Health");
                 addWatch(collector, appName, "Readiness");
                 addWatch(collector, appName, "Liveness");
-                addWatch(collector, appName, "Overall");
+                addWatch(collector, appName, "Startup");
+                addWatch(collector, appName, "Health");
             }
             if (!collected.isEmpty()) {
-                addWatch(collector, null, "Health");
                 addWatch(collector, null, "Readiness");
                 addWatch(collector, null, "Liveness");
-                addWatch(collector, null, "Overall");
+                addWatch(collector, null, "Startup");
+                addWatch(collector, null, "Health");
             }
         }
     }
@@ -221,7 +211,7 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
 
     private Map<String, List<HealthCheckResponse>> collectChecks(MonitoringDataCollector collector,
             Map<String, Set<HealthCheck>> checks,            Map<String, Set<String>> collected) {
-        Map<String, List<HealthCheckResponse>> stateByApp = new HashMap<>();
+        Map<String, List<HealthCheckResponse>> statusByApp = new HashMap<>();
         for (Entry<String, Set<HealthCheck>> entry : checks.entrySet()) {
             String appName = entry.getKey();
             MonitoringDataCollector appCollector = collector.group(appName);
@@ -231,29 +221,29 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
                 Set<String> appCollected = collected.get(appName);
                 // prevent adding same check more then once, unfortunately we have to run it to find that out
                 if (appCollected == null || !appCollected.contains(metric)) {
-                    stateByApp.computeIfAbsent(appName, key -> new ArrayList<>()).add(response);
+                    statusByApp.computeIfAbsent(appName, key -> new ArrayList<>()).add(response);
                     collectUpDown(appCollector, response);
-                    if (response.getState() == State.DOWN && response.getData().isPresent()) {
+                    if (response.getStatus() == Status.DOWN && response.getData().isPresent()) {
                         appCollector.annotate(metric, 0L, createAnnotation(response.getData().get()));
                     }
                     collected.computeIfAbsent(appName, key -> new HashSet<>()).add(metric);
                 }
             }
         }
-        return stateByApp;
+        return statusByApp;
     }
 
     private static HealthCheckResponse computeJointState(String name, Collection<HealthCheckResponse> responses) {
-        long ups = responses.stream().filter(response -> response.getState() == State.UP).count();
+        long ups = responses.stream().filter(response -> response.getStatus() == Status.UP).count();
         if (ups == responses.size()) {
             return HealthCheckResponse.up(name);
         }
         String upNames = responses.stream()
-                .filter(r -> r.getState() == State.UP)
+                .filter(r -> r.getStatus() == Status.UP)
                 .map(r -> r.getName())
                 .collect(joining(","));
         String downNames = responses.stream()
-                .filter(r -> r.getState() == State.DOWN)
+                .filter(r -> r.getStatus() == Status.DOWN)
                 .map(r -> r.getName())
                 .collect(joining(","));
         return HealthCheckResponse.named(name).down()
@@ -275,7 +265,7 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
     }
 
     @Override
-    public void event(Event event) {
+    public void event(Event<?> event) {
         // Remove healthchecks when the app is undeployed.
         Deployment.APPLICATION_UNLOADED.onMatch(event, appInfo -> unregisterHealthCheck(appInfo.getName()));
 
@@ -341,7 +331,7 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
     public void unregisterHealthCheck(String appName) {
         readiness.remove(appName);
         liveness.remove(appName);
-        health.remove(appName);
+        startup.remove(appName);
         applicationClassLoaders.remove(appName);
         applicationsLoaded.remove(appName);
     }
@@ -367,15 +357,21 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
     }
 
     private Map<String, Set<HealthCheck>> getHealthChecks(HealthCheckType type) {
-        final Map<String, Set<HealthCheck>> healthChecks;
-        if (type == READINESS) {
-            healthChecks = readiness;
-        } else if (type == LIVENESS) {
-            healthChecks = liveness;
-        } else {
-            healthChecks = health;
+        if (type == null) {
+            type = HealthCheckType.UNKNOWN;
         }
-        return healthChecks;
+        switch (type) {
+            case LIVENESS:
+                return liveness;
+            case READINESS:
+                return readiness;
+            case STARTUP:
+                return startup;
+            case UNKNOWN:
+            default:
+                LOG.warning("Unrecognised HealthCheckType: " + type);
+                return new HashMap<>();
+        }
     }
 
     private Map<String, Set<HealthCheck>> getCollectiveHealthChecks(HealthCheckType type) {
@@ -384,16 +380,20 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
             healthChecks = readiness;
         } else if (type == LIVENESS) {
             healthChecks = liveness;
+        } else if (type == STARTUP) {
+            healthChecks = startup;
         } else {
-            healthChecks = new HashMap<>(health);
+            // Make sure we do a deep-copy first, otherwise the first map the foreach consumer gets used on will be a
+            // shallow copy: the two maps will essentially be the same map (changes to one affecting the other)
+            healthChecks = readiness.entrySet().stream().collect(Collectors.toMap(entry ->
+                    entry.getKey(), entry -> new HashSet(entry.getValue())));
             BiConsumer<? super String, ? super Set<HealthCheck>> mergeHealthCheckMap
                     = (key, value) -> healthChecks.merge(key, value, (oldValue, newValue) -> {
                         oldValue.addAll(newValue);
                         return oldValue;
                     });
-            //FIXME most likely this unintentionally changes the fields
-            readiness.forEach(mergeHealthCheckMap);
             liveness.forEach(mergeHealthCheckMap);
+            startup.forEach(mergeHealthCheckMap);
         }
         return healthChecks;
     }
@@ -463,12 +463,9 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
         for (HealthCheckResponse healthCheckResponse : healthCheckResponses) {
             JsonObjectBuilder healthCheckObject = Json.createObjectBuilder();
 
-            // Add the name and state
+            // Add the name and status
             healthCheckObject.add("name", healthCheckResponse.getName());
-            healthCheckObject.add(
-                    backwardCompEnabled && type == HEALTH ? "state" : "status",
-                    healthCheckResponse.getState().toString()
-            );
+            healthCheckObject.add("status", healthCheckResponse.getStatus().toString());
 
             // Add data if present
             JsonObjectBuilder healthCheckData = Json.createObjectBuilder();
@@ -484,7 +481,7 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
 
             // Check if we need to set the response as 503. Check against status 200 so we don't repeatedly set it
             if (httpResponse.getStatus() == 200
-                    && healthCheckResponse.getState().equals(HealthCheckResponse.State.DOWN)) {
+                    && healthCheckResponse.getStatus().equals(HealthCheckResponse.Status.DOWN)) {
                 httpResponse.setStatus(503);
             }
         }
@@ -493,10 +490,7 @@ public class HealthCheckService implements EventListener, ConfigListener, Monito
         JsonObjectBuilder responseObject = Json.createObjectBuilder();
 
         // Set the aggregate status
-        responseObject.add(
-                backwardCompEnabled && type == HEALTH ? "outcome" : "status",
-                httpResponse.getStatus() == 200 ? "UP" : "DOWN"
-        );
+        responseObject.add("status", httpResponse.getStatus() == 200 ? "UP" : "DOWN");
 
         // Add all of the checks
         responseObject.add("checks", checksArray);

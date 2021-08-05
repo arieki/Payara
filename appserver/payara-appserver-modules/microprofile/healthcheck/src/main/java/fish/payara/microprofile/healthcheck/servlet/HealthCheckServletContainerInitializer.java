@@ -39,20 +39,8 @@
  */
 package fish.payara.microprofile.healthcheck.servlet;
 
-import fish.payara.microprofile.healthcheck.HealthCheckService;
-import fish.payara.microprofile.healthcheck.HealthCheckType;
-import static fish.payara.microprofile.healthcheck.HealthCheckType.HEALTH;
-import static fish.payara.microprofile.healthcheck.HealthCheckType.LIVENESS;
-import static fish.payara.microprofile.healthcheck.HealthCheckType.READINESS;
-import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfiguration;
-import static fish.payara.microprofile.Constants.CREATE_INSECURE_ENDPOINT_TEST;
-import static java.util.Arrays.asList;
-import static javax.servlet.annotation.ServletSecurity.TransportGuarantee.CONFIDENTIAL;
-import static org.glassfish.common.util.StringHelper.isEmpty;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Logger;
+import fish.payara.microprofile.healthcheck.config.MicroprofileHealthCheckConfiguration;
+import org.glassfish.internal.api.Globals;
 
 import javax.servlet.HttpConstraintElement;
 import javax.servlet.ServletContainerInitializer;
@@ -60,10 +48,13 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
 import javax.servlet.ServletSecurityElement;
+import java.util.Map;
+import java.util.Set;
 
-import org.glassfish.internal.api.Globals;
-
-import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfiguration;
+import static fish.payara.microprofile.Constants.CREATE_INSECURE_ENDPOINT_TEST;
+import static java.util.Arrays.asList;
+import static javax.servlet.annotation.ServletSecurity.TransportGuarantee.CONFIDENTIAL;
+import static org.glassfish.common.util.StringHelper.isEmpty;
 
 /**
  * Servlet Container Initializer that registers the HealthCheckServlet, as well
@@ -73,15 +64,13 @@ import fish.payara.microprofile.healthcheck.config.MetricsHealthCheckConfigurati
  */
 public class HealthCheckServletContainerInitializer implements ServletContainerInitializer {
 
-    private static final Logger LOGGER = Logger.getLogger(HealthCheckServletContainerInitializer.class.getName());
-
     @Override
     public void onStartup(Set<Class<?>> c, ServletContext ctx) throws ServletException {
         // Check if this context is the root one ("/")
         if (ctx.getContextPath().isEmpty()) {
             // Check if there is already a servlet for healthcheck
             Map<String, ? extends ServletRegistration> registrations = ctx.getServletRegistrations();
-            MetricsHealthCheckConfiguration configuration = Globals.getDefaultHabitat().getService(MetricsHealthCheckConfiguration.class);
+            MicroprofileHealthCheckConfiguration configuration = Globals.getDefaultHabitat().getService(MicroprofileHealthCheckConfiguration.class);
 
             if (!Boolean.parseBoolean(configuration.getEnabled())) {
                 return; //MP Healthcheck disabled

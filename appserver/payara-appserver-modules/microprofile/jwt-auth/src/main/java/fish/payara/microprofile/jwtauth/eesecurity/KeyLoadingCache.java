@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2018-2020] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017-2021 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,44 +37,43 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.microprofile.openapi.impl.model.security;
 
-import fish.payara.microprofile.openapi.impl.model.ExtensibleTreeMap;
-import java.util.Map;
-import org.eclipse.microprofile.openapi.models.security.Scopes;
+package fish.payara.microprofile.jwtauth.eesecurity;
 
-public class ScopesImpl extends ExtensibleTreeMap<String, Scopes> implements Scopes {
+import java.time.Duration;
+import java.util.Optional;
+import java.util.function.Supplier;
 
-    private static final long serialVersionUID = -615440059031779085L;
+public class KeyLoadingCache {
 
-    public ScopesImpl() {
-        super();
+    private final Supplier<CacheableString> keySupplier;
+    private Duration ttl;
+    private long lastUpdated;
+    private Optional<String> key;
+
+
+    public KeyLoadingCache(Supplier<CacheableString> keySupplier) {
+        this.ttl = Duration.ZERO;
+        this.keySupplier = keySupplier;
     }
 
-    public ScopesImpl(Map<String, ? extends String> scopes) {
-        super(scopes);
+    public Optional<String> get() {
+        long now = System.currentTimeMillis();
+        if (now - lastUpdated > ttl.toMillis()) {
+            refresh();
+        }
+
+        return key;
     }
 
-    @Override
-    public Scopes addScope(String name, String item) {
-        this.put(name, item); // this DOES accept null!
-        return this;
-    }
-
-    @Override
-    public void removeScope(String scope) {
-        this.remove(scope);
-    }
-
-    @Override
-    public Map<String, String> getScopes() {
-        return new ScopesImpl(this);
-    }
-
-    @Override
-    public void setScopes(Map<String, String> items) {
-        clear();
-        putAll(items);
+    private synchronized void refresh() {
+        long now = System.currentTimeMillis();
+        if (now - lastUpdated > ttl.toMillis()) {
+            CacheableString result = keySupplier.get();
+            key = result.getValue();
+            ttl = result.getCacheTTL();
+            lastUpdated = now;
+        }
     }
 
 }
