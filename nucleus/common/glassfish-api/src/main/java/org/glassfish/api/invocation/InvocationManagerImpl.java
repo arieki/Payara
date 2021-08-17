@@ -53,6 +53,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -234,6 +235,9 @@ public class InvocationManagerImpl implements InvocationManager {
     @Override
     @SuppressWarnings("unchecked")
     public <T extends ComponentInvocation> T getCurrentInvocation() {
+        if (isInvocationStackEmpty()) {
+            return null;
+        }
         return (T) framesByThread.get().peekLast();
     }
 
@@ -262,8 +266,13 @@ public class InvocationManagerImpl implements InvocationManager {
 
     @Override
     public List<? extends ComponentInvocation> popAllInvocations() {
-        List<? extends ComponentInvocation> result = getAllInvocations();
-        framesByThread.set(null);
+        InvocationFrames frames = framesByThread.get();
+        if (frames == null) {
+            return Collections.emptyList();
+        }
+        frames.state = UN_INITIALIZED;
+        List<? extends ComponentInvocation> result = new ArrayList<>(frames);
+        frames.clear();
         return result;
     }
 
