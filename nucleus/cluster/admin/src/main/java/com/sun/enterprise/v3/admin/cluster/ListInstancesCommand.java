@@ -120,7 +120,7 @@ public class ListInstancesCommand implements AdminCommand {
     @Param(optional = true, primary = true, defaultValue = "domain")
     String whichTarget = "";
 
-    private List<InstanceInfo> infos = new LinkedList<InstanceInfo>();
+    private List<InstanceInfo> infos = new LinkedList<>();
     private List<Server> serverList;
     private ActionReport report;
     private ActionReport.MessagePart top = null;
@@ -203,7 +203,7 @@ public class ListInstancesCommand implements AdminCommand {
         StringBuilder sb = new StringBuilder();
         boolean firstServer = true;
         Properties extraProps = new Properties();
-        List instanceList = new ArrayList();
+        List<Map<String, Object>> instanceList = new ArrayList<>();
 
         for (Server server : serverList) {
             boolean clustered = server.getCluster() != null;
@@ -224,7 +224,7 @@ public class ListInstancesCommand implements AdminCommand {
 
                 sb.append(name);
                 top.addProperty(name, "");
-                HashMap<String, Object> insDetails = new HashMap<String, Object>();
+                Map<String, Object> insDetails = new HashMap<>();
                 insDetails.put("name", name);
                 instanceList.add(insDetails);
             }
@@ -287,8 +287,9 @@ public class ListInstancesCommand implements AdminCommand {
         }
 
         Properties extraProps = new Properties();
-        List instanceList = new ArrayList();
+        List<Map<String, Object>> instanceList = new ArrayList<>();
 
+        infos.sort(Comparator.comparing(InstanceInfo::getName));
         for (InstanceInfo ii : infos) {
             String name = ii.getName();
             String value = (ii.isRunning()) ? InstanceState.StateType.RUNNING.getDescription()
@@ -303,7 +304,7 @@ public class ListInstancesCommand implements AdminCommand {
                 }
             }
 
-            HashMap<String, Object> insDetails = new HashMap<String, Object>();
+            Map<String, Object> insDetails = new HashMap<>();
             insDetails.put("name", name);
             insDetails.put("status", value);
             insDetails.put("deploymentgroup", ii.getDeploymentGroups().trim());
@@ -341,7 +342,7 @@ public class ListInstancesCommand implements AdminCommand {
             return getServersForNodeOrConfig();
         }
         else if (rc.isServer()) {
-            List<Server> l = new LinkedList<Server>();
+            List<Server> l = new LinkedList<>();
             l.add((Server) rc);
             return l;
         }
@@ -405,7 +406,7 @@ public class ListInstancesCommand implements AdminCommand {
         }
 
         List<ReferenceContainer> rcs = domain.getReferenceContainersOf(config);
-        List<Server> servers = new LinkedList<Server>();
+        List<Server> servers = new LinkedList<>();
 
         for (ReferenceContainer rc : rcs) {
             if (rc.isServer()) {
