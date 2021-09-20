@@ -108,6 +108,7 @@ import com.sun.enterprise.glassfish.bootstrap.Constants;
 import com.sun.enterprise.glassfish.bootstrap.GlassFishImpl;
 import com.sun.enterprise.server.logging.ODLLogFormatter;
 
+import com.sun.enterprise.util.JDK;
 import fish.payara.deployment.util.JavaArchiveUtils;
 import fish.payara.deployment.util.URIUtils;
 import org.glassfish.embeddable.BootstrapProperties;
@@ -1053,6 +1054,10 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
                 LOGGER.info("Logging file modified, resetting logging");
                 resetLogging(loggingProperty);
             });
+        }
+        //Check a supported JDK version is being used
+        if (!JDK.isRunningLTSJDK()) {
+            LOGGER.warning("You are running the product on an unsupported JDK version and might see unexpected results or exceptions.");
         }
         runtimeDir.processDirectoryInformation();
 
