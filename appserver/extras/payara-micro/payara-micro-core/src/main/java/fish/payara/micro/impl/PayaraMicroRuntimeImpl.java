@@ -235,7 +235,7 @@ public class PayaraMicroRuntimeImpl implements PayaraMicroRuntime  {
         return keysToDescriptors(runCallable);
     }
 
-    private <T extends Serializable> Map<InstanceDescriptor, Future<T>> keysToDescriptors(Map<String, Future<T>> runCallable) {
+    private <T extends Serializable> Map<InstanceDescriptor, Future<T>> keysToDescriptors(Map<UUID, Future<T>> runCallable) {
         Map<InstanceDescriptor, Future<T>> result = new HashMap<>(runCallable.size());
         for (Entry<UUID, Future<T>> entry : runCallable.entrySet()) {
             UUID uuid = entry.getKey();

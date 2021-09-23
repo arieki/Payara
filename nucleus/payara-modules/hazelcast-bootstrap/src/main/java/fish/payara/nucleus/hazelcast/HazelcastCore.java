@@ -211,11 +211,7 @@ public class HazelcastCore implements EventListener, ConfigListener {
     public UUID getUUID() {
         bootstrapHazelcast();
         if (!enabled) {
-<<<<<<< HEAD
-            return UUID.randomUUID().toString();
-=======
             return UUID.randomUUID();
->>>>>>> 4a6794ab78 (Upgrade Payara to Hazelcast 4.1 (#5014))
         }
         return theInstance.getCluster().getLocalMember().getUuid();
     }
