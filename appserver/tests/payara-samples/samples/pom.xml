@@ -41,6 +41,7 @@
         <module>microprofile-rc-ft</module>
         <module>multiple-keystores</module>
         <module>http</module>
+        <module>client-certificate-validator</module>
     </modules>
 
     <dependencies>
