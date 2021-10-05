@@ -112,7 +112,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     private File useDownloadedFile;
 
     private static final String NEXUS_URL = System.getProperty("fish.payara.upgrade.repo.url",
-            "https://nexus.payara.fish/repository/payara-enterprise/fish/payara/distributions/");
+            "https://nexus.payara.fish/repository/payara-enterprise-downloadable-artifacts/fish/payara/distributions/");
     private static final String ZIP = ".zip";
 
     private static final LocalStringsImpl strings = new LocalStringsImpl(CLICommand.class);
