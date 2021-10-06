@@ -48,7 +48,6 @@ exit /B 1
 :sourceProperties
 if exist %~dp0..\config\upgrade-tool.bat (
     call "%~dp0..\config\upgrade-tool.bat"
-    goto checkCurrentPresent
 ) else (
     echo %~dp0..\config\upgrade-tool.bat not present! This is unexpected: Exiting since this implies you haven't yet run the upgrade-server command or have cleared it
     exit /B 1
