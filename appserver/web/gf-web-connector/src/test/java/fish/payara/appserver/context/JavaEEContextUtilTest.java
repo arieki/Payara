@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) [2016-2017] Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) [2018-2020] Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,24 +37,38 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.nucleus.hazelcast;
 
-import com.hazelcast.spi.discovery.integration.DiscoveryService;
-import com.hazelcast.spi.discovery.integration.DiscoveryServiceProvider;
-import com.hazelcast.spi.discovery.integration.DiscoveryServiceSettings;
+package fish.payara.appserver.context;
+
+import com.sun.enterprise.util.Utility;
+import org.glassfish.internal.api.JavaEEContextUtil;
+import org.glassfish.internal.api.JavaEEContextUtil.Context;
+import org.glassfish.internal.api.JavaEEContextUtil.Instance;
+import org.junit.Before;
+import org.junit.Test;
+import static org.junit.Assert.*;
 
 /**
  *
- * @author steve
+ * @author lprimak
  */
-public class DomainDiscoveryServiceProvider implements DiscoveryServiceProvider {
-
-    public DomainDiscoveryServiceProvider() {
+public class JavaEEContextUtilTest {
+    private JavaEEContextUtil ctxUtil;
+    @Before
+    public void setUp() {
+        ctxUtil = new JavaEEContextUtilImpl();
     }
 
-    @Override
-    public DiscoveryService newDiscoveryService(DiscoveryServiceSettings dss) {
-        return new DomainDiscoveryService();
+    @Test
+    public void empty() {
+        Instance empty = ctxUtil.empty();
+        assertTrue(empty.isEmpty());
+        assertTrue(empty.isLoaded());
+        assertNull(empty.getInstanceComponentId());
+        ClassLoader cl = Utility.getClassLoader();
+        try (Context ctx = empty.setApplicationClassLoader()) {
+            assertEquals("inside empty context", Utility.getClassLoader(), cl);
+        }
+        assertEquals("outside empty context", Utility.getClassLoader(), cl);
     }
-    
 }
