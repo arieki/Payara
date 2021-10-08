@@ -48,6 +48,7 @@ import fish.payara.micro.data.ApplicationDescriptor;
 import fish.payara.micro.data.InstanceDescriptor;
 import fish.payara.micro.data.ModuleDescriptor;
 import java.util.Set;
+import java.util.UUID;
 
 import static java.lang.Boolean.TRUE;
 import static javax.json.stream.JsonGenerator.PRETTY_PRINTING;
@@ -60,7 +61,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
 
     private static final long serialVersionUID = 1L;
 
-    private final String memberUUID;
+    private final UUID memberUUID;
     private String instanceName;
     private final Set<Integer> httpPorts;
     private final Set<Integer> httpsPorts;
@@ -73,9 +74,9 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
     private String instanceGroup;
     private long heartBeatTS;
 
-    public InstanceDescriptorImpl(String UUID) throws UnknownHostException {
+    public InstanceDescriptorImpl(UUID uuid) throws UnknownHostException {
         hostName = InetAddress.getLocalHost();
-        memberUUID = UUID;
+        memberUUID = uuid;
         httpPorts = new LinkedHashSet<>();
         httpsPorts = new LinkedHashSet<>();
         heartBeatTS = System.currentTimeMillis();
@@ -111,7 +112,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
      * @return the memberUUID
      */
     @Override
-    public String getMemberUUID() {
+    public UUID getMemberUUID() {
         return memberUUID;
     }
 
@@ -320,7 +321,7 @@ public class InstanceDescriptorImpl implements InstanceDescriptor {
         configBuilder.add("Instance Name", this.instanceName);
         configBuilder.add("Instance Group", this.instanceGroup);
         if (memberUUID != null) {
-            configBuilder.add("Hazelcast Member UUID", this.memberUUID);
+            configBuilder.add("Hazelcast Member UUID", this.memberUUID.toString());
         }
 
         // Create array of applications

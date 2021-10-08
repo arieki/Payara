@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2016-2019 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016-2021 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,7 +37,11 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.cdi.jsr107.implementation;
+package fish.payara.appserver.micro.services.data;
+
+import fish.payara.cdi.jsr107.implementation.PayaraTCCLObjectInputStream;
+import org.glassfish.internal.api.Globals;
+import org.glassfish.internal.api.JavaEEContextUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -46,8 +50,6 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import org.glassfish.internal.api.Globals;
-import org.glassfish.internal.api.JavaEEContextUtil;
 
 /**
  * Packages up an object into a Serializable value
@@ -66,7 +68,7 @@ public class PayaraValueHolder<T> implements Externalizable {
     
     public PayaraValueHolder(T value) throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(Globals.getDefaultHabitat().getService(JavaEEContextUtil.class).getInstanceComponentId());
+            oos.writeObject(Globals.getDefaultHabitat().getService(JavaEEContextUtil.class).getInvocationComponentId());
             oos.writeObject(value);
             data = baos.toByteArray();
         }
@@ -81,13 +83,13 @@ public class PayaraValueHolder<T> implements Externalizable {
             return (T)result;
         }
         catch (ClassNotFoundException ex) {
-            String invocationComponentId = Globals.getDefaultHabitat().getService(JavaEEContextUtil.class).getInstanceComponentId();
+            String invocationComponentId = Globals.getDefaultHabitat().getService(JavaEEContextUtil.class).getInvocationComponentId();
             if (componentId == null){
                 componentId = "";
             }
-            if (componentId.equals(invocationComponentId)) {
-                throw new ClassNotFoundException(String.format("Wrong application: expected %s bug got %s", componentId, invocationComponentId),
-                        new IllegalStateException("Wrong Application"));
+            if (!componentId.equals(invocationComponentId)) {
+                throw new ClassNotFoundException(String.format("Wrong application: expected %s but got %s", componentId, invocationComponentId),
+                        new IllegalStateException("Wrong Application", ex));
             } else {
                 throw ex;
             }

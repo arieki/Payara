@@ -40,8 +40,8 @@
 package fish.payara.ejb.timer.hazelcast;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ILock;
-import com.hazelcast.core.IMap;
+import com.hazelcast.map.IMap;
+import com.hazelcast.cp.lock.FencedLock;
 import com.sun.ejb.containers.BaseContainer;
 import com.sun.ejb.containers.EJBTimerSchedule;
 import com.sun.ejb.containers.EJBTimerService;
@@ -113,7 +113,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
     }
 
     public HazelcastTimerStore(HazelcastCore core) throws Exception {
-        
+
         if (!core.isEnabled()) {
             throw new Exception("Hazelcast MUST be enabled when using the HazelcastTimerStore");
         }
@@ -121,9 +121,9 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
         pkCache = hazelcast.getMap(EJB_TIMER_CACHE_NAME);
         containerCache = hazelcast.getMap(EJB_TIMER_CONTAINER_CACHE_NAME);
         applicationCache = hazelcast.getMap(EJB_TIMER_APPLICAION_CACHE_NAME);
-        serverName = hazelcast.getCluster().getLocalMember().getStringAttribute(HazelcastCore.INSTANCE_ATTRIBUTE);
+        serverName = core.getAttribute(core.getInstance().getCluster().getLocalMember().getUuid(), HazelcastCore.INSTANCE_ATTRIBUTE);
         this.ownerIdOfThisServer_ = serverName;
-        this.domainName_ = core.getInstance().getConfig().getGroupConfig().getName();
+        this.domainName_ = core.getInstance().getConfig().getClusterName();
         super.enableRescheduleTimers();
     }
 
@@ -136,7 +136,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
     @Override
     protected void _createTimer(TimerPrimaryKey timerId, long containerId, long applicationId, Object timedObjectPrimaryKey, String server_name, Date initialExpiration, long intervalDuration, EJBTimerSchedule schedule, TimerConfig timerConfig) throws Exception {
         if (timerConfig.isPersistent()) {
-            
+
             pkCache.put(timerId.timerId, new HZTimer(timerId, containerId, applicationId, timedObjectPrimaryKey, server_name, server_name, initialExpiration, intervalDuration, schedule, timerConfig));
 
             // add to container cache
@@ -286,7 +286,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
     protected void cancelTimersByKey(long containerId, Object primaryKey) {
 
         // Get *all* timers for this entity bean identity.  This includes
-        // even timers *not* owned by this server instance, but that 
+        // even timers *not* owned by this server instance, but that
         // are associated with the same entity bean and primary key.
         Set<TimerPrimaryKey> timers = containerCache.get(containerId);
 
@@ -382,9 +382,9 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
         // The results should include all timers for the given ejb
         // and/or primary key, including timers owned by other server instances.
 
-        // @@@ Might want to consider cases where we can use 
+        // @@@ Might want to consider cases where we can use
         // timer cache to avoid some database access in PE/SE, or
-        // even in EE with the appropriate consistency tradeoff.              
+        // even in EE with the appropriate consistency tradeoff.
         Collection<TimerPrimaryKey> timerIdsForTimedObject = new HashSet<>();
 
         if (timedObjectPrimaryKey == null) {
@@ -445,9 +445,9 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
             if (!checkForTimerValidity(timerState.getTimerId())) {
                 // The timer for which a ejbTimeout is about to be delivered
-                // is not present in the database. This could happen in the 
+                // is not present in the database. This could happen in the
                 // SE/EE case as other server instances (other than the owner)
-                // could call a cancel on the timer - deleting the timer from 
+                // could call a cancel on the timer - deleting the timer from
                 // the database.
                 // Also it is possible that the timer is now owned by some other
                 // server instance
@@ -569,7 +569,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
                 logger.log(Level.FINE, "timer restoration error", e);
 
-                //Propogate any exceptions caught as part of the transaction 
+                //Propogate any exceptions caught as part of the transaction
                 EJBException ejbEx = createEJBException(e);
                 throw ejbEx;
 
@@ -661,8 +661,8 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
             }
         }
 
-        
-        
+
+
         try {
             if (!schedules.isEmpty()) {
                 createSchedules(containerId, applicationId, schedules, result, serverName, true,
@@ -700,7 +700,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
             // Since timer was successfully delivered, update
             // last delivery time in database if that option is
-            // enabled. 
+            // enabled.
             // @@@ add configuration for update-db-on-delivery
             if (logger.isLoggable(Level.FINE)) {
                 logger.log(Level.FINE, "Setting last expiration for periodic timer {0} to {1}", new Object[]{timerState, now});
@@ -822,7 +822,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
     private void restoreTimers() throws Exception {
 
         // Optimization.  Skip timer restoration if there aren't any
-        // applications with timed objects deployed.  
+        // applications with timed objects deployed.
         if (totalTimedObjectsInitialized_ == 0) {
             return;
         }
@@ -840,7 +840,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
         // Do timer restoration in two passes.  The first pass updates
         // the timer cache with each timer.  The second pass schedules
-        // the JDK timer tasks.  
+        // the JDK timer tasks.
         Map<RuntimeTimerState, Date> timersToRestore = new HashMap<>();
         Set<TimerPrimaryKey> timerIdsToRemove = new HashSet<>();
         Set<HZTimer> result = new HashSet<>();
@@ -873,7 +873,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
                 Date initialExpiration = timer.getInitialExpiration();
 
-                // Create an instance of RuntimeTimerState. 
+                // Create an instance of RuntimeTimerState.
                 // Only access timedObjectPrimaryKey if timed object is
                 // an entity bean.  That allows us to lazily load the underlying
                 // blob for stateless session and message-driven bean timers.
@@ -892,7 +892,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
                 timerCache_.addTimer(timerId, timerState);
 
                 // If a single-action timer is still in the database it never
-                // successfully delivered, so always reschedule a timer task 
+                // successfully delivered, so always reschedule a timer task
                 // for it.  For periodic timers, we use the last known
                 // expiration time to decide whether we need to fire one
                 // ejbTimeout to make up for any missed ones.
@@ -912,7 +912,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
                     // However, for now assume we do update the db on each
                     // ejbTimeout.  Therefore, if (lastExpirationTime == null),
                     // it means the timer didn't successfully complete any
-                    // timer expirations.                  
+                    // timer expirations.
                     if ((lastExpiration == null)
                             && now.after(initialExpiration)) {
 
@@ -944,7 +944,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
                         // In this case, at least one expiration has occurred
                         // but that was less than one period ago so there were
-                        // no missed expirations.                     
+                        // no missed expirations.
                         expirationTime = calcNextFixedRateExpiration(timerState);
                     }
 
@@ -993,7 +993,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
         // Do timer restoration in two passes.  The first pass updates
         // the timer cache with each timer.  The second pass schedules
-        // the JDK timer tasks.  
+        // the JDK timer tasks.
         Map<RuntimeTimerState, Date> timersToRestore = new HashMap<>();
         Set<TimerPrimaryKey> timerIdsToRemove = new HashSet<>();
         Set<HZTimer> result = new HashSet<>();
@@ -1023,7 +1023,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
                 Date initialExpiration = timer.getInitialExpiration();
 
-                // Create an instance of RuntimeTimerState. 
+                // Create an instance of RuntimeTimerState.
                 // Only access timedObjectPrimaryKey if timed object is
                 // an entity bean.  That allows us to lazily load the underlying
                 // blob for stateless session and message-driven bean timers.
@@ -1042,7 +1042,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
                 timerCache_.addTimer(timerId, timerState);
 
                 // If a single-action timer is still in the database it never
-                // successfully delivered, so always reschedule a timer task 
+                // successfully delivered, so always reschedule a timer task
                 // for it.  For periodic timers, we use the last known
                 // expiration time to decide whether we need to fire one
                 // ejbTimeout to make up for any missed ones.
@@ -1062,7 +1062,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
                     // However, for now assume we do update the db on each
                     // ejbTimeout.  Therefore, if (lastExpirationTime == null),
                     // it means the timer didn't successfully complete any
-                    // timer expirations.                  
+                    // timer expirations.
                     if ((lastExpiration == null)
                             && now.after(initialExpiration)) {
 
@@ -1094,7 +1094,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
                         // In this case, at least one expiration has occurred
                         // but that was less than one period ago so there were
-                        // no missed expirations.                     
+                        // no missed expirations.
                         expirationTime
                                 = calcNextFixedRateExpiration(timerState);
                     }
@@ -1176,7 +1176,7 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
 
     @Override
     public void memberRemoved(MemberEvent event) {
-        ILock hazelcastLock = hazelcast.getLock("EJB-TIMER-LOCK");
+        FencedLock hazelcastLock = hazelcast.getCPSubsystem().getLock("EJB-TIMER-LOCK");
         hazelcastLock.lock();
         try {
             Collection<HZTimer> allTimers = pkCache.values();
@@ -1186,9 +1186,9 @@ public class HazelcastTimerStore extends NonPersistentEJBTimerService implements
                     removedTimers.add(timer);
                 }
             }
-            
-            
-            
+
+
+
             if (!removedTimers.isEmpty()) {
                 logger.log(Level.INFO, "==> Restoring Timers ... ");
                 Collection<HZTimer> restored = _restoreTimers(removedTimers);
