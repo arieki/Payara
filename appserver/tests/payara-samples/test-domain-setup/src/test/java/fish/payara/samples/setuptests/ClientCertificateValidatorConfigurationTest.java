@@ -42,6 +42,7 @@ package fish.payara.samples.setuptests;
 
 import fish.payara.samples.CliCommands;
 import org.jboss.arquillian.junit.Arquillian;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -51,6 +52,7 @@ import org.junit.runner.RunWith;
  * @author James Hillyard
  */
 
+@Ignore
 @RunWith(Arquillian.class)
 public class ClientCertificateValidatorConfigurationTest {
 
