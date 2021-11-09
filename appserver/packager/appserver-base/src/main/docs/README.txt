@@ -17,7 +17,7 @@ TLS 1.3 is supported on JDK 8 with Azul Zulu 1.8.222+ only and all JDK 11 versio
 1. Installing Payara Server
 ===========================
 
-Installing Payara Server is just a matter of unzipping the Payara Server archive in the desired directory. Since you are reading this, you have probably already unzipped Payara Server. If not, just type the following command in the directory where you want Payara Server to be installed: jar xvf payara-5.20.1.zip
+Installing Payara Server is just a matter of unzipping the Payara Server archive in the desired directory. Since you are reading this, you have probably already unzipped Payara Server. If not, just type the following command in the directory where you want Payara Server to be installed: jar xvf payara-5.34.0.zip
 
 The default domain called 'domain1' is already installed and preconfigured.
 
