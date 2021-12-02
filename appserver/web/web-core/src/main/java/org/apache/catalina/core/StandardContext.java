@@ -55,7 +55,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Portions Copyright [2016-2019] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2021] [Payara Foundation and/or its affiliates]
 
 package org.apache.catalina.core;
 
@@ -5837,6 +5837,7 @@ public class StandardContext
                     if (e.getValue() == null) {
                         iniInstance.onStartup(initializerList.get(initializer), ctxt);
                     } else {
+                        // Don't try to initialise MicroProfile Rest Client interfaces as servlets
                         iniInstance.onStartup(initializerList.get(initializer).stream()
                                 .filter(clazz -> !clazz.isAnnotationPresent(RegisterRestClient.class))
                                 .collect(Collectors.toSet()),
