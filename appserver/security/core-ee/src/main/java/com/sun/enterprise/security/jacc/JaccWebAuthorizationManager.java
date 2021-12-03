@@ -37,7 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2016-2019] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2021] [Payara Foundation and/or its affiliates]
 
 package com.sun.enterprise.security.jacc;
 
@@ -59,7 +59,6 @@ import java.security.PrivilegedActionException;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -105,6 +104,8 @@ import com.sun.enterprise.security.web.integration.WebSecurityManagerFactory;
 import com.sun.logging.LogDomains;
 
 import fish.payara.jacc.JaccConfigurationFactory;
+import java.util.HashSet;
+import javax.security.enterprise.CallerPrincipal;
 
 /**
  * This class is the entry point for authorization decisions in the web container. It implements JACC, 
@@ -121,6 +122,7 @@ import fish.payara.jacc.JaccConfigurationFactory;
  *
  * @author Jean-Francois Arcand
  * @author Harpreet Singh.
+ * @author Ondro Mihalyi
  * @todo introduce a new class called AbstractSecurityManager. Move functionality from this class and EJBSecurityManager
  * class and extend this class from AbstractSecurityManager
  */
@@ -350,13 +352,39 @@ public class JaccWebAuthorizationManager {
     public boolean hasRoleRefPermission(String servletName, String role, Principal principal) {
         WebRoleRefPermission requestedPermission = new WebRoleRefPermission(servletName, role);
         
-        boolean isGranted = checkPermission(requestedPermission, getSecurityContext(principal).getPrincipalSet());
+        Set<Principal> principalSetFromSecurityContext = getSecurityContext(principal).getPrincipalSet();
+        boolean isGranted = checkPermission(requestedPermission, principalSetFromSecurityContext);
+        if (!isGranted) {
+            isGranted = checkPermissionForModifiedPrincipalSet(principalSetFromSecurityContext, isGranted, requestedPermission);
+        }
         
         if (logger.isLoggable(Level.FINE)) {
             logger.log(FINE, "[Web-Security] hasRoleRef perm: {0}", requestedPermission);
             logger.log(FINE, "[Web-Security] hasRoleRef isGranted: {0}", isGranted);
         }
         
+        return isGranted;
+    }
+
+    /* If the ser contains CallerPrincipal, replace it with PrincipalImpl. 
+       This is because CallerPrincipal isn't equal to PrincipalImpl and doesn't imply it.
+       CallerPrincipal doesn't even implement equals method, so 2 CallerPrincipals with the same name are not equal. 
+       Because CallerPrincipal is from Jakarta EE, we can't change it.
+    */
+    private boolean checkPermissionForModifiedPrincipalSet(Set<Principal> principalSetFromSecurityContext, boolean isGranted, WebRoleRefPermission requestedPermission) {
+        boolean principalSetContainsCallerPrincipal = false;
+        Set<Principal> modifiedPrincipalSet = new HashSet<>(principalSetFromSecurityContext.size());
+        for (Principal p : principalSetFromSecurityContext) {
+            if (p instanceof CallerPrincipal) {
+                principalSetContainsCallerPrincipal = true;
+                modifiedPrincipalSet.add(new PrincipalImpl(p.getName()));
+            } else {
+                modifiedPrincipalSet.add(p);
+            }
+        }
+        if (principalSetContainsCallerPrincipal) {
+            isGranted = checkPermission(requestedPermission, modifiedPrincipalSet);
+        }
         return isGranted;
     }
 
