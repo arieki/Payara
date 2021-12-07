@@ -324,8 +324,13 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
                 int code = connection.getResponseCode();
                 if (code != 200) {
-                    LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
-                    return ERROR;
+                    if(code == 404) {
+                        LOGGER.log(Level.SEVERE, "The version indicated is incorrect, please set correct version and try again");
+                        throw new CommandValidationException("Error to get Payara version");
+                    } else {
+                        LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
+                        return ERROR;
+                    }
                 }
 
                 Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
@@ -333,8 +338,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             unzippedDirectory = extractZipFile(unzipFileStream);
-        } catch (IOException ioe) {
-            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: {0}", ioe);
+        } catch (IOException | CommandException e) {
+            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: {0}", e);
             return ERROR;
         }
         if (unzippedDirectory == null) {
