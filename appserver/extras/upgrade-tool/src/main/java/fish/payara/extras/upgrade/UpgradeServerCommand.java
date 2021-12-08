@@ -39,6 +39,7 @@
  */
 package fish.payara.extras.upgrade;
 
+import com.sun.appserv.server.util.Version;
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.universal.i18n.LocalStringsImpl;
 import com.sun.enterprise.util.OS;
@@ -72,9 +73,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Locale;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -136,6 +135,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
             if (getOption(VERSION_PARAM_NAME) == null) {
                 prevalidateParameter(VERSION_PARAM_NAME);
+                preventVersionDowngrade();
             }
 
             if (getOption(NEXUS_PASSWORD_PARAM_NAME) == null) {
@@ -176,6 +176,58 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         } else {
             throw new CommandValidationException(strings.get("missingOptions", parameterName));
         }
+    }
+
+    /**
+     * Method to prevent downgrade of current Payara version vs the option --version indicated for the
+     * upgrade-server command
+     *
+     * @throws CommandValidationException
+     */
+    protected void preventVersionDowngrade() throws CommandValidationException {
+        List<String> versionList = options.get(VERSION_PARAM_NAME);
+        try {
+            if (!versionList.isEmpty()) {
+                String selectedVersion = versionList.get(0);
+                String[] splitVersion = selectedVersion.split("\\.");
+                if (splitVersion.length == 3) {
+                    int majorSelectedVersion = Integer.parseInt(splitVersion[0].trim());
+                    int minorSelectedVersion = Integer.parseInt(splitVersion[1].trim());
+                    int updateSelectedVersion = Integer.parseInt(splitVersion[2].trim());
+                    int majorCurrentVersion = Integer.parseInt(Version.getMajorVersion().trim());
+                    int minorCurrentVersion = Integer.parseInt(Version.getMinorVersion().trim());
+                    int updatedCurrentVersion = Integer.parseInt(Version.getUpdateVersion()
+                            .replace("-SNAPSHOT", "").trim());
+                    StringBuilder buildCurrentVersion = new StringBuilder().append(majorCurrentVersion).append(".")
+                            .append(minorCurrentVersion).append(".").append(updatedCurrentVersion);
+                    if (majorSelectedVersion < majorCurrentVersion) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if (minorSelectedVersion < minorCurrentVersion) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if (updateSelectedVersion < updatedCurrentVersion) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    }
+                } else {
+                    String message = String.format("Invalid selected version %s, please verify and try again",
+                            selectedVersion);
+                    throw new CommandValidationException(message);
+                }
+            } else {
+                String message = "Empty selected version, please verify and try again";
+                throw new CommandValidationException(message);
+            }
+        } catch (NumberFormatException e) {
+            String message = "Error when processing glassfish-version file";
+            throw new CommandValidationException(message);
+        }
+    }
+
+    private void throwCommandValidationException(String currentVersion, String selectedVersion)
+            throws CommandValidationException {
+        String message = String.format("The version indicated is incorrect. You can't downgrade " +
+                        "from %s to %s please set correct version and try again",
+                currentVersion, selectedVersion);
+        throw new CommandValidationException(message);
     }
 
     /**
