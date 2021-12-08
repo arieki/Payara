@@ -75,6 +75,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -186,18 +188,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
      */
     protected void preventVersionDowngrade() throws CommandValidationException {
         List<String> versionList = options.get(VERSION_PARAM_NAME);
-        try {
-            if (!versionList.isEmpty()) {
-                String selectedVersion = versionList.get(0);
-                String[] splitVersion = selectedVersion.split("\\.");
-                if (splitVersion.length == 3) {
-                    int majorSelectedVersion = Integer.parseInt(splitVersion[0].trim());
-                    int minorSelectedVersion = Integer.parseInt(splitVersion[1].trim());
-                    int updateSelectedVersion = Integer.parseInt(splitVersion[2].trim());
+        if (!versionList.isEmpty()) {
+            String selectedVersion = versionList.get(0);
+            Pattern pattern = Pattern.compile("([0-9]{1,2}).([0-9]{1,2}).([0-9]{1,2})");
+            Matcher matcher = pattern.matcher(selectedVersion);
+            if (matcher.find()) {
+                if (matcher.groupCount() == 3) {
+                    int majorSelectedVersion = Integer.parseInt(matcher.group(1).trim());
+                    int minorSelectedVersion = Integer.parseInt(matcher.group(2).trim());
+                    int updateSelectedVersion = Integer.parseInt(matcher.group(3).trim());
                     int majorCurrentVersion = Integer.parseInt(Version.getMajorVersion().trim());
                     int minorCurrentVersion = Integer.parseInt(Version.getMinorVersion().trim());
-                    int updatedCurrentVersion = Integer.parseInt(Version.getUpdateVersion()
-                            .replace("-SNAPSHOT", "").trim());
+                    int updatedCurrentVersion = Integer.parseInt(Version.getUpdateVersion().trim());
                     StringBuilder buildCurrentVersion = new StringBuilder().append(majorCurrentVersion).append(".")
                             .append(minorCurrentVersion).append(".").append(updatedCurrentVersion);
                     if (majorSelectedVersion < majorCurrentVersion) {
@@ -213,11 +215,12 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     throw new CommandValidationException(message);
                 }
             } else {
-                String message = "Empty selected version, please verify and try again";
+                String message = String.format("Invalid selected version %s, please verify and try again",
+                        selectedVersion);
                 throw new CommandValidationException(message);
             }
-        } catch (NumberFormatException e) {
-            String message = "Error when processing glassfish-version file";
+        } else {
+            String message = "Empty selected version, please verify and try again";
             throw new CommandValidationException(message);
         }
     }
@@ -378,7 +381,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 if (code != 200) {
                     if(code == 404) {
                         LOGGER.log(Level.SEVERE, "The version indicated is incorrect, please set correct version and try again");
-                        throw new CommandValidationException("Error to get Payara version");
+                        throw new CommandValidationException("Payara version not found");
                     } else {
                         LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
                         return ERROR;
@@ -391,7 +394,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             unzippedDirectory = extractZipFile(unzipFileStream);
         } catch (IOException | CommandException e) {
-            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: {0}", e);
+            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s",e));
             return ERROR;
         }
         if (unzippedDirectory == null) {
