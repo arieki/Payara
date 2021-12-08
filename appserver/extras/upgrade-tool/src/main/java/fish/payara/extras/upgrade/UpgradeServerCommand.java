@@ -189,8 +189,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     protected void preventVersionDowngrade() throws CommandValidationException {
         List<String> versionList = options.get(VERSION_PARAM_NAME);
         if (!versionList.isEmpty()) {
-            String selectedVersion = versionList.get(0);
-            Pattern pattern = Pattern.compile("([0-9]{1,2}).([0-9]{1,2}).([0-9]{1,2})");
+            String selectedVersion = versionList.get(0).trim();
+            Pattern pattern = Pattern.compile("([0-9]{1,2})\\.([0-9]{1,2})\\.([0-9]{1,2})(?!\\W\\w+)");
             Matcher matcher = pattern.matcher(selectedVersion);
             if (matcher.find()) {
                 if (matcher.groupCount() == 3) {
@@ -208,6 +208,12 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                         throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
                     } else if (updateSelectedVersion < updatedCurrentVersion) {
                         throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if(selectedVersion.equalsIgnoreCase(buildCurrentVersion.toString())) {
+                        String message = String
+                                .format("It was selected the same version: selected version %s and current version %s" +
+                                                ", please verify and try again",
+                                selectedVersion, buildCurrentVersion);
+                        throw new CommandValidationException(message);
                     }
                 } else {
                     String message = String.format("Invalid selected version %s, please verify and try again",
