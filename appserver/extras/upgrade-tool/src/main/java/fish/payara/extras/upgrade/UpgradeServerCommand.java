@@ -135,8 +135,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
             if (getOption(VERSION_PARAM_NAME) == null) {
                 prevalidateParameter(VERSION_PARAM_NAME);
-                preventVersionDowngrade();
             }
+            preventVersionDowngrade();
 
             if (getOption(NEXUS_PASSWORD_PARAM_NAME) == null) {
                 prevalidatePasswordParameter(NEXUS_PASSWORD_PARAM_NAME);
