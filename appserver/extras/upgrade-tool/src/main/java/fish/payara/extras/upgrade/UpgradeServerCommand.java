@@ -187,7 +187,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
      * @throws CommandValidationException
      */
     protected void preventVersionDowngrade() throws CommandValidationException {
-        List<String> versionList = options.get(VERSION_PARAM_NAME);
+        List<String> versionList = getVersion();
         if (!versionList.isEmpty()) {
             String selectedVersion = versionList.get(0).trim();
             Pattern pattern = Pattern.compile("([0-9]{1,2})\\.([0-9]{1,2})\\.([0-9]{1,2})(?!\\W\\w+)");
@@ -197,9 +197,9 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     int majorSelectedVersion = Integer.parseInt(matcher.group(1).trim());
                     int minorSelectedVersion = Integer.parseInt(matcher.group(2).trim());
                     int updateSelectedVersion = Integer.parseInt(matcher.group(3).trim());
-                    int majorCurrentVersion = Integer.parseInt(Version.getMajorVersion().trim());
-                    int minorCurrentVersion = Integer.parseInt(Version.getMinorVersion().trim());
-                    int updatedCurrentVersion = Integer.parseInt(Version.getUpdateVersion().trim());
+                    int majorCurrentVersion = Integer.parseInt(getCurrentMajorVersion());
+                    int minorCurrentVersion = Integer.parseInt(getCurrentMinorVersion());
+                    int updatedCurrentVersion = Integer.parseInt(getCurrentUpdatedVersion());
                     StringBuilder buildCurrentVersion = new StringBuilder().append(majorCurrentVersion).append(".")
                             .append(minorCurrentVersion).append(".").append(updatedCurrentVersion);
                     if (majorSelectedVersion < majorCurrentVersion) {
@@ -231,7 +231,39 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
     }
 
-    private void throwCommandValidationException(String currentVersion, String selectedVersion)
+    /**
+     * Method to get selected Payara version from Upgrade command
+     * @return List<String>
+     */
+    protected List<String> getVersion() {
+        return options.get(VERSION_PARAM_NAME);
+    }
+
+    /**
+     * Method to get the Current Payara Major Version
+     * @return String
+     */
+    protected String getCurrentMajorVersion() {
+        return Version.getMajorVersion().trim();
+    }
+
+    /**
+     * Method to get the Current Payara Minor Version
+     * @return String
+     */
+    protected String getCurrentMinorVersion() {
+        return Version.getMinorVersion().trim();
+    }
+
+    /**
+     * Method to get the Current Payara Updated Version
+     * @return String
+     */
+    protected String getCurrentUpdatedVersion() {
+        return Version.getUpdateVersion().trim();
+    }
+
+    protected void throwCommandValidationException(String currentVersion, String selectedVersion)
             throws CommandValidationException {
         String message = String.format("The version indicated is incorrect. You can't downgrade " +
                         "from %s to %s please set correct version and try again",
