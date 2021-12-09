@@ -204,15 +204,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                             .append(minorCurrentVersion).append(".").append(updatedCurrentVersion);
                     if (majorSelectedVersion < majorCurrentVersion) {
                         throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
-                    } else if (minorSelectedVersion < minorCurrentVersion) {
+                    } else if (!(majorSelectedVersion > majorCurrentVersion)
+                            && (minorSelectedVersion < minorCurrentVersion)) {
                         throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
-                    } else if (updateSelectedVersion < updatedCurrentVersion) {
+                    } else if (!(majorSelectedVersion > majorCurrentVersion)
+                            && !(minorSelectedVersion > minorCurrentVersion)
+                            && (updateSelectedVersion < updatedCurrentVersion)) {
                         throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
-                    } else if(selectedVersion.equalsIgnoreCase(buildCurrentVersion.toString())) {
+                    } else if (selectedVersion.equalsIgnoreCase(buildCurrentVersion.toString())) {
                         String message = String
                                 .format("It was selected the same version: selected version %s and current version %s" +
                                                 ", please verify and try again",
-                                selectedVersion, buildCurrentVersion);
+                                        selectedVersion, buildCurrentVersion);
                         throw new CommandValidationException(message);
                     }
                 } else {
@@ -411,8 +414,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 Files.copy(useDownloadedFile.toPath(), tempFile, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 LOGGER.log(Level.INFO, "Downloading new Payara version...");
-                URL nexusUrl = new URL(url);
-                HttpURLConnection connection = (HttpURLConnection) nexusUrl.openConnection();
+                HttpURLConnection connection = getConnection(url);
                 connection.setRequestProperty("Authorization", authBytes);
 
                 int code = connection.getResponseCode();
@@ -519,6 +521,17 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
 
         return SUCCESS;
+    }
+
+    /**
+     * Method to return HttpURLConnection from String url
+     * @param url of type String
+     * @return HttpURLConnection
+     * @throws IOException
+     */
+    protected HttpURLConnection getConnection(String url) throws IOException {
+        URL nexusUrl = new URL(url);
+        return (HttpURLConnection) nexusUrl.openConnection();
     }
 
     private Path extractZipFile(InputStream remote) throws IOException {

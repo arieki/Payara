@@ -39,15 +39,19 @@
  */
 package fish.payara.extras.upgrade;
 
+import com.sun.enterprise.admin.cli.CLICommand;
 import junit.framework.TestCase;
 import org.glassfish.api.admin.CommandValidationException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,14 +61,17 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class UpgradeServerCommandTest extends TestCase {
 
+    @Mock
+    private HttpURLConnection httpURLConnection;
+
     @InjectMocks
     @Spy
-    UpgradeServerCommand upgradeServerCommand = new UpgradeServerCommand();
+    private UpgradeServerCommand upgradeServerCommand = new UpgradeServerCommand();
 
     @Test
     public void testPreventVersionDowngrade() throws CommandValidationException {
         List<String> selectedVersionList = new ArrayList<>();
-        selectedVersionList.add("5.24.0");
+        selectedVersionList.add("5.33.0");
 
         doReturn(selectedVersionList).when(upgradeServerCommand).getVersion();
         doReturn("5").when(upgradeServerCommand).getCurrentMajorVersion();
@@ -167,7 +174,7 @@ public class UpgradeServerCommandTest extends TestCase {
     @Test
     public void testVersionUpgrade() {
         List<String> selectedVersionList = new ArrayList<>();
-        selectedVersionList.add("5.35.0");
+        selectedVersionList.add("6.1.0");
 
         doReturn(selectedVersionList).when(upgradeServerCommand).getVersion();
         doReturn("5").when(upgradeServerCommand).getCurrentMajorVersion();
@@ -184,6 +191,16 @@ public class UpgradeServerCommandTest extends TestCase {
         verify(upgradeServerCommand, times(1)).getCurrentMinorVersion();
         verify(upgradeServerCommand, times(1)).getCurrentMinorVersion();
 
+    }
+
+    @Test
+    public void testValidation404Error() throws IOException {
+        doReturn(httpURLConnection).when(upgradeServerCommand).getConnection(anyString());
+        when(httpURLConnection.getResponseCode()).thenReturn(404);
+
+        int result = upgradeServerCommand.executeCommand();
+
+        assertEquals(CLICommand.ERROR, result);
     }
 
 }
