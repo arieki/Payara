@@ -42,7 +42,7 @@ package fish.payara.security.client;
 /**
  * Holds the constants for JAX-RS Client and MP Client Certificate Alias
  * @author Kalin Chan
- * @since 5.2022.1
+ * @since 5.35.0
  */
 public final class PayaraConstants {
 
