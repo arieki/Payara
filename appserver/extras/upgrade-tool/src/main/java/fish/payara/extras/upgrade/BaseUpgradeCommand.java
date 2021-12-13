@@ -151,7 +151,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
                         throwException = true;
                         failingNodes.add(node.getName());
                     }
-                } else if(!node.getName().contains(domaindir.getName())) {
+                } else if(!node.isDefaultLocalNode()) {
                     LOGGER.log(Level.WARNING, String.format("Only the SSH nodes are upgraded by this tool, " +
                                     "please upgrade your node with name %s of type %s manually", node.getName(),
                             node.getType()));
