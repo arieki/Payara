@@ -46,6 +46,7 @@ import com.sun.enterprise.common.iiop.security.SecurityContext;
 
 import com.sun.corba.ee.org.omg.CSI.*;
 import com.sun.corba.ee.org.omg.CSIIOP.CompoundSecMech;
+import com.sun.enterprise.security.auth.login.DistinguishedPrincipalCredential;
 import com.sun.enterprise.security.auth.login.common.PasswordCredential;
 import com.sun.enterprise.security.auth.login.common.X509CertificateCredential;
 import com.sun.enterprise.util.LocalStringManagerImpl;
@@ -219,6 +220,19 @@ public class SecClientRequestInterceptor extends org.omg.CORBA.LocalObject imple
             GSS_NT_ExportedNameHelper.insert(any, expname);
 
             /* IdentityToken with CDR encoded GSSUPName */
+            idtok.principal_name(codec.encode_value(any));
+        } else if (DistinguishedPrincipalCredential.class.isAssignableFrom(cls)) {
+            // If authenticated via OIDC rather than any of the above we'll have a DistinguishedPrincipalCredential
+            _logger.log(Level.FINE,
+                    "Constructing a GSS Exported Name Identity Token from DistinguishedPrincipalCredential");
+            DistinguishedPrincipalCredential distinguishedPrincipalCredential = (DistinguishedPrincipalCredential) cred;
+
+            // Create a DER encoding of the principal name as a GSSUPName - realm is not currently factored into the
+            // parsing of the principal name from the IdentityToken so is left blank.
+            GSSUPName gssupName = new GSSUPName(distinguishedPrincipalCredential.getPrincipal().getName(), "");
+            byte[] expname = gssupName.getExportedName();
+            GSS_NT_ExportedNameHelper.insert(any, expname);
+
             idtok.principal_name(codec.encode_value(any));
         }
         return (idtok);

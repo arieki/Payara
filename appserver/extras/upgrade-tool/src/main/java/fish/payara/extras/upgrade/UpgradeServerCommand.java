@@ -39,6 +39,7 @@
  */
 package fish.payara.extras.upgrade;
 
+import com.sun.appserv.server.util.Version;
 import com.sun.enterprise.admin.cli.CLICommand;
 import com.sun.enterprise.universal.i18n.LocalStringsImpl;
 import com.sun.enterprise.util.OS;
@@ -72,10 +73,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Locale;
+import java.util.*;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -137,6 +138,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             if (getOption(VERSION_PARAM_NAME) == null) {
                 prevalidateParameter(VERSION_PARAM_NAME);
             }
+            preventVersionDowngrade();
 
             if (getOption(NEXUS_PASSWORD_PARAM_NAME) == null) {
                 prevalidatePasswordParameter(NEXUS_PASSWORD_PARAM_NAME);
@@ -176,6 +178,100 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         } else {
             throw new CommandValidationException(strings.get("missingOptions", parameterName));
         }
+    }
+
+    /**
+     * Method to prevent downgrade of current Payara version vs the option --version indicated for the
+     * upgrade-server command
+     *
+     * @throws CommandValidationException
+     */
+    protected void preventVersionDowngrade() throws CommandValidationException {
+        List<String> versionList = getVersion();
+        if (!versionList.isEmpty()) {
+            String selectedVersion = versionList.get(0).trim();
+            Pattern pattern = Pattern.compile("([0-9]{1,2})\\.([0-9]{1,2})\\.([0-9]{1,2})(?!\\W\\w+)");
+            Matcher matcher = pattern.matcher(selectedVersion);
+            if (matcher.find()) {
+                if (matcher.groupCount() == 3) {
+                    int majorSelectedVersion = Integer.parseInt(matcher.group(1).trim());
+                    int minorSelectedVersion = Integer.parseInt(matcher.group(2).trim());
+                    int updateSelectedVersion = Integer.parseInt(matcher.group(3).trim());
+                    int majorCurrentVersion = Integer.parseInt(getCurrentMajorVersion());
+                    int minorCurrentVersion = Integer.parseInt(getCurrentMinorVersion());
+                    int updatedCurrentVersion = Integer.parseInt(getCurrentUpdatedVersion());
+                    StringBuilder buildCurrentVersion = new StringBuilder().append(majorCurrentVersion).append(".")
+                            .append(minorCurrentVersion).append(".").append(updatedCurrentVersion);
+                    if (majorSelectedVersion < majorCurrentVersion) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if (!(majorSelectedVersion > majorCurrentVersion)
+                            && (minorSelectedVersion < minorCurrentVersion)) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if (!(majorSelectedVersion > majorCurrentVersion)
+                            && !(minorSelectedVersion > minorCurrentVersion)
+                            && (updateSelectedVersion < updatedCurrentVersion)) {
+                        throwCommandValidationException(buildCurrentVersion.toString(), selectedVersion);
+                    } else if (selectedVersion.equalsIgnoreCase(buildCurrentVersion.toString())) {
+                        String message = String
+                                .format("It was selected the same version: selected version %s and current version %s" +
+                                                ", please verify and try again",
+                                        selectedVersion, buildCurrentVersion);
+                        throw new CommandValidationException(message);
+                    }
+                } else {
+                    String message = String.format("Invalid selected version %s, please verify and try again",
+                            selectedVersion);
+                    throw new CommandValidationException(message);
+                }
+            } else {
+                String message = String.format("Invalid selected version %s, please verify and try again",
+                        selectedVersion);
+                throw new CommandValidationException(message);
+            }
+        } else {
+            String message = "Empty selected version, please verify and try again";
+            throw new CommandValidationException(message);
+        }
+    }
+
+    /**
+     * Method to get selected Payara version from Upgrade command
+     * @return List<String>
+     */
+    protected List<String> getVersion() {
+        return options.get(VERSION_PARAM_NAME);
+    }
+
+    /**
+     * Method to get the Current Payara Major Version
+     * @return String
+     */
+    protected String getCurrentMajorVersion() {
+        return Version.getMajorVersion().trim();
+    }
+
+    /**
+     * Method to get the Current Payara Minor Version
+     * @return String
+     */
+    protected String getCurrentMinorVersion() {
+        return Version.getMinorVersion().trim();
+    }
+
+    /**
+     * Method to get the Current Payara Updated Version
+     * @return String
+     */
+    protected String getCurrentUpdatedVersion() {
+        return Version.getUpdateVersion().trim();
+    }
+
+    protected void throwCommandValidationException(String currentVersion, String selectedVersion)
+            throws CommandValidationException {
+        String message = String.format("The version indicated is incorrect. You can't downgrade " +
+                        "from %s to %s please set correct version and try again",
+                currentVersion, selectedVersion);
+        throw new CommandValidationException(message);
     }
 
     /**
@@ -318,14 +414,18 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 Files.copy(useDownloadedFile.toPath(), tempFile, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 LOGGER.log(Level.INFO, "Downloading new Payara version...");
-                URL nexusUrl = new URL(url);
-                HttpURLConnection connection = (HttpURLConnection) nexusUrl.openConnection();
+                HttpURLConnection connection = getConnection(url);
                 connection.setRequestProperty("Authorization", authBytes);
 
                 int code = connection.getResponseCode();
                 if (code != 200) {
-                    LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
-                    return ERROR;
+                    if(code == 404) {
+                        LOGGER.log(Level.SEVERE, "The version indicated is incorrect, please set correct version and try again");
+                        throw new CommandValidationException("Payara version not found");
+                    } else {
+                        LOGGER.log(Level.SEVERE, "Error connecting to server: {0}", code);
+                        return ERROR;
+                    }
                 }
 
                 Files.copy(connection.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
@@ -333,8 +433,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             unzippedDirectory = extractZipFile(unzipFileStream);
-        } catch (IOException ioe) {
-            LOGGER.log(Level.SEVERE, "Error preparing for upgrade, aborting upgrade: {0}", ioe);
+        } catch (IOException | CommandException e) {
+            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s",e));
             return ERROR;
         }
         if (unzippedDirectory == null) {
@@ -421,6 +521,17 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         }
 
         return SUCCESS;
+    }
+
+    /**
+     * Method to return HttpURLConnection from String url
+     * @param url of type String
+     * @return HttpURLConnection
+     * @throws IOException
+     */
+    protected HttpURLConnection getConnection(String url) throws IOException {
+        URL nexusUrl = new URL(url);
+        return (HttpURLConnection) nexusUrl.openConnection();
     }
 
     private Path extractZipFile(InputStream remote) throws IOException {
