@@ -290,7 +290,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         char[] passwordChars = null;
         if (passwordParam != null) {
             passwordChars = getPassword(passwordParam.getName(), passwordParam.getLocalizedPrompt(),
-                    passwordParam.getLocalizedPromptAgain(), true);
+                    passwordParam.getLocalizedPromptAgain(), false);
         }
 
         if (passwordChars == null) {
