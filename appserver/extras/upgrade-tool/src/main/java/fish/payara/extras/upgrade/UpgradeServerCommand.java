@@ -406,6 +406,9 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
         Path unzippedDirectory = null;
 
+        // here the upgrade starts with non-restorable changes, display warning
+        LOGGER.log(Level.WARNING, "Do not interrupt the upgrade process, do not shutdown the server or computer.");
+
         // Download and/or unzip payara distribution, aborting upgrade if this fails
         try {
             Path tempFile = Files.createTempFile("payara", ".zip");
