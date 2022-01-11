@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2022 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -76,9 +76,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * Base class containing shared methods and variables used by other upgrade/rollback commands.
@@ -97,9 +99,9 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
     @Inject
     protected ServiceLocator habitat;
 
-    // Folders and files that are moved in the upgrade process
+    // Folders and files that are always moved in the upgrade process
     // This will be converted to use Windows file separators if required during validate()
-    protected static final String[] MOVEFOLDERS = {"common",
+    private static final String[] CONSTANTMOVEFOLDERS = {"common",
             "config" + File.separator + "branding",
             "h2db",
             ".." + File.separator + "h2db",
@@ -113,6 +115,9 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
             "bin",
             ".." + File.separator + "bin"};
 
+    // Used to store the CONSTANTMOVEFOLDERS and the osgi-cache directories moved in the upgrade process
+    protected static String[] moveFolders;
+
     @Override
     protected void validate() throws CommandException {
         // Perform usual validation; we don't want to skip it or alter it in anyway, we just want to add to it.
@@ -120,6 +125,22 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
 
         // Set up the install dir variable
         glassfishDir = getInstallRootPath();
+
+        // Gets all folders and files to be moved in the upgrade process, including osgi-cache directories
+        moveFolders = Stream.concat(Arrays.stream(CONSTANTMOVEFOLDERS), Arrays.stream(getOsgiCacheDirectories())).toArray((String[]::new));
+    }
+
+    private String[] getOsgiCacheDirectories() {
+        ArrayList<String> cacheDirectories = new ArrayList<>();
+        File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            String osgiCacheDir = "domains" + File.separator + domaindir.getName() + File.separator + "osgi-cache";
+            // Only add the osgi-cache directory if it exists to avoid file not found warnings.
+            if(new File(glassfishDir + File.separator + osgiCacheDir).exists()) {
+                cacheDirectories.add(osgiCacheDir);
+            }
+        }
+        return cacheDirectories.toArray(new String[0]);
     }
 
     protected void reinstallNodes() throws IOException, CommandException, ConfigurationException {
@@ -259,7 +280,7 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
     protected void deleteStagedInstall() throws IOException {
         LOGGER.log(Level.FINE, "Deleting staged install if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             // Only attempt to delete folders which exist
             // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
             Path folderPath = Paths.get(glassfishDir, folder + ".new");

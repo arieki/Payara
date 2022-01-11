@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2022 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -98,7 +98,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         // Second step, move "current" into "staged"
         try {
             LOGGER.log(Level.FINE, "Moving current install into a staged rollback directory");
-            for (String file : MOVEFOLDERS) {
+            for (String file : moveFolders) {
                 try {
                     Files.move(Paths.get(glassfishDir, file), Paths.get(glassfishDir, file + ".new"),
                             StandardCopyOption.REPLACE_EXISTING);
@@ -131,7 +131,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
         // Third step, move "old" into "current"
         try {
-            for (String file : MOVEFOLDERS) {
+            for (String file : moveFolders) {
                 try {
                     Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
                             StandardCopyOption.REPLACE_EXISTING);
@@ -245,7 +245,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void moveStagedToCurrent() throws IOException {
         LOGGER.log(Level.INFO, "Moving staged back to current");
-        for (String file : MOVEFOLDERS) {
+        for (String file : moveFolders) {
             Path stagedPath = Paths.get(glassfishDir, file + ".new");
             Path targetPath = Paths.get(glassfishDir, file);
 
@@ -267,7 +267,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void moveCurrentToOld() throws IOException {
         LOGGER.log(Level.INFO, "Moving current install back to old");
-        for (String file : MOVEFOLDERS) {
+        for (String file : moveFolders) {
             Path currentPath = Paths.get(glassfishDir, file);
             Path targetPath = Paths.get(glassfishDir, file + ".old");
 
@@ -289,7 +289,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void deleteCurrentInstall() throws IOException {
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             // Only attempt to delete folders which exist
             // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
             Path folderPath = Paths.get(glassfishDir, folder);
