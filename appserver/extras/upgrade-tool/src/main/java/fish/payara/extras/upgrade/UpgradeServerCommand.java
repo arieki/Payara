@@ -138,7 +138,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             if (getOption(VERSION_PARAM_NAME) == null) {
                 prevalidateParameter(VERSION_PARAM_NAME);
             }
-            //preventVersionDowngrade();
+            preventVersionDowngrade();
 
             if (getOption(NEXUS_PASSWORD_PARAM_NAME) == null) {
                 prevalidatePasswordParameter(NEXUS_PASSWORD_PARAM_NAME);
@@ -634,8 +634,8 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 }
             }
 
-            //Directory osgi-cache doesn't exist in a new Payara install so can't be copied and should be ignored.
-            if(!folder.contains("osgi-cache")) {
+            // osgi-cache directory doesn't exist in a new Payara install so can't be copied and should be ignored.
+            if (!folder.contains("osgi-cache")) {
                 CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
                 Files.walkFileTree(sourcePath, visitor);
             }
