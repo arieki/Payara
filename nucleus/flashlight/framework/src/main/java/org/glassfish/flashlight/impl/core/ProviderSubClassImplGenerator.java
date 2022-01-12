@@ -161,7 +161,7 @@ public class ProviderSubClassImplGenerator {
         String id;
 
         ProbeProviderSubClassGenerator(ClassVisitor cv, String token, String id) {
-            super(Opcodes.ASM9, cv);
+            super(Opcodes.ASM7, cv);
             this.id = id;
             this.token = token;
         }
@@ -209,7 +209,7 @@ public class ProviderSubClassImplGenerator {
         private String token;
 
         ProbeProviderAnnotationVisitor(AnnotationVisitor delegate, String token) {
-            super(Opcodes.ASM9);
+            super(Opcodes.ASM7);
             this.delegate = delegate;
             this.token = token;
         }

@@ -54,7 +54,7 @@ public class AttributeMethodVisitor extends MethodVisitor {
     private boolean duckTyped;
 
     public AttributeMethodVisitor(ClassDef classDef, String method, String aggType) {
-        super(Opcodes.ASM9);
+        super(Opcodes.ASM7);
         def = classDef;
         name = method;
         type = aggType;
