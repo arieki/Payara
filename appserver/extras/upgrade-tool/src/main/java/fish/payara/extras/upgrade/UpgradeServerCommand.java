@@ -236,6 +236,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get selected Payara version from Upgrade command
+     *
      * @return List<String>
      */
     protected List<String> getVersion() {
@@ -244,6 +245,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Major Version
+     *
      * @return String
      */
     protected String getCurrentMajorVersion() {
@@ -252,6 +254,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Minor Version
+     *
      * @return String
      */
     protected String getCurrentMinorVersion() {
@@ -260,6 +263,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Updated Version
+     *
      * @return String
      */
     protected String getCurrentUpdatedVersion() {
@@ -314,21 +318,25 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
      * @throws CommandException If the distribution doesn't match.
      */
     private void validateDistribution() throws CommandValidationException {
-        //Get current Payara distribution
+        // Get current Payara distribution
         String versionDistribution = "";
-        try{
+        try {
             versionDistribution = Version.getDistributionKey();
-        }catch (NoSuchMethodError noSuchMethodError){}
+        } catch (NoSuchMethodError noSuchMethodError) {
 
-        //Check if distribution is defined.
-        if(versionDistribution.isEmpty()){
-            throw new CommandValidationException("The distribution cannot be validated.");
         }
 
-        //Check if distribution is the same as the one specified.
-        if(!versionDistribution.equalsIgnoreCase(distribution)){
+        // Check if distribution is defined.
+        // Continue with upgrade if no defined distribution, user should be able rollback if needed.
+        if (versionDistribution.isEmpty()) {
+            System.out.println("The distribution cannot be validated.");
+            return;
+        }
+
+        // Check if distribution is the same as the one specified.
+        if (!versionDistribution.equalsIgnoreCase(distribution)) {
             throw new CommandValidationException(String.format("The current distribution (%s) you are " +
-                    "running does not match the specified distribution (%s)", versionDistribution, distribution));
+                    "running does not match the requested upgrade distribution (%s)", versionDistribution, distribution));
         }
     }
 
@@ -447,7 +455,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
                 int code = connection.getResponseCode();
                 if (code != 200) {
-                    if(code == 404) {
+                    if (code == 404) {
                         LOGGER.log(Level.SEVERE, "The version indicated is incorrect, please set correct version and try again");
                         throw new CommandValidationException("Payara version not found");
                     } else {
@@ -462,7 +470,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             unzippedDirectory = extractZipFile(unzipFileStream);
         } catch (IOException | CommandException e) {
-            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s",e));
+            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s", e));
             return ERROR;
         }
         if (unzippedDirectory == null) {
@@ -553,6 +561,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to return HttpURLConnection from String url
+     *
      * @param url of type String
      * @return HttpURLConnection
      * @throws IOException
