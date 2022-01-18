@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2022 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -308,6 +308,30 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         options.set(passwordParameterName, new String(passwordChars));
     }
 
+    /**
+     * Gets the current Payara Distribution and checks to see if the specified distribution is the same
+     *
+     * @throws CommandException If the distribution doesn't match.
+     */
+    private void validateDistribution() throws CommandValidationException {
+        //Get current Payara distribution
+        String versionDistribution = "";
+        try{
+            versionDistribution = Version.getDistributionKey();
+        }catch (NoSuchMethodError noSuchMethodError){}
+
+        //Check if distribution is defined.
+        if(versionDistribution.isEmpty()){
+            throw new CommandValidationException("The distribution cannot be validated.");
+        }
+
+        //Check if distribution is the same as the one specified.
+        if(!versionDistribution.equalsIgnoreCase(distribution)){
+            throw new CommandValidationException(String.format("The current distribution (%s) you are " +
+                    "running does not match the specified distribution (%s)", versionDistribution, distribution));
+        }
+    }
+
     @Override
     protected void validate() throws CommandException {
         // Perform usual validation; we don't want to skip it or alter it in anyway, we just want to add to it
@@ -319,6 +343,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             throw new CommandValidationException("Non-staged upgrades are not supported on Windows.");
         }
 
+        validateDistribution();
         // Create property files
         createPropertiesFile();
         createBatFile();
