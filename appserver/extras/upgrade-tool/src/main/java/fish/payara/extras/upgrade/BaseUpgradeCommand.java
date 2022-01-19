@@ -136,7 +136,9 @@ public abstract class BaseUpgradeCommand extends LocalDomainCommand {
         for (File domaindir : domaindirs) {
             String osgiCacheDir = "domains" + File.separator + domaindir.getName() + File.separator + "osgi-cache";
             // Only add the osgi-cache directory if it exists to avoid file not found warnings.
-            if (new File(glassfishDir + File.separator + osgiCacheDir).exists()) {
+            // When rolling back, an old cache may exist but no new cache if the domain wasn't started, include these
+            if (new File(glassfishDir + File.separator + osgiCacheDir).exists() ||
+                    new File(glassfishDir + File.separator + osgiCacheDir + ".old").exists()) {
                 cacheDirectories.add(osgiCacheDir);
             }
         }

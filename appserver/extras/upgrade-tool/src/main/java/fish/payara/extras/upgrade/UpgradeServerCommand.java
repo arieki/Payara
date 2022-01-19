@@ -754,6 +754,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                         "this is a payara-web distribution. Continuing fixing of permissions...");
                 return FileVisitResult.SKIP_SUBTREE;
             }
+            // osgi-cache directory doesn't exist in a new Payara install so can be safely ignored
+            if (exc instanceof NoSuchFileException && exc.getMessage().contains("osgi-cache")) {
+                return FileVisitResult.SKIP_SUBTREE;
+            }
 
             LOGGER.log(Level.SEVERE, "File could not visited: {0}", file.toString());
             throw exc;
