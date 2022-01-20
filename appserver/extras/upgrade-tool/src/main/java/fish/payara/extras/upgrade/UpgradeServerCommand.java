@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2022 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -236,6 +236,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get selected Payara version from Upgrade command
+     *
      * @return List<String>
      */
     protected List<String> getVersion() {
@@ -244,6 +245,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Major Version
+     *
      * @return String
      */
     protected String getCurrentMajorVersion() {
@@ -252,6 +254,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Minor Version
+     *
      * @return String
      */
     protected String getCurrentMinorVersion() {
@@ -260,6 +263,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to get the Current Payara Updated Version
+     *
      * @return String
      */
     protected String getCurrentUpdatedVersion() {
@@ -308,6 +312,34 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         options.set(passwordParameterName, new String(passwordChars));
     }
 
+    /**
+     * Gets the current Payara Distribution and checks to see if the specified distribution is the same
+     *
+     * @throws CommandException If the distribution doesn't match.
+     */
+    private void validateDistribution() throws CommandValidationException {
+        // Get current Payara distribution
+        String versionDistribution = "";
+        try {
+            versionDistribution = Version.getDistributionKey();
+        } catch (NoSuchMethodError noSuchMethodError) {
+
+        }
+
+        // Check if distribution is defined.
+        // Continue with upgrade if no defined distribution, user should be able rollback if needed.
+        if (versionDistribution.isEmpty()) {
+            System.out.println("The distribution cannot be validated.");
+            return;
+        }
+
+        // Check if distribution is the same as the one specified.
+        if (!versionDistribution.equalsIgnoreCase(distribution)) {
+            throw new CommandValidationException(String.format("The current distribution (%s) you are " +
+                    "running does not match the requested upgrade distribution (%s)", versionDistribution, distribution));
+        }
+    }
+
     @Override
     protected void validate() throws CommandException {
         // Perform usual validation; we don't want to skip it or alter it in anyway, we just want to add to it
@@ -319,6 +351,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             throw new CommandValidationException("Non-staged upgrades are not supported on Windows.");
         }
 
+        validateDistribution();
         // Create property files
         createPropertiesFile();
         createBatFile();
@@ -422,7 +455,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
                 int code = connection.getResponseCode();
                 if (code != 200) {
-                    if(code == 404) {
+                    if (code == 404) {
                         LOGGER.log(Level.SEVERE, "The version indicated is incorrect, please set correct version and try again");
                         throw new CommandValidationException("Payara version not found");
                     } else {
@@ -437,7 +470,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
             FileInputStream unzipFileStream = new FileInputStream(tempFile.toFile());
             unzippedDirectory = extractZipFile(unzipFileStream);
         } catch (IOException | CommandException e) {
-            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s",e));
+            LOGGER.log(Level.SEVERE, String.format("Error preparing for upgrade, aborting upgrade: %s", e));
             return ERROR;
         }
         if (unzippedDirectory == null) {
@@ -528,6 +561,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     /**
      * Method to return HttpURLConnection from String url
+     *
      * @param url of type String
      * @return HttpURLConnection
      * @throws IOException
