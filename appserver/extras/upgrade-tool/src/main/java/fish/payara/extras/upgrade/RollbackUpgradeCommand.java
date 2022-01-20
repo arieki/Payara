@@ -50,11 +50,7 @@ import org.jvnet.hk2.config.ConfigurationException;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -149,6 +145,12 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                         LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
                                 "this is a payara-web distribution. Continuing to move files...");
+                    }
+                    // osgi-cache directory is created when the domain is started, if it was never started before the
+                    // upgrade the directory will not exist so it's safe to ignore the NSFE
+                    if (nsfe.getMessage().contains("osgi-cache")) {
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for osgi-cache directory under the " +
+                            "assumption the upgraded domain was never started. Continuing to move files...");
                     } else {
                         throw nsfe;
                     }
