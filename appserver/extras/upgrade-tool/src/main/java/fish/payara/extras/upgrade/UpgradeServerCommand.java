@@ -365,7 +365,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
      */
     private void createPropertiesFile() throws CommandValidationException {
         // Perform file separator substitution for Linux if required
-        String[] folders = Arrays.copyOf(MOVEFOLDERS, MOVEFOLDERS.length);
+        String[] folders = Arrays.copyOf(moveFolders, moveFolders.length);
         if (OS.isWindows()) {
             for (int i = 0; i < folders.length; i++) {
                 folders[i] = folders[i].replace("\\", "/");
@@ -402,7 +402,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
      */
     private void createBatFile() throws CommandValidationException {
         // Perform file separator substitution for Windows if required
-        String[] folders = Arrays.copyOf(MOVEFOLDERS, MOVEFOLDERS.length);
+        String[] folders = Arrays.copyOf(moveFolders, moveFolders.length);
         if (!OS.isWindows()) {
             for (int i = 0; i < folders.length; i++) {
                 folders[i] = folders[i].replace("/", "\\");
@@ -612,7 +612,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     private void cleanupExisting() throws IOException {
         LOGGER.log(Level.FINE, "Deleting old server backup if present");
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             Path folderPath = Paths.get(glassfishDir, folder + ".old");
             // Only attempt to delete folders which exist
             // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
@@ -627,7 +627,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     private void moveFiles(Path newVersion) throws IOException {
         if (!stage) {
             LOGGER.log(Level.FINE, "Moving files to old");
-            for (String folder : MOVEFOLDERS) {
+            for (String folder : moveFolders) {
                 try {
                     // Just attempt to move all folders - any exceptions aside from NoSuchFile on an MQ directory
                     // are unexpected and we should cancel out if we hit one
@@ -655,7 +655,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     private void moveExtracted(Path newVersion) throws IOException {
         LOGGER.log(Level.FINE, "Copying extracted files");
 
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             Path sourcePath = newVersion.resolve("payara5" + File.separator + "glassfish" + File.separator + folder);
             Path targetPath = Paths.get(glassfishDir, folder);
             if (stage) {
@@ -668,8 +668,11 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                 }
             }
 
-            CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
-            Files.walkFileTree(sourcePath, visitor);
+            // osgi-cache directory doesn't exist in a new Payara install so can't be copied and should be ignored.
+            if (!folder.contains("osgi-cache")) {
+                CopyFileVisitor visitor = new CopyFileVisitor(sourcePath, targetPath);
+                Files.walkFileTree(sourcePath, visitor);
+            }
         }
         LOGGER.log(Level.FINE, "Extracted files copied");
     }
@@ -679,7 +682,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
         // a visitor that overwrites rather than doing it by folder with Files.move since Files.move would
         // require us to deal with DirectoryNotEmptyExceptions
         LOGGER.log(Level.FINE, "Moving old back");
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             try {
                 Path movedToPath = Paths.get(glassfishDir, folder + ".old");
 
@@ -708,7 +711,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     private void fixPermissions() throws IOException {
         LOGGER.log(Level.FINE, "Fixing file permissions");
-        // Fix the permissions of any bin directories in MOVEFOLDERS
+        // Fix the permissions of any bin directories in moveFolders
         fixBinDirPermissions();
         // Fix the permissions of nadmin (since it's not in a bin directory)
         fixNadminPermissions();
@@ -716,7 +719,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
     }
 
     private void fixBinDirPermissions() throws IOException {
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             BinDirPermissionFileVisitor visitor = new BinDirPermissionFileVisitor();
             if (stage) {
                 Files.walkFileTree(Paths.get(glassfishDir, folder + ".new"), visitor);
@@ -728,7 +731,7 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
 
     private void fixNadminPermissions() throws IOException {
         // Check that we're actually upgrading the payara5/glassfish/lib directory before messing with permissions
-        if (Arrays.stream(MOVEFOLDERS).anyMatch(folder -> folder.equals("lib"))) {
+        if (Arrays.stream(moveFolders).anyMatch(folder -> folder.equals("lib"))) {
             Path nadminPath = Paths.get(glassfishDir, "lib", "nadmin");
             if (stage) {
                 nadminPath = Paths.get(glassfishDir, "lib.new", "nadmin");
@@ -783,6 +786,10 @@ public class UpgradeServerCommand extends BaseUpgradeCommand {
                     "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                 LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
                         "this is a payara-web distribution. Continuing fixing of permissions...");
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+            // osgi-cache directory doesn't exist in a new Payara install so can be safely ignored
+            if (exc instanceof NoSuchFileException && exc.getMessage().contains("osgi-cache")) {
                 return FileVisitResult.SKIP_SUBTREE;
             }
 

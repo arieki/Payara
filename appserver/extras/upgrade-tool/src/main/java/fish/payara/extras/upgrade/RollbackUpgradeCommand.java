@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2020-2021 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020-2022 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -50,11 +50,9 @@ import org.jvnet.hk2.config.ConfigurationException;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 
 /**
@@ -98,7 +96,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         // Second step, move "current" into "staged"
         try {
             LOGGER.log(Level.FINE, "Moving current install into a staged rollback directory");
-            for (String file : MOVEFOLDERS) {
+            for (String file : moveFolders) {
                 try {
                     Files.move(Paths.get(glassfishDir, file), Paths.get(glassfishDir, file + ".new"),
                             StandardCopyOption.REPLACE_EXISTING);
@@ -109,6 +107,11 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                         LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
                                 "this is a payara-web distribution. Continuing to move files...");
+                    // osgi-cache directory is created when the domain is started, if it was never started the
+                    // directory will not exist so it's safe to ignore the NSFE
+                    } if (nsfe.getMessage().contains("osgi-cache")) {
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for osgi-cache directory under the " +
+                                "assumption the upgraded domain was never started. Continuing to move files...");
                     } else {
                         throw nsfe;
                     }
@@ -131,7 +134,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
         // Third step, move "old" into "current"
         try {
-            for (String file : MOVEFOLDERS) {
+            for (String file : moveFolders) {
                 try {
                     Files.move(Paths.get(glassfishDir, file + ".old"), Paths.get(glassfishDir, file),
                             StandardCopyOption.REPLACE_EXISTING);
@@ -142,6 +145,12 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                             "payara5" + File.separator + "glassfish" + File.separator + ".." + File.separator + "mq")) {
                         LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for mq directory under assumption " +
                                 "this is a payara-web distribution. Continuing to move files...");
+                    }
+                    // osgi-cache directory is created when the domain is started, if it was never started before the
+                    // upgrade the directory will not exist so it's safe to ignore the NSFE
+                    if (nsfe.getMessage().contains("osgi-cache")) {
+                        LOGGER.log(Level.FINE, "Ignoring NoSuchFileException for osgi-cache directory under the " +
+                            "assumption the upgraded domain was never started. Continuing to move files...");
                     } else {
                         throw nsfe;
                     }
@@ -228,9 +237,12 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
         }
 
         // Final step, restore the original domain configs
+        // The osgi-caches must be stored in a temp directory while the domain is restored so they are not overwritten
         try {
+            Map<String, Path> tempOsgiCacheDirs = storeOsgiCache();
             restoreDomains();
-        } catch (CommandException ce) {
+            restoreOsgiCache(tempOsgiCacheDirs);
+        } catch (CommandException | IOException ce) {
             LOGGER.log(Level.WARNING, "Error restore-domain command! " +
                     "Please restore your domain config manually. \n{0}", ce.toString());
             logWarning = true;
@@ -245,7 +257,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void moveStagedToCurrent() throws IOException {
         LOGGER.log(Level.INFO, "Moving staged back to current");
-        for (String file : MOVEFOLDERS) {
+        for (String file : moveFolders) {
             Path stagedPath = Paths.get(glassfishDir, file + ".new");
             Path targetPath = Paths.get(glassfishDir, file);
 
@@ -267,7 +279,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void moveCurrentToOld() throws IOException {
         LOGGER.log(Level.INFO, "Moving current install back to old");
-        for (String file : MOVEFOLDERS) {
+        for (String file : moveFolders) {
             Path currentPath = Paths.get(glassfishDir, file);
             Path targetPath = Paths.get(glassfishDir, file + ".old");
 
@@ -289,7 +301,7 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
 
     private void deleteCurrentInstall() throws IOException {
         DeleteFileVisitor visitor = new DeleteFileVisitor();
-        for (String folder : MOVEFOLDERS) {
+        for (String folder : moveFolders) {
             // Only attempt to delete folders which exist
             // Don't fail out if it doesn't exist, just keep going - we want to delete all we can
             Path folderPath = Paths.get(glassfishDir, folder);
@@ -310,6 +322,41 @@ public class RollbackUpgradeCommand extends BaseUpgradeCommand {
                 restoreDomainCommand.execute("restore-domain", domaindir.getName());
             }
 
+        }
+    }
+
+    /**
+     * Used to store the osgi-cache directories for each domain which has the directory so they are not lost
+     * when the restore-domain command is run.
+     *
+     * @return A map of domain names to the corresponding temp osgi-cache directory paths
+     * @throws IOException
+     */
+    private Map<String, Path> storeOsgiCache() throws IOException {
+        Map<String, Path> osgiCacheDirs = new HashMap<>();
+        File[] domaindirs = getDomainsDir().listFiles(File::isDirectory);
+        for (File domaindir : domaindirs) {
+            if (new File(domaindir + File.separator + "osgi-cache").exists()) {
+                Path tempDirectory = Files.createTempDirectory(domaindir.getName()+"-osgi-cache");
+                Path targetPath = Paths.get(domaindir + File.separator + "osgi-cache");
+                Files.move(targetPath, tempDirectory, StandardCopyOption.REPLACE_EXISTING);
+                osgiCacheDirs.put(domaindir.getName(), tempDirectory);
+            }
+        }
+        return osgiCacheDirs;
+    }
+
+    /**
+     * Used to restore the osgi-cache directories back into their corresponding domains.
+     *
+     * @param osgiCacheDirs A map of domain names to the corresponding temp osgi-cache directory paths
+     * @throws IOException
+     */
+    private void restoreOsgiCache(Map<String, Path> osgiCacheDirs) throws IOException {
+        for (Map.Entry<String, Path> tempCacheDir : osgiCacheDirs.entrySet()) {
+            Path targetPath = Paths.get(glassfishDir + File.separator + "domains" + File.separator +
+                    tempCacheDir.getKey() + File.separator + "osgi-cache");
+            Files.move(tempCacheDir.getValue(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
