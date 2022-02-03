@@ -25,7 +25,7 @@ pipeline {
             steps {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Building SRC  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
                 withCredentials([usernameColonPassword(credentialsId: 'JenkinsNexusUser', variable: 'NEXUS_USER')]) {
-                    sh """git submodule init appserver/extras/upgrade-tool/"""
+                    sh """git submodule init appserver/extras/upgrade-tool/ && git submodule update appserver/extras/upgrade-tool/"""
                     sh """mvn -B -V -ff -e clean install -P BuildUpgradeTool,QuickBuild \
                     -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                     -Djavax.xml.accessExternalSchema=all -Dbuild.number=${payaraBuildNumber} \
