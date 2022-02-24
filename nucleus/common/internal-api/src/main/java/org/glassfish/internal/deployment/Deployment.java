@@ -37,7 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2016-2020] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2022] [Payara Foundation and/or its affiliates]
 
 package org.glassfish.internal.deployment;
 
@@ -115,6 +115,11 @@ public interface Deployment {
      * succeeded.
      */
     public final EventTypes<ApplicationInfo> DEPLOYMENT_SUCCESS = EventTypes.create("Deployment_Success", ApplicationInfo.class);
+
+    /**
+     * This synchronous event is sent at the end of deployment command process
+     */
+    EventTypes<ApplicationInfo> DEPLOYMENT_COMMAND_FINISH = EventTypes.create("Deployment_Command_Finish", ApplicationInfo.class);
 
     /**
      * This asynchronous event is sent when a new deployment or loading of an already deployed application start. It is invoked
