@@ -55,7 +55,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Portions Copyright [2016-2021] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2022] [Payara Foundation and/or its affiliates]
 
 package org.glassfish.web.loader;
 
@@ -558,10 +558,12 @@ public class WebappClassLoader
 
 
     /**
+     * Unused. Always returns {@code null} - See CVE-2022-22965
      * Get associated resources.
      */
+    @Deprecated
     public DirContext getResources() {
-        return this.resources;
+        return null;
     }
 
 
