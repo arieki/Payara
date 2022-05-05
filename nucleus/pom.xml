@@ -40,7 +40,7 @@
     holder.
 
 -->
-<!--"Portions Copyright [2016-2020] [Payara Foundation and/or its affiliates]" -->
+<!--"Portions Copyright [2016-2021] [Payara Foundation and/or its affiliates]" -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
@@ -107,7 +107,7 @@
         <maven.remote.resources.plugin.version>1.6.0</maven.remote.resources.plugin.version>
         <maven.eclipse.plugin.version>2.10</maven.eclipse.plugin.version>
         <maven.invoker.plugin.version>3.1.0</maven.invoker.plugin.version>
-        <maven.war.plugin.version>3.2.2</maven.war.plugin.version>
+        <maven.war.plugin.version>3.3.2</maven.war.plugin.version>
         <maven.makepkgs.plugin.version>0.6.2</maven.makepkgs.plugin.version>
         <maven.jaxb2.plugin.version>0.14.0</maven.jaxb2.plugin.version>
         <maven.antlr.plugin.version>2.2</maven.antlr.plugin.version>
@@ -142,7 +142,7 @@
 
         <!-- Library for introspecting types with full generic information including resolving of field and method types. -->
         <classmate.version>1.5.0</classmate.version>
-        <jboss.logging.version>3.3.2.Final</jboss.logging.version>
+        <jboss.logging.version>3.4.2.Final</jboss.logging.version>
         <!-- Javassist (JAVA programming ASSISTant) makes Java bytecode manipulation simple. It is a class library for editing bytecodes in Java. -->
         <javassist.version>3.26.0-GA</javassist.version>
 
@@ -150,27 +150,31 @@
         <trilead-ssh2.version>build-217-jenkins-16</trilead-ssh2.version>
 
         <!-- Primitive Function Library (PFL); a library of simple utilities used by Glassfish -->
-        <pfl.version>4.0.2.payara-p1</pfl.version>
+        <pfl.version>4.1.2</pfl.version>
         <!-- GlassFish MBean Annotation Library -->
-        <gmbal.version>4.0.0</gmbal.version>
+        <gmbal.version>4.0.3</gmbal.version>
         <antlr.version>2.7.7</antlr.version>
 
         <commons-io.version>2.11.0</commons-io.version>
 
         <mimepull.version>1.9.12</mimepull.version>
 
-        <!-- Apache Felix is an open source implementation of the OSGi Core Release 6 framework specification. -->
-        <org.apache.felix.main.version>6.0.2</org.apache.felix.main.version>
-        <org.apache.felix.webconsole.version>4.3.8</org.apache.felix.webconsole.version>
-        <org.apache.felix.eventadmin.version>1.5.0</org.apache.felix.eventadmin.version>
+        <!-- Apache Felix is an open source implementation of the OSGi Core Release 8 framework specification. -->
+        <org.apache.felix.main.version>7.0.1</org.apache.felix.main.version>
+        <org.apache.felix.webconsole.version>4.6.2</org.apache.felix.webconsole.version>
+        <org.apache.felix.eventadmin.version>1.6.2</org.apache.felix.eventadmin.version>
         <org.apache.felix.shell.version>1.4.3</org.apache.felix.shell.version>
-        <org.apache.felix.gogo.runtime.version>1.1.2</org.apache.felix.gogo.runtime.version>
-        <org.apache.felix.gogo.shell.version>1.1.2</org.apache.felix.gogo.shell.version>
-        <org.apache.felix.gogo.command.version>1.1.0</org.apache.felix.gogo.command.version>
-        <org.apache.felix.fileinstall.version>3.6.4.payara-p1</org.apache.felix.fileinstall.version>
-        <org.apache.felix.configadmin.version>1.9.14</org.apache.felix.configadmin.version>
-        <org.apache.felix.scr.version>2.1.14</org.apache.felix.scr.version>
+        <org.apache.felix.gogo.runtime.version>1.1.4</org.apache.felix.gogo.runtime.version>
+        <org.apache.felix.gogo.shell.version>1.1.4</org.apache.felix.gogo.shell.version>
+        <org.apache.felix.gogo.command.version>1.1.2</org.apache.felix.gogo.command.version>
+        <org.apache.felix.fileinstall.version>3.7.0.payara-p1</org.apache.felix.fileinstall.version>
+        <org.apache.felix.configadmin.version>1.9.22</org.apache.felix.configadmin.version>
+        <org.apache.felix.scr.version>2.1.28</org.apache.felix.scr.version>
         <org.apache.felix.bundlerepository.version>2.0.10</org.apache.felix.bundlerepository.version>
+
+        <!-- OSGi Promise and Function is required for Apache Felix scr -->
+        <org.osgi.util.promise.version>1.1.1</org.osgi.util.promise.version>
+        <org.osgi.util.function.version>1.1.0</org.osgi.util.function.version>
 
         <!-- Java Business Integration (JBI) is a specification for an approach to implementing a service-oriented architecture (SOA).  -->
         <glassfish-management-api.version>3.2.1-b002.payara-p1</glassfish-management-api.version>
@@ -185,7 +189,7 @@
         <glassfishbuild.version>3.2.20.payara-p2</glassfishbuild.version>
         <source-annotation-processor.version>1.0</source-annotation-processor.version>
         <logging-annotation-processor.version>1.9</logging-annotation-processor.version>
-        <command-security-plugin.version>1.0.10.payara-p1</command-security-plugin.version>
+        <command-security-plugin.version>1.0.13</command-security-plugin.version>
         <command.security.maven.plugin.isFailureFatal>false</command.security.maven.plugin.isFailureFatal>
         <copyright-plugin.version>1.39</copyright-plugin.version>
         <nucleus.install.dir.name>nucleus</nucleus.install.dir.name>
@@ -788,6 +792,17 @@ Parent is ${project.parent}</echo>
                 <version>${org.apache.felix.bundlerepository.version}</version>
             </dependency>
 
+            <dependency> <!-- Required for org.apache.felix.scr-->
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.util.promise</artifactId>
+                <version>${org.osgi.util.promise.version}</version>
+            </dependency>
+            <dependency> <!-- Required for org.apache.felix.scr-->
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.util.function</artifactId>
+                <version>${org.osgi.util.function.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>org.jvnet.mimepull</groupId>
                 <artifactId>mimepull</artifactId>
@@ -847,11 +862,6 @@ Parent is ${project.parent}</echo>
             <dependency>
                 <groupId>org.glassfish.pfl</groupId>
                 <artifactId>pfl-basic-tools</artifactId>
-                <version>${pfl.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.pfl</groupId>
-                <artifactId>pfl-asm</artifactId>
                 <version>${pfl.version}</version>
             </dependency>
             <dependency>
