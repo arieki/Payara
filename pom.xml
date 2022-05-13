@@ -255,6 +255,7 @@
         <monitoring-console-webapp.version>1.8.1</monitoring-console-webapp.version>
         <validation.xml.root>${project.build.outputDirectory}</validation.xml.root>
         <payara.notifiers.version>1.0.1-enterprise</payara.notifiers.version>
+        <payara.notifiers.xmpp-notifier-core.version>1.1-enterprise</payara.notifiers.xmpp-notifier-core.version>
         <payara-teams-notifier-console-plugin.version>1.1-enterprise</payara-teams-notifier-console-plugin.version>
         <smack.version>4.3.4</smack.version>
         <jxmpp.version>0.4.2</jxmpp.version>
