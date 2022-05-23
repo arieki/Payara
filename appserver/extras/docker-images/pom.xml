@@ -151,7 +151,7 @@
                                     <goal>run</goal>
                                 </goals>
                                 <configuration>
-                                    <target>
+                                    <tasks>
                                         <copy file="src/main/docker/Dockerfile" toFile="target/antrun/Dockerfile.jdk8">
                                             <filterset>
                                                 <filter token="docker.java.image" value="${docker.java.repository}:${docker.jdk8.tag}"/>
@@ -168,7 +168,7 @@
                                                 <filter token="docker.java.image" value="${docker.java.repository}:${docker.jdk17.tag}"/>
                                             </filterset>
                                         </copy>
-                                    </target>
+                                    </tasks>
                                 </configuration>
                             </execution>
                         </executions>
