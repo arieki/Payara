@@ -42,11 +42,12 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    
-    <groupId>fish.payara.extras</groupId>
+    <parent>
+        <groupId>fish.payara.extras</groupId>
+        <artifactId>extras</artifactId>
+        <version>5.40.0-SNAPSHOT</version>
+    </parent>
     <artifactId>docker-images</artifactId>
-    <version>5.40.0-SNAPSHOT</version>
-
     <packaging>pom</packaging>
     <name>Payara Docker Images</name>
 
@@ -66,18 +67,6 @@
         <docker.payara.tag>${payara.version}</docker.payara.tag>
         <docker.payara.image>${docker.payara.repository}:${docker.payara.tag}</docker.payara.image>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>fish.payara.api</groupId>
-                <artifactId>payara-bom</artifactId>
-                <version>${payara.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <pluginManagement>
