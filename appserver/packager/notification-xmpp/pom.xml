@@ -107,7 +107,7 @@
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
             <artifactId>xmpp-notifier-core</artifactId>
-            <version>${payara.notifiers.version}</version>
+            <version>${payara.notifiers.xmpp-notifier-core.version}</version>
         </dependency>
         <dependency>
             <groupId>fish.payara.extensions.notifiers</groupId>
@@ -159,6 +159,16 @@
             <groupId>org.apache.servicemix.bundles</groupId>
             <artifactId>org.apache.servicemix.bundles.xpp3</artifactId>
             <version>${xpp3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jxmpp</groupId>
+            <artifactId>jxmpp-jid</artifactId>
+            <version>${jxmpp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.minidns</groupId>
+            <artifactId>minidns-core</artifactId>
+            <version>${minidns.version}</version>
         </dependency>
     </dependencies>
 </project>
