@@ -86,6 +86,7 @@
         <!--<module>corba-read-timeout</module>-->
         <module>microprofile-rest-client</module>
         <module>grpc-ejb</module>
+        <module>resources</module>
     </modules>
 
     <dependencies>
