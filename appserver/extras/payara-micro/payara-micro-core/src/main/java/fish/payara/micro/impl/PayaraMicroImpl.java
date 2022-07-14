@@ -1728,6 +1728,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
             public void run() {
                 try {
                     if (gf != null) {
+                        gf.stop();
                         gf.dispose();
                     }
                 } catch (GlassFishException ex) {
