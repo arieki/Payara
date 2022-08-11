@@ -68,7 +68,10 @@ import javax.xml.ws.WebServiceRef;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.Set;
+
+import static java.util.logging.Level.FINE;
 
 import org.glassfish.api.invocation.ComponentInvocation;
 
@@ -83,6 +86,8 @@ public class InjectionServicesImpl implements InjectionServices {
     private BundleDescriptor bundleContext;
 
     private DeploymentImpl deployment;
+    
+    private static final Logger logger = Logger.getLogger(InjectionServicesImpl.class.getName());
 
     public InjectionServicesImpl(InjectionManager injectionMgr, BundleDescriptor context, DeploymentImpl deployment) {
         injectionManager = injectionMgr;
@@ -139,11 +144,11 @@ public class InjectionServicesImpl implements InjectionServices {
               injectionManager.inject( targetClass, target, injectionEnv, null, false );
             } else {
               if( componentEnv == null ) {
-                //throw new IllegalStateException("No valid EE environment for injection of " + targetClassName);
-                System.err.println("No valid EE environment for injection of " + targetClassName);
-                injectionContext.proceed();
-                return;
-              }
+                    //throw new IllegalStateException("No valid EE environment for injection of " + targetClassName);
+                    logger.log(FINE, "No valid EE environment for injection of " + targetClassName + ". The methods that is missing the context is " + injectionContext.getAnnotatedType().getMethods());
+                    injectionContext.proceed();
+                    return;
+                }
 
               // Perform EE-style injection on the target.  Skip PostConstruct since
               // in this case 299 impl is responsible for calling it.
