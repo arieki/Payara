@@ -176,6 +176,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
     private GlassFish gf;
     private PayaraMicroRuntimeImpl runtime;
     private boolean noCluster = false;
+    private boolean noHazelcast = false;
     private boolean hostAware = true;
     private boolean autoBindHttp = false;
     private boolean autoBindSsl = false;
@@ -242,6 +243,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
      * @throws BootstrapException If there is a problem booting the server
      */
     public static void main(String[] args) throws Exception {
+        Arrays.asList(args).stream().forEach(System.out::println);
         create(args);
     }
 
@@ -760,6 +762,17 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
     }
 
     /**
+     * Indicated whether distributed data grid is enabled
+     *
+     * @return
+     */
+    @Override
+    public boolean isNoHazelcast() {
+        return noHazelcast;
+    }
+
+
+    /**
      * Enables or disables clustering before bootstrap
      *
      * @param noCluster set to true to disable clustering
@@ -770,6 +783,19 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
         //if (runtime != null) {
         checkNotRunning();
         this.noCluster = noCluster;
+        return this;
+    }
+
+    /**
+     * Enables or disables clustering before bootstrap
+     *
+     * @param noHazelcast set to true to disable clustering
+     * @return
+     */
+    @Override
+    public PayaraMicroImpl setNoHazelcast(boolean noHazelcast) {
+        checkNotRunning();
+        this.noHazelcast = noHazelcast;
         return this;
     }
 
@@ -1254,6 +1280,9 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
                     break;
                 case nocluster:
                     noCluster = true;
+                    break;
+                case nohazelcast:
+                    noHazelcast = true;
                     break;
                 case lite:
                     liteMember = true;
@@ -1962,11 +1991,18 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
             System.setProperty("hazelcast.wait.seconds.before.join", Integer.toString(initialJoinWait));
         }
 
-        if (noCluster) {
+        if (noCluster)
+        {
+            /*preBootCommands.add(new BootCommand("set",
+              "configs.config.server-config.hazelcast-config-specific-configuration.enabled=false"));
+            preBootCommands.add(new BootCommand("set",
+              "configs.config.server-config.ejb-container.ejb-timer-service.ejb-timer-service=Dummy"));*/
+            System.setProperty("payaramicro.noCluster", String.valueOf(true));
+        }
+        else if (noHazelcast) {
             preBootCommands.add(new BootCommand("set", "configs.config.server-config.hazelcast-config-specific-configuration.enabled=false"));
             preBootCommands.add(new BootCommand("set", "configs.config.server-config.ejb-container.ejb-timer-service.ejb-timer-service=Dummy"));
         } else {
-
             if (hzPort > Integer.MIN_VALUE) {
                 preBootCommands.add(new BootCommand("set", "hazelcast-runtime-configuration.multicast-port=" + hzPort));
             }
@@ -2237,6 +2273,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
         maxHttpThreads = getIntegerProperty("payaramicro.maxHttpThreads", Integer.MIN_VALUE);
         minHttpThreads = getIntegerProperty("payaramicro.minHttpThreads", Integer.MIN_VALUE);
         noCluster = getBooleanProperty("payaramicro.noCluster");
+        noHazelcast = getBooleanProperty("payaramicro.noHazelcast");
         disablePhoneHome = getBooleanProperty("payaramicro.disablePhoneHome");
         enableRequestTracing = getBooleanProperty("payaramicro.enableRequestTracing");
         requestTracingThresholdUnit = getProperty("payaramicro.requestTracingThresholdUnit", "SECONDS");
@@ -2391,6 +2428,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
         props.setProperty("payaramicro.logPropertiesFile", Boolean.toString(logPropertiesFile));
         props.setProperty("payaramicro.enableDynamicLogging", Boolean.toString(enableDynamicLogging));
         props.setProperty("payaramicro.noCluster", Boolean.toString(noCluster));
+        props.setProperty("payaramicro.noHazelcast", Boolean.toString(noHazelcast));
         props.setProperty("payaramicro.hostAware", Boolean.toString(hostAware));
         props.setProperty("payaramicro.disablePhoneHome", Boolean.toString(disablePhoneHome));
         props.setProperty("payaramicro.showServletMappings", Boolean.toString(showServletMappings));
