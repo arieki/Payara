@@ -243,7 +243,6 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
      * @throws BootstrapException If there is a problem booting the server
      */
     public static void main(String[] args) throws Exception {
-        Arrays.asList(args).stream().forEach(System.out::println);
         create(args);
     }
 
