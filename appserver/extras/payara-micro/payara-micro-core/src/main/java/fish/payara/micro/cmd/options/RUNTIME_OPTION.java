@@ -111,13 +111,9 @@ public enum RUNTIME_OPTION {
     shutdowngrace(true, new IntegerValidator(1, Integer.MAX_VALUE)),
     hzinitialjoinwait(true, new IntegerValidator(0,100000)),
     contextroot(true),
-<<<<<<< HEAD
     warmup(false);
-=======
-    warmup(false),
     hotdeploy(false),
     nohazelcast(false);
->>>>>>> c6594d6c88... Have implemented the fix. INtegration tests in progress
 
     RUNTIME_OPTION(boolean hasValue) {
         this(hasValue, new Validator());
