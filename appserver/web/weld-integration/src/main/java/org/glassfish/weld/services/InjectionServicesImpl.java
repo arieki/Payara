@@ -70,8 +70,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.Set;
+import java.util.logging.Level;
 
-import static java.util.logging.Level.FINE;
 
 import org.glassfish.api.invocation.ComponentInvocation;
 
@@ -145,7 +145,7 @@ public class InjectionServicesImpl implements InjectionServices {
             } else {
               if( componentEnv == null ) {
                     //throw new IllegalStateException("No valid EE environment for injection of " + targetClassName);
-                    logger.log(FINE, "No valid EE environment for injection of " + targetClassName + ". The methods that is missing the context is " + injectionContext.getAnnotatedType().getMethods());
+                    logger.log(Level.FINE, "No valid EE environment for injection of {0}. The methods that is missing the context is {1}", new Object[] {targetClass, injectionContext.getAnnotatedType().getMethods()});
                     injectionContext.proceed();
                     return;
                 }
