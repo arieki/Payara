@@ -150,7 +150,7 @@
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-moxy</artifactId>
         </dependency>
-        <!--dependency>
+        <dependency>
             <groupId>org.glassfish.jersey.ext.cdi</groupId>
             <artifactId>jersey-cdi1x</artifactId>
         </dependency>
@@ -161,7 +161,7 @@
         <dependency>
             <groupId>org.glassfish.jersey.ext.cdi</groupId>
             <artifactId>jersey-cdi1x-transaction</artifactId>
-        </dependency-->
+        </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.containers.glassfish</groupId>
             <artifactId>jersey-gf-ejb</artifactId>
