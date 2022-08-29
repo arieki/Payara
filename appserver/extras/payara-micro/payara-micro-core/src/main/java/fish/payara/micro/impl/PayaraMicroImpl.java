@@ -1992,10 +1992,6 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
 
         if (noCluster)
         {
-            /*preBootCommands.add(new BootCommand("set",
-              "configs.config.server-config.hazelcast-config-specific-configuration.enabled=false"));
-            preBootCommands.add(new BootCommand("set",
-              "configs.config.server-config.ejb-container.ejb-timer-service.ejb-timer-service=Dummy"));*/
             System.setProperty("payaramicro.noCluster", String.valueOf(true));
         }
         else if (noHazelcast) {
