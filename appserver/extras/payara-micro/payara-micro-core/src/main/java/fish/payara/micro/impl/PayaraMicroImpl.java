@@ -39,34 +39,9 @@
  */
 package fish.payara.micro.impl;
 
-import com.sun.appserv.server.util.Version;
-import com.sun.enterprise.glassfish.bootstrap.Constants;
-import com.sun.enterprise.glassfish.bootstrap.GlassFishImpl;
-import com.sun.enterprise.server.logging.ODLLogFormatter;
-import fish.payara.appserver.rest.endpoints.config.admin.ListRestEndpointsCommand;
-import fish.payara.boot.runtime.BootCommand;
-import fish.payara.boot.runtime.BootCommands;
-import fish.payara.deployment.util.GAVConvertor;
-import fish.payara.micro.BootstrapException;
-import fish.payara.micro.PayaraMicroRuntime;
-import fish.payara.micro.boot.AdminCommandRunner;
-import fish.payara.micro.boot.PayaraMicroBoot;
-import fish.payara.micro.boot.PayaraMicroLauncher;
-import fish.payara.micro.boot.loader.OpenURLClassLoader;
-import fish.payara.micro.cmd.options.RUNTIME_OPTION;
-import fish.payara.micro.cmd.options.RuntimeOptions;
-import fish.payara.micro.cmd.options.ValidationException;
-import fish.payara.micro.data.InstanceDescriptor;
-import fish.payara.nucleus.executorservice.PayaraFileWatcher;
-import org.glassfish.embeddable.BootstrapProperties;
-import org.glassfish.embeddable.CommandRunner;
-import org.glassfish.embeddable.Deployer;
-import org.glassfish.embeddable.GlassFish;
-import org.glassfish.embeddable.GlassFish.Status;
-import org.glassfish.embeddable.GlassFishException;
-import org.glassfish.embeddable.GlassFishProperties;
-import org.glassfish.embeddable.GlassFishRuntime;
-
+import com.sun.enterprise.util.JDK;
+import com.sun.enterprise.util.PropertyPlaceholderHelper;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -75,6 +50,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -85,6 +62,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -108,9 +86,9 @@ import com.sun.enterprise.glassfish.bootstrap.Constants;
 import com.sun.enterprise.glassfish.bootstrap.GlassFishImpl;
 import com.sun.enterprise.server.logging.ODLLogFormatter;
 
-import com.sun.enterprise.util.JDK;
 import fish.payara.deployment.util.JavaArchiveUtils;
 import fish.payara.deployment.util.URIUtils;
+import java.util.stream.Collectors;
 import org.glassfish.embeddable.BootstrapProperties;
 import org.glassfish.embeddable.CommandRunner;
 import org.glassfish.embeddable.Deployer;
@@ -1762,10 +1740,11 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
 
             System.setProperty("java.util.logging.config.file", runtimeDir.getLoggingProperties().getAbsolutePath());
             try (InputStream is = new FileInputStream(runtimeDir.getLoggingProperties())) {
-                LogManager.getLogManager().readConfiguration(is);
+                LogManager.getLogManager().readConfiguration(replaceEnvProperties(is));
 
                 // go through all root handlers and set formatters based on properties
                 Logger rootLogger = LogManager.getLogManager().getLogger("");
+
                 for (Handler handler : rootLogger.getHandlers()) {
                     String formatter = LogManager.getLogManager().getProperty(handler.getClass().getCanonicalName() + ".formatter");
                     if (formatter != null) {
@@ -1806,7 +1785,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
             }
             System.setProperty("java.util.logging.config.file", runtimeDir.getLoggingProperties().getAbsolutePath());
             try (InputStream is = new FileInputStream(runtimeDir.getLoggingProperties())) {
-                LogManager.getLogManager().readConfiguration(is);
+                LogManager.getLogManager().readConfiguration(replaceEnvProperties(is));
 
                 // reset the formatters on the two handlers
                 //Logger rootLogger = Logger.getLogger("");
@@ -1825,6 +1804,37 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
                 LOGGER.log(Level.SEVERE, "Unable to reset the log manager", ex);
             }
         }
+    }
+
+    /**
+     * Method to replace Env properties with corresponding value from System properties
+     * @param is InputStream from File with properties
+     * @return an instance of ByteArrayInputStream with the preprocessed properties
+     * @throws IOException
+     */
+    private ByteArrayInputStream replaceEnvProperties(InputStream is) throws IOException {
+        //preprocessing the properties read from the custom properties file
+        Properties configuration = new Properties();
+        configuration.load(is);
+        //set the System.getProperties to be used for the replacement process. The desired property to be mapped
+        //should need to be available on the System properties
+        configuration = new PropertyPlaceholderHelper(convertPropertiesToMap(System.getProperties()),
+                PropertyPlaceholderHelper.ENV_REGEX).replacePropertiesPlaceholder(configuration);
+        StringWriter writer = new StringWriter();
+        configuration.store(new PrintWriter(writer), null);
+        //here is added the new inputStream with the preprocessed properties solving the replacement issues
+        return new ByteArrayInputStream(writer.getBuffer().toString().getBytes());
+    }
+
+    /**
+     * Method to convert Properties to Map<String, String>
+     * @param properties to be processed
+     * @return a Map<String, String>
+     */
+    private Map<String, String> convertPropertiesToMap(Properties  properties) {
+        return properties.entrySet().stream().collect(Collectors.toMap(
+                e -> String.valueOf(e.getKey()), e -> String.valueOf(e.getValue()),
+                (p , n) -> n, HashMap::new));
     }
 
     private void configureCommandFiles() throws IOException {
@@ -2207,7 +2217,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
         if (alternateHZConfigFileStr != null && !alternateHZConfigFileStr.isEmpty()) {
             alternateHZConfigFile = new File(alternateHZConfigFileStr);
         }
-        
+
         String userLogPropertiesFileStr = getProperty("payaramicro.logPropertiesFile");
         if (userLogPropertiesFileStr  != null && !userLogPropertiesFileStr.trim().isEmpty()) {
              setLogPropertiesFile(new File(userLogPropertiesFileStr));
