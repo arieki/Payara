@@ -46,7 +46,7 @@
     <parent>
         <groupId>fish.payara.server.internal.tests</groupId>
         <artifactId>payara-tests</artifactId>
-        <version>5.43.0-SNAPSHOT</version>
+        <version>5.44.0-SNAPSHOT</version>
     </parent>
 
     <groupId>fish.payara.samples</groupId>
@@ -524,6 +524,12 @@
             <artifactId>payara-client-ee8</artifactId>
             <scope>test</scope>
             <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.glassfish.jersey.ext.cdi</groupId>
+                    <artifactId>jersey-cdi1x</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- needed for maven-war-plugin to work properly -->
         <dependency>
