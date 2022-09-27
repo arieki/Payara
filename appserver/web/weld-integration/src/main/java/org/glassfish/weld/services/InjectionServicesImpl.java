@@ -37,17 +37,22 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2016-2018] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016-2022] [Payara Foundation and/or its affiliates]
 
 package org.glassfish.weld.services;
 
 import com.sun.enterprise.deployment.*;
+import javax.enterprise.inject.spi.AnnotatedField;
+import javax.enterprise.inject.spi.AnnotatedType;
+import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.DefinitionException;
+import javax.enterprise.inject.spi.InjectionTarget;
 import org.glassfish.api.invocation.InvocationManager;
 import org.glassfish.ejb.api.EjbContainerServices;
 import org.glassfish.internal.api.Globals;
 import org.glassfish.weld.DeploymentImpl;
 import org.glassfish.weld.connector.WeldUtils;
-import org.jboss.weld.annotated.slim.backed.*;
+import org.jboss.weld.annotated.slim.backed.BackedAnnotatedType;
 import org.jboss.weld.injection.spi.InjectionContext;
 import org.jboss.weld.injection.spi.InjectionServices;
 import org.glassfish.hk2.api.ServiceLocator;
@@ -59,7 +64,6 @@ import com.sun.enterprise.container.common.spi.util.InjectionManager;
 import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.enterprise.inject.Produces;
-import javax.enterprise.inject.spi.*;
 import javax.enterprise.inject.spi.InjectionTarget;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -159,7 +163,6 @@ public class InjectionServicesImpl implements InjectionServices {
                 }
 
                 if (componentEnv == null) {
-                    //throw new IllegalStateException("No valid EE environment for injection of " + targetClassName);
                     logger.log(Level.FINE,
                             "No valid EE environment for injection of {0}. The methods that is missing the context is {1}",
                             new Object[]{targetClass, injectionContext.getAnnotatedType().getMethods()});
