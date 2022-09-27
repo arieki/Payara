@@ -47,6 +47,7 @@ import org.glassfish.ejb.api.EjbContainerServices;
 import org.glassfish.internal.api.Globals;
 import org.glassfish.weld.DeploymentImpl;
 import org.glassfish.weld.connector.WeldUtils;
+import org.jboss.weld.annotated.slim.backed.*;
 import org.jboss.weld.injection.spi.InjectionContext;
 import org.jboss.weld.injection.spi.InjectionServices;
 import org.glassfish.hk2.api.ServiceLocator;
@@ -143,9 +144,25 @@ public class InjectionServicesImpl implements InjectionServices {
               // must use the current jndi component env to lookup the objects to inject
               injectionManager.inject( targetClass, target, injectionEnv, null, false );
             } else {
-              if( componentEnv == null ) {
+                if (annotatedType instanceof BackedAnnotatedType) {
+                    BackedAnnotatedType backedAnnotatedType = ((BackedAnnotatedType) annotatedType);
+                    //added condition to skip the failure when the TransactionScopedCDIEventHelperImpl is tried to be used
+                    //for the TransactionalScoped CDI Bean
+                    if (backedAnnotatedType != null
+                            && backedAnnotatedType.getIdentifier() != null
+                            && backedAnnotatedType.getIdentifier().getBdaId()
+                            .equals("org.glassfish.cdi.transaction.TransactionalExtension")
+                            && componentEnv == null) {
+                        injectionContext.proceed();
+                        return;
+                    }
+                }
+
+                if (componentEnv == null) {
                     //throw new IllegalStateException("No valid EE environment for injection of " + targetClassName);
-                    logger.log(Level.FINE, "No valid EE environment for injection of {0}. The methods that is missing the context is {1}", new Object[] {targetClass, injectionContext.getAnnotatedType().getMethods()});
+                    logger.log(Level.FINE,
+                            "No valid EE environment for injection of {0}. The methods that is missing the context is {1}",
+                            new Object[]{targetClass, injectionContext.getAnnotatedType().getMethods()});
                     injectionContext.proceed();
                     return;
                 }
