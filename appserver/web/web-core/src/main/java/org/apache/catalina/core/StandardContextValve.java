@@ -293,6 +293,12 @@ final class StandardContextValve
         if(rv.indexOf("./") == 0) {
             rv = rv.replaceFirst("./", "/");
         }
+        // has WEB-INF or META-INF
+        if (rv.toUpperCase().indexOf("WEB-INF") > 0) {
+            rv = "/" + rv.substring(rv.toUpperCase().indexOf("WEB-INF"));
+        } else if (rv.toUpperCase().indexOf("META-INF") > 0) {
+            rv = "/" + rv.substring(rv.toUpperCase().indexOf("META-INF"));
+        }
 
         // Normalize the slashes and add leading slash if necessary
         if (rv.indexOf('\\') >= 0) {
