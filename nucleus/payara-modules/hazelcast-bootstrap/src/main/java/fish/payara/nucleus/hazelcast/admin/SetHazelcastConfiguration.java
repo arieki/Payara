@@ -231,7 +231,6 @@ public class SetHazelcastConfiguration implements AdminCommand, DeploymentTarget
             return;
         }
 
-        final Hazelcast hazelcastElement;
         if (configFile != null && !"hazelcast-config.xml".equals(configFile)) {
             File xmlConfigFile = new File(configFile);
             if (!xmlConfigFile.exists()) {
@@ -245,7 +244,7 @@ public class SetHazelcastConfiguration implements AdminCommand, DeploymentTarget
                 JAXBContext jc = JAXBContext.newInstance(Hazelcast.class);
                 Unmarshaller unmarshaller = jc.createUnmarshaller();
                 unmarshaller.setSchema(null);
-                hazelcastElement = (Hazelcast) unmarshaller.unmarshal(xmlConfigFile);
+                unmarshaller.unmarshal(xmlConfigFile);
             } catch (Exception ex) {
                 String message = "Hazelcast config file parsing exception: " + ex.toString();
                 logger.log(Level.INFO, message);
@@ -253,8 +252,6 @@ public class SetHazelcastConfiguration implements AdminCommand, DeploymentTarget
                 actionReport.setActionExitCode(ActionReport.ExitCode.FAILURE);
                 return;
             }
-        } else {
-            hazelcastElement = null;
         }
 
         HazelcastRuntimeConfiguration hazelcastRuntimeConfiguration = domain.getExtensionByType(HazelcastRuntimeConfiguration.class);
@@ -263,11 +260,8 @@ public class SetHazelcastConfiguration implements AdminCommand, DeploymentTarget
                 ConfigSupport.apply(new SingleConfigCode<HazelcastRuntimeConfiguration>() {
                     @Override
                     public Object run(final HazelcastRuntimeConfiguration hazelcastRuntimeConfigurationProxy) throws PropertyVetoException, TransactionFailure {
-                        hazelcastRuntimeConfigurationProxy.setHazelcastConfigurationFile(configFile);
-                        if (hazelcastElement != null) {
-                            hazelcastCore.fillConfigurationFromHazelcastElem(hazelcastElement, hazelcastRuntimeConfigurationProxy);
-                            actionReport.setActionExitCode(ActionReport.ExitCode.SUCCESS);
-                            return null;
+                        if (configFile != null) {
+                            hazelcastRuntimeConfigurationProxy.setHazelcastConfigurationFile(configFile);
                         }
                         if (startPort != null) {
                             hazelcastRuntimeConfigurationProxy.setStartPort(startPort);
@@ -339,11 +333,6 @@ public class SetHazelcastConfiguration implements AdminCommand, DeploymentTarget
                     ConfigSupport.apply(new SingleConfigCode<HazelcastConfigSpecificConfiguration>() {
                         @Override
                         public Object run(final HazelcastConfigSpecificConfiguration hazelcastRuntimeConfigurationProxy) throws PropertyVetoException, TransactionFailure {
-                            if (hazelcastElement != null) {
-                                hazelcastCore.fillSpecificConfigFromHazelcastElem(hazelcastElement, hazelcastRuntimeConfigurationProxy);
-                                actionReport.setActionExitCode(ActionReport.ExitCode.SUCCESS);
-                                return null;
-                            }
                             if (jndiName != null) {
                                 hazelcastRuntimeConfigurationProxy.setJNDIName(jndiName);
                             }
