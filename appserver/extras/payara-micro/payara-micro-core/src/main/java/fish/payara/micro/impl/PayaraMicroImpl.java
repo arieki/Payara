@@ -1052,7 +1052,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
             gfproperties.setConfigFileURI(runtimeDir.getDomainXML().toURI().toString());
 
             try {
-                configurePreBootCommandFiles();
+                parsePreBootCommandFiles();
             } catch (IOException ex) {
                 LOGGER.log(Level.SEVERE, "Unable to load command file", ex);
             }
@@ -1079,7 +1079,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
 
             // Parse and execute post boot commands
             try {
-                configurePostBootCommandFiles();
+                parsePostBootCommandFiles();
             } catch (IOException ex) {
                 LOGGER.log(Level.SEVERE, "Unable to load command file", ex);
             }
@@ -1094,7 +1094,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
 
             // Parse and execute post deploy commands
             try {
-                configurePostDeployCommandFiles();
+                parsePostDeployCommandFiles();
             } catch (IOException ex) {
                 LOGGER.log(Level.SEVERE, "Unable to load command file", ex);
             }
@@ -1868,7 +1868,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
      *
      * @throws IOException
      */
-    private void configurePreBootCommandFiles() throws IOException {
+    private void parsePreBootCommandFiles() throws IOException {
         parseCommandFiles("MICRO-INF/pre-boot-commands.txt", preBootFileName, preBootCommands, false);
     }
 
@@ -1877,7 +1877,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
      *
      * @throws IOException
      */
-    private void configurePostBootCommandFiles() throws IOException {
+    private void parsePostBootCommandFiles() throws IOException {
         parseCommandFiles("MICRO-INF/post-boot-commands.txt", postBootFileName, postBootCommands, true);
     }
 
@@ -1886,7 +1886,7 @@ public class PayaraMicroImpl implements PayaraMicroBoot {
      *
      * @throws IOException
      */
-    private void configurePostDeployCommandFiles() throws IOException {
+    private void parsePostDeployCommandFiles() throws IOException {
         parseCommandFiles("MICRO-INF/post-deploy-commands.txt", postDeployFileName, postDeployCommands, true);
     }
 
