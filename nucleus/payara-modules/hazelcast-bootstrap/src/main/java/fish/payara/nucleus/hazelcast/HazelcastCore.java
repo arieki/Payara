@@ -133,8 +133,6 @@ public class HazelcastCore implements EventListener, ConfigListener {
 
     private boolean datagridEncryptionValue;
 
-    private fish.payara.nucleus.hazelcast.xsd.Hazelcast hazelcastElement;
-
     @Inject
     Events events;
 
