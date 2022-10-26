@@ -83,7 +83,6 @@ import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -299,16 +298,11 @@ public class HazelcastCore implements EventListener, ConfigListener {
     private Config buildConfiguration() {
         Config config = new Config();
         String hazelcastFilePath = "";
-        URL serverConfigURL;
         try {
-            serverConfigURL = new URL(context.getServerConfigURL());
             Boolean isChangeToDefault = Boolean.valueOf(configuration.getChangeToDefault());
-            File serverConfigFile = new File(serverConfigURL.getPath());
-            if (new File(configuration.getHazelcastConfigurationFile()).exists()) {
+            hazelcastFilePath = System.getProperty("hazelcast.config");
+            if (hazelcastFilePath == null || hazelcastFilePath.isEmpty()) {
                 hazelcastFilePath = configuration.getHazelcastConfigurationFile();
-            } else {
-                hazelcastFilePath = serverConfigFile.getParentFile().getAbsolutePath() + File.separator
-                        + configuration.getHazelcastConfigurationFile();
             }
             File file = new File(hazelcastFilePath);
             if (file.exists()) {
