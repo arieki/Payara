@@ -77,6 +77,7 @@ pipeline {
                 -Dpayara.version=${pom.version} \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
                 -Djavax.xml.accessExternalSchema=all \
+                -Dpayara.home=\"${pwd()}/appserver/distributions/payara/target/stage/payara5/glassfish\" \
                 -f appserver/tests/payara-samples """
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Ran test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
             }
