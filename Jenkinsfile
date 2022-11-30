@@ -4,7 +4,9 @@ def pom
 def DOMAIN_NAME
 def payaraBuildNumber
 pipeline {
-    agent any
+    agent {
+        label 'ubuntu'
+    }
     tools {
         jdk "zulu-8"
     }
