@@ -169,7 +169,7 @@
         </dependency>
         <dependency>
             <groupId>org.glassfish.external</groupId>
-            <artifactId>dbschema-repackaged</artifactId>
+            <artifactId>dbschema</artifactId>
         </dependency>
         <dependency>
             <groupId>fish.payara.server.internal.packager</groupId>
