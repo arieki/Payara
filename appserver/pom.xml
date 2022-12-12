@@ -79,7 +79,7 @@
         <install.dir.name>payara5</install.dir.name>
         <uc-pkg-client.version>1.122-57.2889</uc-pkg-client.version>
         <uc-pkg-bootstrap.version>1.122-57.2889</uc-pkg-bootstrap.version>
-        <dbschema.version>3.1.1</dbschema.version>
+        <dbschema.version>3.2-b06</dbschema.version>
         <dbschema.osgi.version>6.0</dbschema.osgi.version>
         <schema2beans.version>6.7</schema2beans.version>
         <!-- Java API for XML Registries Resource Adapter -->
