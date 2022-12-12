@@ -119,7 +119,7 @@
 
         <!-- Other -->
 
-        <hk2.plugin.version>2.6.1.payara-p1</hk2.plugin.version>
+        <hk2.plugin.version>2.6.1.payara-p8</hk2.plugin.version>
         <tiger.types.version>1.4.payara-p1</tiger.types.version>
 
         <glassfish-corba.version>4.1.1.payara-p5</glassfish-corba.version>
