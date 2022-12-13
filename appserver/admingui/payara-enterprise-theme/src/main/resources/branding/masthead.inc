@@ -38,7 +38,7 @@
     only if the new code is made subject to such option by the copyright
     holder.
 
-   Portions Copyright [2016-2019] [Payara Foundation and/or its affiliates] 
+   Portions Copyright [2016-2022] [Payara Foundation and/or its affiliates]
 -->
 
 <!initPage
@@ -71,7 +71,7 @@
             <sun:hyperlink id="support" toolTip="$resource{theme.masthead.supportTooltip}" text="$resource{theme.masthead.supportLabel}" url="https://support.payara.fish/" target="_blank" />
             <sun:hyperlink id="kb" toolTip="$resource{theme.masthead.kbTooltip}" text="$resource{theme.masthead.kbLabel}" url="https://support.payara.fish/hc/" target="_blank" />
             <sun:hyperlink id="supportguides" toolTip="$resource{theme.masthead.supportGuidesTooltip}" text="$resource{theme.masthead.supportGuidesLabel}" url="https://support.payara.fish/hc/en-gb/articles/360011576077-Payara-Enterprise-Customer-Support-Guides" target="_blank" />
-            <sun:hyperlink id="downloads" toolTip="$resource{theme.masthead.downloadsTooltip}" text="$resource{theme.masthead.downloadsLabel}" url="https://nexus.payara.fish/#browse/browse:payara-enterprise" target="_blank" />
+            <sun:hyperlink id="downloads" toolTip="$resource{theme.masthead.downloadsTooltip}" text="$resource{theme.masthead.downloadsLabel}" url="https://nexus.payara.fish/#browse/browse:payara-enterprise-downloadable-artifacts" target="_blank" />
             <sun:hyperlink id="website" toolTip="$resource{theme.masthead.websiteTooltip}" text="$resource{theme.masthead.websiteLabel}" url="https://payara.fish/" target="_blank" />
             <sun:button id="logoutLink" rendered="#{showLogoutButton}" toolTip="$resource{i18n.logoutTooltip}" target="_top" text="$resource{i18n.masthead.Logout}"
                 onClick="if (!confirm('$resource{i18n.msg.JS.confirmLogout}')) return false;" onKeyPress="javascript: return true;" url="/" >
