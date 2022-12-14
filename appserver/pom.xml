@@ -62,7 +62,7 @@
         <jakarta.faces-spec.version>2.3.1</jakarta.faces-spec.version>
         <jsftemplating.version>2.1.4</jsftemplating.version>
         <jboss.classfilewriter.version>1.2.5.Final</jboss.classfilewriter.version>
-        <apache.bcel.version>6.6.1</apache.bcel.version>
+        <apache.bcel.version>6.7.0</apache.bcel.version>
         <!-- Java EE Security API -->
         <javax.security.enterprise-spec.version>1.0</javax.security.enterprise-spec.version>
         <jna.version>5.12.1</jna.version>
@@ -79,6 +79,7 @@
         <install.dir.name>payara5</install.dir.name>
         <uc-pkg-client.version>1.122-57.2889</uc-pkg-client.version>
         <uc-pkg-bootstrap.version>1.122-57.2889</uc-pkg-bootstrap.version>
+        <dbschema.osgi.version>6.0</dbschema.osgi.version>
         <dbschema.version>6.7</dbschema.version>
         <schema2beans.version>6.7</schema2beans.version>
         <!-- Java API for XML Registries Resource Adapter -->
@@ -93,7 +94,7 @@
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <!-- Yubico client validation version property -->
         <yubico-validation-client2.version>3.0.2.payara-p1</yubico-validation-client2.version>
-        <dockerfile-maven-plugin.version>1.4.10</dockerfile-maven-plugin.version>
+        <dockerfile-maven-plugin.version>1.4.13</dockerfile-maven-plugin.version>
     </properties>
 
 

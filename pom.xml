@@ -157,7 +157,7 @@
         <maven.deploy.plugin.version>3.0.0</maven.deploy.plugin.version>
         <maven.source.plugin.version>3.2.1</maven.source.plugin.version>
         <maven.javadoc.plugin.version>3.4.1</maven.javadoc.plugin.version>
-        <maven.install.plugin.version>3.0.1</maven.install.plugin.version>
+        <maven.install.plugin.version>3.1.0</maven.install.plugin.version>
         <maven.bundle.plugin.version>4.1.0</maven.bundle.plugin.version>
         <maven.failsafe.plugin.version>3.0.0-M7</maven.failsafe.plugin.version>
         <maven.site.plugin.version>3.12.1</maven.site.plugin.version>
@@ -185,9 +185,9 @@
         <hk2.version>2.6.1.payara-p8</hk2.version>
         <osgi-resource-locator.version>1.0.3</osgi-resource-locator.version>
         <stax-api.version>1.0-2</stax-api.version>
-        <jackson.version>2.13.4</jackson.version>
+        <jackson.version>2.14.1</jackson.version>
         <snakeyaml.version>1.33</snakeyaml.version>
-        <hazelcast.version>4.2.5</hazelcast.version>
+        <hazelcast.version>4.2.6</hazelcast.version>
         <hazelcast.kubernetes.version>2.2.3.payara-p1</hazelcast.kubernetes.version>
         <jaxb-api.version>2.3.3</jaxb-api.version>
         <jaxb-impl.version>2.3.7</jaxb-impl.version>
