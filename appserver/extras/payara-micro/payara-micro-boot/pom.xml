@@ -3,7 +3,7 @@
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) 2016-2020 Payara Foundation and/or its affiliates. All rights reserved.
+    Copyright (c) 2016-2023 Payara Foundation and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -88,7 +88,7 @@
                                 <replace token="@@@MINOR_VERSION@@@" value="${minor_version}" dir="${project.build.directory}/classes/MICRO-INF/domain/branding">
                                     <include name="glassfish-version.properties"/>
                                 </replace>
-                                <replace token="@@@PATCH_VERSION@@@" value="${update_version}" dir="${project.build.directory}/classes/MICRO-INF/domain/branding">
+                                <replace token="@@@UPDATE_VERSION@@@" value="${update_version}" dir="${project.build.directory}/classes/MICRO-INF/domain/branding">
                                     <include name="glassfish-version.properties"/>
                                 </replace>
                             </target>
