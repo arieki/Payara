@@ -51,6 +51,7 @@ pipeline {
         stage('Run Quicklook Tests') {
             steps {
                 echo '*#*#*#*#*#*#*#*#*#*#*#*#  Running test  *#*#*#*#*#*#*#*#*#*#*#*#*#*#*#'
+                sh """rm  ~/test\\|sa.mv.db  || true"""
                 sh """mvn -B -V -ff -e clean test -Pall \
                 -Dglassfish.home=\"${pwd()}/appserver/distributions/payara/target/stage/payara5/glassfish\" \
                 -Djavax.net.ssl.trustStore=${env.JAVA_HOME}/jre/lib/security/cacerts \
