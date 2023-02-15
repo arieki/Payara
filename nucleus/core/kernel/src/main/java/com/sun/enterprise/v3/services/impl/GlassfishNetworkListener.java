@@ -37,7 +37,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-// Portions Copyright [2016,2017] [Payara Foundation and/or its affiliates]
+// Portions Copyright [2016,2023] [Payara Foundation and/or its affiliates]
 package com.sun.enterprise.v3.services.impl;
 
 import com.sun.appserv.server.util.Version;
@@ -281,7 +281,9 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
                 keepAlive,
                 delayedExecutor,
                 maxRequestHeaders,
-                maxResponseHeaders);
+                maxResponseHeaders,
+                http == null || Boolean.parseBoolean(http.getCookieSameSiteEnabled()),
+                http.getCookieSameSiteValue());
 
         if (http != null) { // could be null for HTTP redirect
             httpCodecFilter.setMaxPayloadRemainderToSkip(
@@ -379,7 +381,7 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
         private final String serverVersion;
         private final String xPoweredBy;
         private final String xFrameOptions;
-
+        private final String cookieSameSiteValue;
         public GlassfishHttpCodecFilter(
                 final boolean isXPoweredByEnabled,
                 final boolean isServerInfoEnabled,
@@ -388,7 +390,9 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
                 final int maxHeadersSize,
                 final String defaultResponseContentType,
                 final KeepAlive keepAlive, final DelayedExecutor executor,
-                final int maxRequestHeaders, final int maxResponseHeaders) {
+                final int maxRequestHeaders, final int maxResponseHeaders,
+                final boolean cookieSameSiteEnabled,
+                final String cookieSameSiteValue) {
             super(chunkingEnabled, maxHeadersSize, defaultResponseContentType,
                     keepAlive, executor, maxRequestHeaders, maxResponseHeaders);
 
@@ -430,6 +434,12 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
             } else {
                 xFrameOptions = null;
             }
+
+            if (cookieSameSiteEnabled) {
+                this.cookieSameSiteValue = cookieSameSiteValue;
+            } else {
+                this.cookieSameSiteValue = null;
+            }
         }
 
         @Override
@@ -451,6 +461,10 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
             // Set response "X-Powered-By" header
             if (xPoweredBy != null) {
                 response.addHeader(Header.XPoweredBy, xPoweredBy);
+            }
+
+            if (this.cookieSameSiteValue != null) {
+                response.addHeader(Header.SetCookie, "SameSite=" + this.cookieSameSiteValue);
             }
 
             return result;
