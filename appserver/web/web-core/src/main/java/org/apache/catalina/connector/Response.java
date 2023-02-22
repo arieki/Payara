@@ -1180,7 +1180,11 @@ public class Response
         String name = cookie.getName();
         final String headername = "Set-Cookie";
         final String startsWith = name + "=";
-        final String cookieString = getCookieString(cookie);
+        String cookieString = getCookieString(cookie);
+        String cookieSameSiteValue = System.getProperty("cookieSameSiteValue");
+        if (cookieSameSiteValue != null) {
+            cookieString += ";SameSite=" + cookieSameSiteValue;
+        }
         boolean set = false;
         MimeHeaders headers = coyoteResponse.getResponse().getHeaders();
         int n = headers.size();
