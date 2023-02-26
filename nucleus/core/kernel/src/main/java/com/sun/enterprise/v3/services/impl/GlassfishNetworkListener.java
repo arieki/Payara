@@ -438,11 +438,7 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
             }
 
             if (cookieSameSiteEnabled) {
-                if ("None".equals(cookieSameSiteValue)) {
-                    this.cookieSameSiteValue = cookieSameSiteValue + ";Secure";
-                } else {
-                    this.cookieSameSiteValue = cookieSameSiteValue;
-                }
+                this.cookieSameSiteValue = cookieSameSiteValue;
                 System.setProperty("cookieSameSiteValue", this.cookieSameSiteValue);
             } else {
                 this.cookieSameSiteValue = null;
@@ -492,7 +488,8 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
                 for (int i = 0; i < headers.size(); i++) {
                     if (headers.getName(i).toString().equals("Set-Cookie")) {
                         DataChunk value = headers.getValue(i);
-                        value.setString(value + ";SameSite=" + this.cookieSameSiteValue);
+                        value.setString(value + ";SameSite=" + this.cookieSameSiteValue +
+                                ("None".equals(cookieSameSiteValue) ? ";Secure" : ""));
                     }
                 }
             }

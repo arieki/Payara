@@ -1183,7 +1183,7 @@ public class Response
         String cookieString = getCookieString(cookie);
         String cookieSameSiteValue = System.getProperty("cookieSameSiteValue");
         if (cookieSameSiteValue != null) {
-            cookieString += ";SameSite=" + cookieSameSiteValue;
+            cookieString += ";SameSite=" + cookieSameSiteValue + ("None".equals(cookieSameSiteValue) ? ";Secure" : "");
         }
         boolean set = false;
         MimeHeaders headers = coyoteResponse.getResponse().getHeaders();
@@ -1199,8 +1199,6 @@ public class Response
         if (!set) {
             addHeader(headername, cookieString);
         }
-
-
     }
 
     /**
