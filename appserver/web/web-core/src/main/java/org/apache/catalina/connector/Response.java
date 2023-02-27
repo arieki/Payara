@@ -1181,7 +1181,7 @@ public class Response
         final String headername = "Set-Cookie";
         final String startsWith = name + "=";
         String cookieString = getCookieString(cookie);
-        String cookieSameSiteValue = System.getProperty("cookieSameSiteValue");
+        String cookieSameSiteValue = ((org.apache.catalina.connector.Connector) connector).getProperty("sameSiteValue");
         if (cookieSameSiteValue != null) {
             cookieString += ";SameSite=" + cookieSameSiteValue + ("None".equals(cookieSameSiteValue) ? ";Secure" : "");
         }
