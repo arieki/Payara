@@ -125,7 +125,6 @@
       <notification-service-configuration enabled="true">
         <log-notifier-configuration enabled="true"></log-notifier-configuration>
       </notification-service-configuration>
-      <batch-runtime-configuration data-source-lookup-name="jdbc/__default"></batch-runtime-configuration>
       <monitoring-service-configuration>
         <notifier>log-notifier</notifier>
       </monitoring-service-configuration>
@@ -258,7 +257,6 @@
       <availability-service>
         <web-container-availability />
         <ejb-container-availability sfsb-store-pool-name="jdbc/hastore" />
-        <jms-availability />
       </availability-service>
       <network-config>
         <protocols>
