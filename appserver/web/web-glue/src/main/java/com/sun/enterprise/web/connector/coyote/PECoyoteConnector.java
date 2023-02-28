@@ -904,6 +904,10 @@ public class PECoyoteConnector extends Connector {
         setDefaultHost(http.getDefaultVirtualServer());
         setEnableLookups(ConfigBeansUtilities.toBoolean(http.getDnsLookupEnabled()));
 
+        if (Boolean.parseBoolean(http.getCookieSameSiteEnabled())) {
+            setProperty("sameSiteValue", http.getCookieSameSiteValue());
+        }
+
         setXpoweredBy(Boolean.valueOf(http.getXpoweredBy()));
 
         // Application root
