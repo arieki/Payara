@@ -285,7 +285,7 @@ public class GlassfishNetworkListener extends GenericGrizzlyListener {
                 maxRequestHeaders,
                 maxResponseHeaders,
                 http == null || Boolean.parseBoolean(http.getCookieSameSiteEnabled()),
-                http.getCookieSameSiteValue());
+                http == null ? "None" : http.getCookieSameSiteValue());
 
         if (http != null) { // could be null for HTTP redirect
             httpCodecFilter.setMaxPayloadRemainderToSkip(
